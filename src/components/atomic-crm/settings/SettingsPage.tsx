@@ -18,6 +18,8 @@ import {
   type ConfigurationContextValue,
 } from "../root/ConfigurationContext";
 import { defaultConfiguration } from "../root/defaultConfiguration";
+import { SyncMemoryButton } from "../providers/hindsight/SyncMemoryButton";
+import { HINDSIGHT_ENABLED } from "../providers/hindsight/hindsightClient";
 
 const SECTIONS = [
   { id: "branding", label: "Branding" },
@@ -25,6 +27,7 @@ const SECTIONS = [
   { id: "deals", label: "Deals" },
   { id: "notes", label: "Notes" },
   { id: "tasks", label: "Tasks" },
+  ...(HINDSIGHT_ENABLED ? [{ id: "memory", label: "Memory" }] : []),
 ];
 
 /** Ensure every item in a { value, label } array has a value (slug from label). */
@@ -356,6 +359,23 @@ const SettingsFormFields = () => {
             </ArrayInput>
           </CardContent>
         </Card>
+
+        {/* Memory (Hindsight) */}
+        {HINDSIGHT_ENABLED && (
+          <Card id="memory">
+            <CardContent className="space-y-4">
+              <h2 className="text-xl font-semibold text-muted-foreground">
+                Memory
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Hindsight provides AI memory for your CRM. New contacts, deals,
+                and leads are automatically remembered. Use the button below to
+                import your existing data.
+              </p>
+              <SyncMemoryButton />
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Sticky save button */}

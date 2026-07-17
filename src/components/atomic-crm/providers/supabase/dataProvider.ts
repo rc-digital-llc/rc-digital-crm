@@ -7,9 +7,11 @@ import {
   type ResourceCallbacks,
 } from "ra-core";
 import type {
+  Contact,
   ContactNote,
   Deal,
   DealNote,
+  Lead,
   RAFile,
   Sale,
   SalesFormData,
@@ -20,6 +22,16 @@ import { getActivityLog } from "../commons/activity";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
 import { getIsInitialized } from "./authProvider";
 import { supabase } from "./supabase";
+import { retainMemory, BANKS } from "../hindsight/hindsightClient";
+import {
+  formatContactCreated,
+  formatContactUpdated,
+  formatDealCreated,
+  formatDealUpdated,
+  formatLeadCreated,
+  formatLeadUpdated,
+  formatNoteCreated,
+} from "../hindsight/memoryFormatters";
 
 if (import.meta.env.VITE_SUPABASE_URL === undefined) {
   throw new Error("Please set the VITE_SUPABASE_URL environment variable");
@@ -263,6 +275,14 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
       }
       return data;
     },
+    afterCreate: async (result) => {
+      const note = result.data as ContactNote;
+      retainMemory(BANKS.contacts, formatNoteCreated(note, "contact"), {
+        context: "contact note",
+        metadata: { contact_id: String(note.contact_id) },
+      });
+      return result;
+    },
   },
   {
     resource: "deal_notes",
@@ -273,6 +293,14 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
         );
       }
       return data;
+    },
+    afterCreate: async (result) => {
+      const note = result.data as DealNote;
+      retainMemory(BANKS.deals, formatNoteCreated(note, "deal"), {
+        context: "deal note",
+        metadata: { deal_id: String(note.deal_id) },
+      });
+      return result;
     },
   },
   {
@@ -296,6 +324,26 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
         "phone",
         "background",
       ])(params);
+    },
+    afterCreate: async (result) => {
+      const contact = result.data as Contact;
+      retainMemory(BANKS.contacts, formatContactCreated(contact), {
+        context: "contact created",
+        metadata: { contact_id: String(contact.id) },
+      });
+      return result;
+    },
+    afterUpdate: async (result, params) => {
+      const contact = result.data as Contact;
+      retainMemory(
+        BANKS.contacts,
+        formatContactUpdated(contact, params.previousData as Partial<Contact>),
+        {
+          context: "contact updated",
+          metadata: { contact_id: String(contact.id) },
+        },
+      );
+      return result;
     },
   },
   {
@@ -336,6 +384,26 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
     beforeGetList: async (params) => {
       return applyFullTextSearch(["name", "category", "description"])(params);
     },
+    afterCreate: async (result) => {
+      const deal = result.data as Deal;
+      retainMemory(BANKS.deals, formatDealCreated(deal), {
+        context: "deal created",
+        metadata: { deal_id: String(deal.id) },
+      });
+      return result;
+    },
+    afterUpdate: async (result, params) => {
+      const deal = result.data as Deal;
+      retainMemory(
+        BANKS.deals,
+        formatDealUpdated(deal, params.previousData as Partial<Deal>),
+        {
+          context: "deal updated",
+          metadata: { deal_id: String(deal.id) },
+        },
+      );
+      return result;
+    },
   },
   {
     resource: "leads",
@@ -346,6 +414,26 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
         "company_name",
         "email",
       ])(params);
+    },
+    afterCreate: async (result) => {
+      const lead = result.data as Lead;
+      retainMemory(BANKS.leads, formatLeadCreated(lead), {
+        context: "lead created",
+        metadata: { lead_id: String(lead.id) },
+      });
+      return result;
+    },
+    afterUpdate: async (result, params) => {
+      const lead = result.data as Lead;
+      retainMemory(
+        BANKS.leads,
+        formatLeadUpdated(lead, params.previousData as Partial<Lead>),
+        {
+          context: "lead updated",
+          metadata: { lead_id: String(lead.id) },
+        },
+      );
+      return result;
     },
   },
 ];

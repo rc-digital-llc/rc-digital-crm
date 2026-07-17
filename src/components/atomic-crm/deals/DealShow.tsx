@@ -28,6 +28,7 @@ import type { Deal } from "../types";
 import { ContactList } from "./ContactList";
 import { findDealLabel } from "./deal";
 import { formatISODateString } from "./dealUtils";
+import { DealInsights } from "./DealInsights";
 
 export const DealShow = ({ open, id }: { open: boolean; id?: string }) => {
   const redirect = useRedirect();
@@ -197,6 +198,8 @@ const DealShowContent = () => {
               </p>
             </div>
           )}
+
+          <DealInsights deal={record} />
         </div>
 
         {/* Right: Notes / Activity - 40% */}

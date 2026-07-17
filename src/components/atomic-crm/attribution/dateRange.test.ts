@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDateRangeFilter, type DateRange } from "./AttributionDashboard";
+import { getDateRangeFilter } from "./AttributionDashboard";
 
 describe("getDateRangeFilter", () => {
   it("returns undefined for 'all'", () => {

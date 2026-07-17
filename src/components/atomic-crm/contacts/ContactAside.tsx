@@ -13,6 +13,8 @@ import { AsideSection } from "../misc/AsideSection";
 import type { Contact } from "../types";
 import { ContactMergeButton } from "./ContactMergeButton";
 import { ExportVCardButton } from "./ExportVCardButton";
+import { MemoryInsights } from "../providers/hindsight/MemoryInsights";
+import { BANKS } from "../providers/hindsight/hindsightClient";
 
 export const ContactAside = ({ link = "edit" }: { link?: "edit" | "show" }) => {
   const record = useRecordContext<Contact>();
@@ -39,6 +41,12 @@ export const ContactAside = ({ link = "edit" }: { link?: "edit" | "show" }) => {
       <AsideSection title="Tags">
         <TagsListEdit />
       </AsideSection>
+
+      <MemoryInsights
+        bankId={BANKS.contacts}
+        query={`${record.first_name} ${record.last_name} ${record.company_name ?? ""} interactions and preferences`}
+        title="Memory Insights"
+      />
 
       <AsideSection title="Tasks">
         <ReferenceManyField
