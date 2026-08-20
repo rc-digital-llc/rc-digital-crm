@@ -42,9 +42,20 @@ invoice, payment-provider event, settlement, and collections history.
 
 ### Active
 
-- [ ] Harden tenant and role authorization before financial data is introduced,
-  including billing-specific roles, private evidence storage, and removal of
-  payment-relevant permissive RLS paths.
+- [ ] Establish a real Supabase/PostgreSQL integration-test harness and a
+  blocking CI migration/deployment gate before any new money-bearing schema,
+  RPC, trigger, Edge Function, or provider endpoint can ship.
+- [ ] Harden tenant and role authorization before financial records or customer
+  portal access are introduced, including billing-specific roles, automation
+  principals, private evidence storage, and removal of payment-relevant
+  permissive RLS paths.
+- [ ] Remediate production dependency vulnerabilities and prevent public source
+  maps or unsafe deployment coupling from expanding the financial attack
+  surface.
+- [ ] Select the first live payment provider through an explicit sandbox spike
+  comparing GoCardless and Stripe on hosted authorization, variable charges,
+  webhooks, reconciliation data, failure handling, portability, residual
+  compliance obligations, and effective cost.
 - [ ] Model immutable, versioned customer billing agreements covering fixed,
   percentage-of-revenue, minimum-support, and hybrid compensation plans.
 - [ ] Define commissionable revenue precisely and capture monthly revenue
@@ -57,9 +68,13 @@ invoice, payment-provider event, settlement, and collections history.
   existing CRM for both intentional desktop and mobile operator use.
 - [ ] Give customer billing contacts a restricted portal for revenue reporting,
   evidence upload, invoice access, hosted payment setup, and disputes without
-  exposing internal CRM data.
+  exposing internal CRM data; the portal cannot ship before tenant isolation
+  and private evidence storage are proven in integration tests.
 - [ ] Integrate hosted payment providers through an adapter boundary while
   keeping bank/card credentials and mandate capture outside RC Digital.
+- [ ] Document and satisfy RC Digital's residual PCI, Nacha/ACH authorization,
+  proof-retention, notification, consent, sanctions-screening delegation, and
+  provider-monitoring obligations even when hosted payment rails are used.
 - [ ] Persist verified provider events, payment attempts, allocations, fees,
   refunds, disputes, payouts, and invoice status events as an auditable
   financial subledger.
@@ -71,15 +86,26 @@ invoice, payment-provider event, settlement, and collections history.
 - [ ] Run unattended work through a durable queue with leases, idempotency,
   retry/backoff, rate limits, dead-letter handling, structured errors, and
   restart-safe state transitions.
-- [ ] Provide shadow/dry-run mode, per-customer and global kill switches,
-  anomaly detection, reconciliation-delta alerts, health dashboards, audit
-  exports, backup/restore validation, and disaster recovery controls.
+- [ ] Provide operator safety controls including shadow/dry-run mode,
+  per-customer and global kill switches, policy-version rollback, paused-job
+  inspection, dead-letter resolution, and auditable manual override.
+- [ ] Provide structured financial observability including correlation IDs,
+  job/provider latency, webhook lag, failed and duplicate operations,
+  reconciliation deltas, alert routing, health dashboards, and audit exports.
+- [ ] Define and test financial-data recovery objectives, backup/PITR coverage,
+  provider-event replay, restore validation, evidence rehydration, and a
+  recurring disaster-recovery exercise before live unattended billing.
 - [ ] Prove financial correctness and access control through real migration,
   database, Edge Function, webhook, concurrency, provider-sandbox, end-to-end,
   and recovery tests rather than source-string assertions alone.
 - [ ] Graduate workflows from fail-closed automation toward maximum autonomy
   only when measured reliability, reconciliation accuracy, bounded loss, and
   rollback evidence satisfy explicit promotion criteria.
+- [ ] Capture promotion evidence from the first shadow cycle onward, including
+  duplicate-charge count, unauthorized-transition count, reconciliation delta
+  rate/value, false-pause rate, missed-event rate, recovery time, dispute rate,
+  collection-contact error rate, and rollback success; promotion thresholds
+  must be versioned and approved before autonomy expands.
 
 ### Out of Scope
 
@@ -132,6 +158,9 @@ system must never silently guess customer revenue.
   React Admin/Supabase provider patterns — do not create a second CRM.
 - **Payment scope**: Hosted providers own payment credentials, mandates, ACH or
   card origination, fraud controls, returns, disputes, and settlement.
+- **Residual compliance**: Hosted collection reduces sensitive-data scope but
+  does not remove RC Digital's duties for authorization proof, notifications,
+  provider oversight, record retention, and applicable ACH/card rules.
 - **Autonomy**: Routine operations may run unattended only when preconditions,
   evidence, policy version, idempotency, and reconciliation invariants pass.
 - **Fail-closed exceptions**: Unverified revenue, changed agreements, anomalous
@@ -150,6 +179,12 @@ system must never silently guess customer revenue.
 - **Deployment**: Introduce schema and provider behavior with expand-contract
   migrations, shadow mode, feature flags, kill switches, and independently
   verifiable rollout stages.
+- **Anti-pattern fence**: Payment code must not copy existing unsafe precedents:
+  no `SECURITY DEFINER` function without caller/tenant ownership checks and
+  locked `search_path`; no client-controlled provider identity; no webhook
+  acknowledgement before durable verified intake; no non-transactional
+  side-effect chain; no duplicate/replay acceptance; and no swallowed error
+  reported as success.
 - **Initial market**: USD and US payment rails first.
 - **Budget**: Prefer usage-based, low-fixed-cost infrastructure while preserving
   provider portability and an accounting-system integration path.
@@ -165,9 +200,33 @@ system must never silently guess customer revenue.
 | Include a restricted customer portal in v1 | Revenue evidence and disputes need a secure fallback when direct customer-system access is unavailable | — Pending |
 | Use immutable agreement and calculation versions | Historical invoices must remain reproducible after terms or formulas change | — Pending |
 | Build a financial subledger beside invoice documents | A mutable invoice status cannot prove payment, refund, dispute, or settlement history | — Pending |
-| Use a provider adapter with GoCardless as first sandbox candidate and Stripe as fallback | Preserves portability while testing lower-cost ACH and broader invoice/card capabilities | — Pending |
+| Use a provider adapter and run a GoCardless-versus-Stripe decision spike before live selection | Preserves portability and prevents current list pricing or incomplete research from becoming an irreversible architecture choice | — Pending |
 | Separate normal automation from exception policy | Allows routine human-out-of-loop operation with explicit stop conditions and later bounded promotion | — Pending |
 | Require shadow cycles before live charging | Provider, formula, delivery, reconciliation, and collections behavior must be compared without moving money first | — Pending |
+
+## Required Delivery Order
+
+These are hard dependencies for roadmap generation, not suggestions that may be
+parallelized away:
+
+1. Build executable database/RLS/Edge Function tests and a blocking CI migration
+   gate before shipping new financial migrations or privileged endpoints.
+2. Harden tenant isolation, billing roles, automation principals, private
+   evidence storage, dependency security, and deployment separation before
+   agreements, evidence, invoices, or portal records become production data.
+3. Establish integer-minor-unit money types, rounding rules, immutable state
+   transition patterns, and anti-pattern tests before formula or invoice logic.
+4. Build agreement/formula and revenue-evidence foundations before creating
+   provider charges or automated invoice runs.
+5. Build append-only invoice/payment event history and durable idempotent
+   provider intake before any unattended billing action.
+6. Prove reconciliation before collections automation can act on payment state.
+7. Ship operator controls, observability, kill switches, recovery evidence, and
+   shadow-cycle verification before live unattended collection.
+8. Ship the customer portal only after its tenant isolation, private storage,
+   signed access, and dispute hold behavior pass end-to-end security tests.
+9. Collect promotion metrics from shadow mode onward; do not expand autonomy
+   until versioned thresholds and rollback tests pass.
 
 ## Evolution
 
@@ -187,4 +246,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-20 after project initialization*
+*Last updated: 2026-08-20 after Claude pre-roadmap audit*
