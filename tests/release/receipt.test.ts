@@ -7,6 +7,7 @@ import {
   buildCanonicalReceipt,
   writeReceipt,
 } from "../../scripts/release/build-receipt.mjs";
+import { publishEvidence } from "../../scripts/release/publish-evidence.mjs";
 import { verifyReceipt } from "../../scripts/release/verify-receipt.mjs";
 
 const SHA_A = "a".repeat(64);
@@ -443,5 +444,208 @@ describe("canonical release receipt", () => {
         now: NOW,
       }),
     ).toThrow(/exists|immutable/i);
+  });
+});
+
+function evidenceFiles() {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "evidence-test-"));
+  temporaryDirectories.push(directory);
+  const built = buildCanonicalReceipt(validInput(), {
+    authenticatedOwner: "release-owner",
+    now: NOW,
+  });
+  const receiptPath = path.join(
+    directory,
+    `${built.receiptId}.receipt.json`,
+  );
+  const attestationPath = path.join(directory, "attestation.json");
+  const reportPath = path.join(directory, "security-report.json");
+  fs.writeFileSync(receiptPath, built.canonicalJson, "utf8");
+  fs.writeFileSync(
+    attestationPath,
+    JSON.stringify({ reference: "github-oidc-attestation-123" }),
+    "utf8",
+  );
+  fs.writeFileSync(
+    reportPath,
+    JSON.stringify({ summary: "redacted security evidence" }),
+    "utf8",
+  );
+  return { built, receiptPath, attestationPath, reportPath };
+}
+
+function privateApi({
+  readback,
+  existingAssets = [],
+}: {
+  readback?: string;
+  existingAssets?: Array<Record<string, unknown>>;
+} = {}) {
+  const calls: string[][] = [];
+  const assets = [...existingAssets];
+  const uploaded = new Map<number, string>();
+  let nextAssetId = 100;
+  const execute = async (command: string, args: string[]) => {
+    calls.push([command, ...args]);
+    if (args[0] === "api" && args[1] === "repos/private/evidence") {
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          id: 42,
+          visibility: "private",
+          default_branch: "main",
+        }),
+        stderr: "",
+      };
+    }
+    if (args[0] === "api" && args[1]?.includes("/releases/tags/")) {
+      return {
+        code: 0,
+        stdout: JSON.stringify({ id: 84, assets }),
+        stderr: "",
+      };
+    }
+    if (args[0] === "release" && args[1] === "upload") {
+      const assetArgument = args[3];
+      const marker = assetArgument.lastIndexOf("#");
+      const localPath = assetArgument.slice(0, marker);
+      const name = assetArgument.slice(marker + 1);
+      const id = nextAssetId++;
+      const bytes = fs.readFileSync(localPath, "utf8");
+      assets.push({ id, name, size: Buffer.byteLength(bytes) });
+      uploaded.set(id, bytes);
+      return { code: 0, stdout: "", stderr: "" };
+    }
+    if (args[0] === "api" && args[1]?.includes("/releases/assets/")) {
+      const id = Number(args[1].split("/").at(-1));
+      return {
+        code: 0,
+        stdout: readback ?? uploaded.get(id) ?? "mismatched-existing-bytes",
+        stderr: "",
+      };
+    }
+    return { code: 1, stdout: "", stderr: "unexpected fake API call" };
+  };
+  return { calls, execute };
+}
+
+describe("private evidence publisher", () => {
+  it.each([
+    { repository: undefined, visibility: "private", pattern: /required/i },
+    {
+      repository: "marmelab/atomic-crm",
+      visibility: "private",
+      pattern: /source repository/i,
+    },
+    {
+      repository: "Rconman99/atomic-crm",
+      visibility: "private",
+      pattern: /source repository/i,
+    },
+    {
+      repository: "private/evidence",
+      visibility: "public",
+      pattern: /private/i,
+    },
+    {
+      repository: "private/evidence",
+      visibility: "internal",
+      pattern: /private/i,
+    },
+  ])(
+    "rejects $repository with $visibility visibility before upload",
+    async ({ repository, visibility, pattern }) => {
+      const files = evidenceFiles();
+      const calls: string[][] = [];
+      const execute = async (command: string, args: string[]) => {
+        calls.push([command, ...args]);
+        return {
+          code: 0,
+          stdout: JSON.stringify({ id: 42, visibility }),
+          stderr: "",
+        };
+      };
+
+      await expect(
+        publishEvidence({
+          repository,
+          receiptPath: files.receiptPath,
+          attestationPaths: [files.attestationPath],
+          reportPaths: [files.reportPath],
+          authenticatedOwner: "release-owner",
+          now: NOW,
+          execute,
+        }),
+      ).rejects.toThrow(pattern);
+      expect(calls.some(([, action]) => action === "release")).toBe(false);
+    },
+  );
+
+  it("uploads immutable assets privately and verifies authenticated readback", async () => {
+    const files = evidenceFiles();
+    const api = privateApi();
+
+    const result = await publishEvidence({
+      repository: "private/evidence",
+      receiptPath: files.receiptPath,
+      attestationPaths: [files.attestationPath],
+      reportPaths: [files.reportPath],
+      authenticatedOwner: "release-owner",
+      now: NOW,
+      execute: api.execute,
+    });
+
+    expect(result).toMatchObject({
+      receipt_id: files.built.receiptId,
+      destination_id: expect.stringMatching(/^[0-9a-f]{12}$/),
+      evidence_url: expect.stringMatching(
+        /^https:\/\/api\.github\.com\/repositories\/42\/releases\/assets\/\d+$/,
+      ),
+      report_hashes: [expect.stringMatching(/^[0-9a-f]{64}$/)],
+      readback: "verified",
+    });
+    expect(JSON.stringify(result)).not.toContain("private/evidence");
+    expect(JSON.stringify(result)).not.toContain("redacted security evidence");
+    const uploadCalls = api.calls.filter(([, action]) => action === "release");
+    expect(uploadCalls).toHaveLength(3);
+    expect(uploadCalls.flat()).not.toContain("--clobber");
+  });
+
+  it("rejects tampered receipt readback", async () => {
+    const files = evidenceFiles();
+    const api = privateApi({ readback: `${files.built.canonicalJson}tampered` });
+
+    await expect(
+      publishEvidence({
+        repository: "private/evidence",
+        receiptPath: files.receiptPath,
+        attestationPaths: [files.attestationPath],
+        reportPaths: [files.reportPath],
+        authenticatedOwner: "release-owner",
+        now: NOW,
+        execute: api.execute,
+      }),
+    ).rejects.toThrow(/readback|digest|bytes/i);
+  });
+
+  it("rejects a mismatched existing asset without clobber", async () => {
+    const files = evidenceFiles();
+    const receiptAssetName = `${files.built.receipt.commit_sha}.${files.built.receipt.stage}.${files.built.receiptId}.receipt.json`;
+    const api = privateApi({
+      existingAssets: [{ id: 77, name: receiptAssetName, size: 10 }],
+    });
+
+    await expect(
+      publishEvidence({
+        repository: "private/evidence",
+        receiptPath: files.receiptPath,
+        attestationPaths: [files.attestationPath],
+        reportPaths: [files.reportPath],
+        authenticatedOwner: "release-owner",
+        now: NOW,
+        execute: api.execute,
+      }),
+    ).rejects.toThrow(/existing asset|mismatch|immutable/i);
+    expect(api.calls.some(([, action]) => action === "release")).toBe(false);
   });
 });
