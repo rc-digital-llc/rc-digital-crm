@@ -84,6 +84,17 @@ function validInput(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function withoutPath(input: Record<string, unknown>, fieldPath: string) {
+  const clone = structuredClone(input);
+  const segments = fieldPath.split(".");
+  let cursor: Record<string, unknown> = clone;
+  for (const segment of segments.slice(0, -1)) {
+    cursor = cursor[segment] as Record<string, unknown>;
+  }
+  delete cursor[segments.at(-1) as string];
+  return clone;
+}
+
 const temporaryDirectories: string[] = [];
 
 afterEach(() => {
@@ -165,6 +176,42 @@ describe("canonical release receipt", () => {
     ).toThrow(new RegExp(field));
   });
 
+  it.each([
+    "artifact_digests.manifest_sha256",
+    "artifact_digests.artifacts",
+    "artifact_digests.artifacts.0.name",
+    "artifact_digests.artifacts.0.sha256",
+    "migration_range.from",
+    "migration_range.to",
+    "migration_range.hashes",
+    "migration_range.hashes.0.name",
+    "migration_range.hashes.0.sha256",
+    "required_checks.0.identity",
+    "required_checks.0.result",
+    "report_hashes.tests",
+    "report_hashes.security",
+    "target_environment.name",
+    "target_environment.provider_target",
+    "feature_flag_state.feature",
+    "feature_flag_state.state",
+    "approvals.0.actor",
+    "approvals.0.role",
+    "approvals.0.approved_at",
+    "approvals.0.deployment_id",
+    "timestamps.created_at",
+    "timestamps.verified_at",
+    "attestation.provider",
+    "attestation.subject_digest",
+    "attestation.reference",
+  ])("rejects a missing nested D-15 field: %s", (fieldPath) => {
+    expect(() =>
+      buildCanonicalReceipt(withoutPath(validInput(), fieldPath), {
+        authenticatedOwner: "release-owner",
+        now: NOW,
+      }),
+    ).toThrow(/required|wrong type/i);
+  });
+
   it("rejects tampering after the receipt ID is generated", () => {
     const built = buildCanonicalReceipt(validInput(), {
       authenticatedOwner: "release-owner",
@@ -183,6 +230,10 @@ describe("canonical release receipt", () => {
   });
 
   it("requires the exact predecessor for every stage", () => {
+    const predecessor = buildCanonicalReceipt(validInput(), {
+      authenticatedOwner: "release-owner",
+      now: NOW,
+    });
     expect(() =>
       buildCanonicalReceipt(
         validInput({ stage: "functions", predecessor: null }),
@@ -210,14 +261,59 @@ describe("canonical release receipt", () => {
           stage: "functions",
           predecessor: {
             stage: "schema",
-            receipt_id: SHA_B,
-            subject_digest: SHA_C,
+            receipt_id: predecessor.receiptId,
+            subject_digest: predecessor.receipt.attestation.subject_digest,
+          },
+        }),
+        {
+          authenticatedOwner: "release-owner",
+          now: NOW,
+          predecessorReceipt: predecessor.receipt,
+        },
+      ),
+    ).not.toThrow();
+
+    expect(() =>
+      buildCanonicalReceipt(
+        validInput({
+          stage: "functions",
+          predecessor: {
+            stage: "schema",
+            receipt_id: predecessor.receiptId,
+            subject_digest: predecessor.receipt.attestation.subject_digest,
           },
         }),
         { authenticatedOwner: "release-owner", now: NOW },
       ),
-    ).not.toThrow();
+    ).toThrow(/predecessor receipt/i);
   });
+
+  it.each(["stage", "receipt_id", "subject_digest"])(
+    "rejects a predecessor missing %s",
+    (field) => {
+      const predecessor = buildCanonicalReceipt(validInput(), {
+        authenticatedOwner: "release-owner",
+        now: NOW,
+      });
+      const link: Record<string, unknown> = {
+        stage: "schema",
+        receipt_id: predecessor.receiptId,
+        subject_digest: predecessor.receipt.attestation.subject_digest,
+      };
+      delete link[field];
+
+      expect(() =>
+        buildCanonicalReceipt(
+          validInput({ stage: "functions", predecessor: link }),
+          {
+            authenticatedOwner: "release-owner",
+            now: NOW,
+            predecessorReceipt: predecessor.receipt,
+          },
+        ),
+      ).toThrow(new RegExp(field));
+    },
+  );
 
   it.each([
     {
@@ -279,6 +375,36 @@ describe("canonical release receipt", () => {
         now: NOW,
       }),
     ).not.toThrow();
+  });
+
+  it.each([
+    "class",
+    "authenticated_owner",
+    "linked_issue",
+    "affected_scope",
+    "rationale",
+    "compensating_controls",
+    "expires_at",
+    "policy_version",
+  ])("rejects an exception missing %s", (field) => {
+    const exception: Record<string, unknown> = {
+      class: "unrelated_nonfinancial",
+      authenticated_owner: "release-owner",
+      linked_issue: "https://github.example/issues/456",
+      affected_scope: ["documentation-link-check"],
+      rationale: "The external documentation host is unavailable.",
+      compensating_controls: ["Verified cached documentation links"],
+      expires_at: "2026-08-31T20:00:00.000Z",
+      policy_version: "1.0.0",
+    };
+    delete exception[field];
+
+    expect(() =>
+      buildCanonicalReceipt(validInput({ exceptions: [exception] }), {
+        authenticatedOwner: "release-owner",
+        now: NOW,
+      }),
+    ).toThrow(new RegExp(field));
   });
 
   it("requires every exact blocking check to succeed", () => {

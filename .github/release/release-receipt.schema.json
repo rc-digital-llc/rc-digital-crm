@@ -6,6 +6,9 @@
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "policy_version",
+    "stage",
+    "predecessor",
     "commit_sha",
     "artifact_digests",
     "migration_range",
@@ -22,6 +25,24 @@
   "properties": {
     "schema_version": {
       "const": "1.0.0"
+    },
+    "policy_version": {
+      "const": "1.0.0"
+    },
+    "stage": {
+      "enum": ["schema", "functions", "frontend", "dormant", "enable"]
+    },
+    "predecessor": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["stage", "receipt_id", "subject_digest"],
+      "properties": {
+        "stage": {
+          "enum": ["schema", "functions", "frontend", "dormant"]
+        },
+        "receipt_id": { "$ref": "#/$defs/sha256" },
+        "subject_digest": { "$ref": "#/$defs/sha256" }
+      }
     },
     "commit_sha": {
       "type": "string",
@@ -59,6 +80,7 @@
         "to": { "type": "string", "minLength": 1 },
         "hashes": {
           "type": "array",
+          "minItems": 1,
           "items": { "$ref": "#/$defs/namedHash" }
         }
       }
@@ -106,6 +128,7 @@
     },
     "approvals": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -158,6 +181,7 @@
     },
     "rollback_references": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "string",
         "minLength": 1
