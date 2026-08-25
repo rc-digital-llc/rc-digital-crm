@@ -454,10 +454,7 @@ function evidenceFiles() {
     authenticatedOwner: "release-owner",
     now: NOW,
   });
-  const receiptPath = path.join(
-    directory,
-    `${built.receiptId}.receipt.json`,
-  );
+  const receiptPath = path.join(directory, `${built.receiptId}.receipt.json`);
   const attestationPath = path.join(directory, "attestation.json");
   const reportPath = path.join(directory, "security-report.json");
   fs.writeFileSync(receiptPath, built.canonicalJson, "utf8");
@@ -507,9 +504,8 @@ function privateApi({
     }
     if (args[0] === "release" && args[1] === "upload") {
       const assetArgument = args[3];
-      const marker = assetArgument.lastIndexOf("#");
-      const localPath = assetArgument.slice(0, marker);
-      const name = assetArgument.slice(marker + 1);
+      const localPath = assetArgument;
+      const name = path.basename(assetArgument);
       const id = nextAssetId++;
       const bytes = fs.readFileSync(localPath, "utf8");
       assets.push({ id, name, size: Buffer.byteLength(bytes) });
@@ -613,7 +609,9 @@ describe("private evidence publisher", () => {
 
   it("rejects tampered receipt readback", async () => {
     const files = evidenceFiles();
-    const api = privateApi({ readback: `${files.built.canonicalJson}tampered` });
+    const api = privateApi({
+      readback: `${files.built.canonicalJson}tampered`,
+    });
 
     await expect(
       publishEvidence({
