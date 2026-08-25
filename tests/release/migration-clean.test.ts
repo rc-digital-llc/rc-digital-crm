@@ -161,7 +161,10 @@ describe("schema push verifier", () => {
   it.each([
     {
       name: "remote host",
-      target: { ...target, databaseUrl: "postgresql://postgres:pw@db.example.com/postgres" },
+      target: {
+        ...target,
+        databaseUrl: "postgresql://postgres:pw@db.example.com/postgres",
+      },
       environment: {},
       argv: [],
       pattern: /loopback/i,
@@ -175,7 +178,11 @@ describe("schema push verifier", () => {
     },
     {
       name: "unresolved variable",
-      target: { ...target, databaseUrl: "postgresql://postgres:$LOCAL_PASSWORD@127.0.0.1:55432/postgres" },
+      target: {
+        ...target,
+        databaseUrl:
+          "postgresql://postgres:$LOCAL_PASSWORD@127.0.0.1:55432/postgres",
+      },
       environment: {},
       argv: [],
       pattern: /unresolved/i,
@@ -201,36 +208,34 @@ describe("schema push verifier", () => {
       argv: [],
       pattern: /project ref/i,
     },
-  ])("rejects $name before executing a command", async ({
-    target: unsafeTarget,
-    environment,
-    argv,
-    pattern,
-  }) => {
-    const calls: string[][] = [];
-    const execute = async (command: string, args: string[]) => {
-      calls.push([command, ...args]);
-      return { code: 0, stdout: "", stderr: "" };
-    };
+  ])(
+    "rejects $name before executing a command",
+    async ({ target: unsafeTarget, environment, argv, pattern }) => {
+      const calls: string[][] = [];
+      const execute = async (command: string, args: string[]) => {
+        calls.push([command, ...args]);
+        return { code: 0, stdout: "", stderr: "" };
+      };
 
-    expect(() =>
-      assertSafeSchemaPushTarget({
-        target: unsafeTarget,
-        environment,
-        argv,
-      }),
-    ).toThrow(pattern);
-    await expect(
-      verifySchemaPushTarget({
-        target: unsafeTarget,
-        migrationFilenames: migrations,
-        environment,
-        argv,
-        execute,
-      }),
-    ).rejects.toThrow(pattern);
-    expect(calls).toEqual([]);
-  });
+      expect(() =>
+        assertSafeSchemaPushTarget({
+          target: unsafeTarget,
+          environment,
+          argv,
+        }),
+      ).toThrow(pattern);
+      await expect(
+        verifySchemaPushTarget({
+          target: unsafeTarget,
+          migrationFilenames: migrations,
+          environment,
+          argv,
+          execute,
+        }),
+      ).rejects.toThrow(pattern);
+      expect(calls).toEqual([]);
+    },
+  );
 
   it("pushes the ordered history and schema contracts to the validated URL", async () => {
     const calls: string[][] = [];
