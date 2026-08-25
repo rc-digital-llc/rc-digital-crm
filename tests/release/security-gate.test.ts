@@ -1,8 +1,14 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertDependencyAudit,
   assertSecretScanResult,
+  assertWorkflowDecoupled,
   buildGitleaksArgs,
+  scanBundleTree,
   summarizeFindings,
   validateGitleaksConfig,
 } from "../../scripts/release/security-gate.mjs";
@@ -111,5 +117,88 @@ describe("release security secret gate", () => {
     } catch (error) {
       expect(String(error)).not.toContain("fixture-super-secret-value");
     }
+  });
+});
+
+describe("release security dependency, bundle, and coupling gates", () => {
+  it("rejects a high production advisory without exposing advisory detail", () => {
+    const audit = {
+      metadata: {
+        vulnerabilities: { info: 0, low: 0, moderate: 0, high: 1, critical: 0 },
+      },
+      vulnerabilities: {
+        fixture: {
+          severity: "high",
+          via: [{ title: "fixture-exploit-detail-must-not-appear" }],
+        },
+      },
+    };
+
+    expect(() => assertDependencyAudit(audit)).toThrow(/dependencies.*high=1/i);
+    try {
+      assertDependencyAudit(audit);
+    } catch (error) {
+      expect(String(error)).not.toContain("fixture-exploit-detail-must-not-appear");
+    }
+  });
+
+  it("rejects a source map and secret marker as separate bundle failures", () => {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "rc-security-gate-test-"),
+    );
+    try {
+      const mapPath = path.join(temporaryRoot, "assets", "app.js.map");
+      fs.mkdirSync(path.dirname(mapPath), { recursive: true });
+      fs.writeFileSync(mapPath, "{}", "utf8");
+      expect(() => scanBundleTree(temporaryRoot)).toThrow(/bundle.*source_map/i);
+
+      fs.rmSync(mapPath);
+      fs.writeFileSync(
+        path.join(temporaryRoot, "app.js"),
+        "SUPABASE_SERVICE_ROLE_KEY=fixture-bundle-secret-value",
+        "utf8",
+      );
+      expect(() => scanBundleTree(temporaryRoot)).toThrow(
+        /bundle.*secret_marker/i,
+      );
+      try {
+        scanBundleTree(temporaryRoot);
+      } catch (error) {
+        expect(String(error)).not.toContain("fixture-bundle-secret-value");
+      }
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects automatic-main workflow coupling only when all mutation powers combine", () => {
+    const coupled = `
+name: coupled
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    steps:
+      - run: supabase db push
+      - run: supabase functions deploy
+      - run: npm run build
+      - run: gh-pages -d dist
+`;
+    const buildOnly = `
+name: build-only
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    steps:
+      - run: npm run build
+`;
+
+    expect(() => assertWorkflowDecoupled(coupled, "coupled.yml")).toThrow(
+      /coupling/i,
+    );
+    expect(() => assertWorkflowDecoupled(buildOnly, "build.yml")).not.toThrow();
   });
 });
