@@ -43,7 +43,7 @@ CREATE OR REPLACE VIEW customer_journeys
 WITH (security_invoker=on) AS
 SELECT
   COALESCE(c.first_name || ' ' || c.last_name, l.first_name || ' ' || l.last_name) as person_name,
-  COALESCE(c.email, l.email) as email,
+  COALESCE(c.email_jsonb -> 0 ->> 'email', l.email) as email,
   l.id as lead_id,
   c.id as contact_id,
   d.id as deal_id,
@@ -61,6 +61,7 @@ FROM leads l
 LEFT JOIN contacts c ON l.converted_contact_id = c.id
 LEFT JOIN deals d ON l.converted_deal_id = d.id
 LEFT JOIN touchpoints t ON t.lead_id = l.id OR t.contact_id = c.id
-GROUP BY l.id, c.id, d.id, c.first_name, c.last_name, l.first_name, l.last_name, c.email, l.email,
+GROUP BY l.id, c.id, d.id, c.first_name, c.last_name, l.first_name, l.last_name,
+  c.email_jsonb -> 0 ->> 'email', l.email,
   l.source, l.created_at, l.converted_at, d.created_at, d.stage, d.amount
 ORDER BY l.created_at DESC;

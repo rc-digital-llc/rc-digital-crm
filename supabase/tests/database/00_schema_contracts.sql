@@ -116,30 +116,21 @@ insert into auth.users (
     now()
   );
 
-insert into public.sales (
-  id,
-  first_name,
-  last_name,
-  email,
-  administrator,
-  user_id
-) values
-  (
-    910001,
-    'Release',
-    'Owner One',
-    'release-owner-one@example.invalid',
-    false,
-    '10000000-0000-0000-0000-000000000001'
-  ),
-  (
-    910002,
-    'Release',
-    'Owner Two',
-    'release-owner-two@example.invalid',
-    false,
-    '10000000-0000-0000-0000-000000000002'
-  );
+update public.sales
+set
+  id = 910001,
+  first_name = 'Release',
+  last_name = 'Owner One',
+  administrator = false
+where user_id = '10000000-0000-0000-0000-000000000001';
+
+update public.sales
+set
+  id = 910002,
+  first_name = 'Release',
+  last_name = 'Owner Two',
+  administrator = false
+where user_id = '10000000-0000-0000-0000-000000000002';
 
 insert into public.leads (
   id,
