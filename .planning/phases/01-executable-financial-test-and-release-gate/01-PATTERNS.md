@@ -1,8 +1,8 @@
 # Phase 1: Executable Financial Test and Release Gate - Pattern Map
 
 **Mapped:** 2026-08-25
-**Files analyzed:** 52 new/modified/deleted files
-**Analogs found:** 42 / 52
+**Files analyzed:** 53 new/modified/deleted files
+**Analogs found:** 43 / 53
 
 ## File Classification
 
@@ -36,6 +36,7 @@
 | `.gitleaks.toml` | security config | file/history scan | no repository Gitleaks config | no analog |
 | `.env.development` (delete/untrack) | secret-bearing config | file-I/O | `.env.example` | boundary-match |
 | `supabase/functions/.env` (delete/untrack) | secret-bearing config | file-I/O | `.env.example` | boundary-match |
+| `supabase/functions/postmark/index.ts` | Edge Function/provider handler | request-response/event-driven | current `supabase/functions/postmark/index.ts` | exact; propagate existing error response |
 | `supabase/migrations/20260306000007_attribution_summary_view.sql` | migration/view | batch/read model | same file plus earlier view migrations | exact |
 | `supabase/migrations/20260825000001_harden_lead_conversion.sql` | migration/RPC | transactional CRUD | `20260306000004_lead_conversion_function.sql` | exact role; security repairs required |
 | `supabase/tests/baselines/001-pre-financial/manifest.json` | immutable fixture manifest | file-I/O/transform | no baseline manifest | no analog |
