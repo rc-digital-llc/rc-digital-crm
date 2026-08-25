@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "financial_paths": [
+    "supabase/migrations/**",
+    "supabase/functions/**",
+    "supabase/tests/**",
+    "tests/release/**",
+    "scripts/release/**",
+    "package.json",
+    "package-lock.json",
+    "vite.config.ts",
+    ".github/release/**",
+    ".github/workflows/financial-*.yml",
+    ".github/workflows/release-*.yml"
+  ],
+  "policy": {
+    "pull_request": "early-feedback",
+    "merge_group": "all-financial-lanes-required"
+  }
+}

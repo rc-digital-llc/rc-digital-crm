@@ -1,0 +1,65 @@
+{
+  "version": "1.0.0",
+  "receipt_schema_version": "1.0.0",
+  "required_checks": {
+    "fast": [
+      "check / lint",
+      "check / typecheck",
+      "check / unit",
+      "check / build"
+    ],
+    "financial": [
+      "financial / migration-clean",
+      "financial / migration-upgrade",
+      "financial / database-contracts",
+      "financial / edge-provider-contracts",
+      "financial / replay-concurrency",
+      "financial / release-security"
+    ]
+  },
+  "stage_order": [
+    "schema",
+    "functions",
+    "frontend",
+    "dormant",
+    "enable"
+  ],
+  "non_overridable_failures": [
+    "migration_clean",
+    "migration_upgrade",
+    "authorization",
+    "secret_exposure",
+    "production_source_maps",
+    "replay_concurrency",
+    "provider_contract",
+    "critical_high_production_vulnerability"
+  ],
+  "exceptions": {
+    "allowed_classes": [
+      "unrelated_nonfinancial",
+      "classified_infrastructure"
+    ],
+    "max_exception_days": 7,
+    "required_fields": [
+      "authenticated_owner",
+      "linked_issue",
+      "affected_scope",
+      "rationale",
+      "compensating_controls",
+      "expires_at"
+    ],
+    "expired_action": "block"
+  },
+  "retries": {
+    "assertion": 0,
+    "bootstrap": 1
+  },
+  "evidence": {
+    "authoritative_visibility": "PRIVATE",
+    "authoritative_store": "external_private_repository",
+    "public_artifacts": "diagnostic_only",
+    "content_address": "sha256",
+    "attestation": "github_oidc"
+  },
+  "financial_features": []
+}
