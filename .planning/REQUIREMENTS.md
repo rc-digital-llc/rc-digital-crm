@@ -425,17 +425,114 @@ A v1 requirement is complete only when:
 
 ## Traceability
 
-Roadmap phase mappings will be populated after the roadmap is approved.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| All v1 requirements | Unmapped | Pending |
+| REL-01 | Phase 1 | Pending |
+| REL-02 | Phase 1 | Pending |
+| REL-03 | Phase 1 | Pending |
+| REL-04 | Phase 1 | Pending |
+| REL-05 | Phase 1 | Pending |
+| WORK-01 | Phase 2 | Pending |
+| WORK-02 | Phase 9 | Pending |
+| WORK-03 | Phase 9 | Pending |
+| WORK-04 | Phase 9 | Pending |
+| WORK-05 | Phase 9 | Pending |
+| SEC-01 | Phase 2 | Pending |
+| SEC-02 | Phase 2 | Pending |
+| SEC-03 | Phase 2 | Pending |
+| SEC-04 | Phase 2 | Pending |
+| SEC-05 | Phase 2 | Pending |
+| SEC-06 | Phase 2 | Pending |
+| SEC-07 | Phase 2 | Pending |
+| AGR-01 | Phase 4 | Pending |
+| AGR-02 | Phase 4 | Pending |
+| AGR-03 | Phase 4 | Pending |
+| AGR-04 | Phase 4 | Pending |
+| AGR-05 | Phase 4 | Pending |
+| REV-01 | Phase 4 | Pending |
+| REV-02 | Phase 4 | Pending |
+| REV-03 | Phase 8 | Pending |
+| REV-04 | Phase 4 | Pending |
+| REV-05 | Phase 4 | Pending |
+| REV-06 | Phase 4 | Pending |
+| REV-07 | Phase 4 | Pending |
+| REV-08 | Phase 4 | Pending |
+| REV-09 | Phase 4 | Pending |
+| CALC-01 | Phase 3 | Pending |
+| CALC-02 | Phase 4 | Pending |
+| CALC-03 | Phase 3 | Pending |
+| CALC-04 | Phase 4 | Pending |
+| CALC-05 | Phase 4 | Pending |
+| CALC-06 | Phase 4 | Pending |
+| CALC-07 | Phase 4 | Pending |
+| INV-01 | Phase 5 | Pending |
+| INV-02 | Phase 5 | Pending |
+| INV-03 | Phase 5 | Pending |
+| INV-04 | Phase 8 | Pending |
+| INV-05 | Phase 6 | Pending |
+| INV-06 | Phase 5 | Pending |
+| PAY-01 | Phase 5 | Pending |
+| PAY-02 | Phase 5 | Pending |
+| PAY-03 | Phase 8 | Pending |
+| PAY-04 | Phase 5 | Pending |
+| PAY-05 | Phase 5 | Pending |
+| PAY-06 | Phase 5 | Pending |
+| PAY-07 | Phase 5 | Pending |
+| PAY-08 | Phase 6 | Pending |
+| PAY-09 | Phase 5 | Pending |
+| REC-01 | Phase 5 | Pending |
+| REC-02 | Phase 5 | Pending |
+| REC-03 | Phase 6 | Pending |
+| REC-04 | Phase 6 | Pending |
+| REC-05 | Phase 6 | Pending |
+| REC-06 | Phase 6 | Pending |
+| REC-07 | Phase 6 | Pending |
+| REC-08 | Phase 6 | Pending |
+| PORT-01 | Phase 8 | Pending |
+| PORT-02 | Phase 8 | Pending |
+| PORT-03 | Phase 8 | Pending |
+| PORT-04 | Phase 8 | Pending |
+| PORT-05 | Phase 8 | Pending |
+| PORT-06 | Phase 8 | Pending |
+| PORT-07 | Phase 8 | Pending |
+| COLL-01 | Phase 9 | Pending |
+| COLL-02 | Phase 9 | Pending |
+| COLL-03 | Phase 9 | Pending |
+| COLL-04 | Phase 9 | Pending |
+| COLL-05 | Phase 9 | Pending |
+| COLL-06 | Phase 9 | Pending |
+| COLL-07 | Phase 9 | Pending |
+| AUTO-01 | Phase 5 | Pending |
+| AUTO-02 | Phase 5 | Pending |
+| AUTO-03 | Phase 7 | Pending |
+| AUTO-04 | Phase 7 | Pending |
+| AUTO-05 | Phase 7 | Pending |
+| AUTO-06 | Phase 7 | Pending |
+| AUTO-07 | Phase 7 | Pending |
+| OPS-01 | Phase 7 | Pending |
+| OPS-02 | Phase 7 | Pending |
+| OPS-03 | Phase 7 | Pending |
+| OPS-04 | Phase 7 | Pending |
+| OPS-05 | Phase 7 | Pending |
+| OPS-06 | Phase 7 | Pending |
+| OPS-07 | Phase 7 | Pending |
+| GOV-01 | Phase 10 | Pending |
+| GOV-02 | Phase 10 | Pending |
+| GOV-03 | Phase 10 | Pending |
+| GOV-04 | Phase 10 | Pending |
+| GOV-05 | Phase 7 | Pending |
+| PILOT-01 | Phase 10 | Pending |
+| PILOT-02 | Phase 10 | Pending |
+| PILOT-03 | Phase 10 | Pending |
+| PILOT-04 | Phase 10 | Pending |
+| PILOT-05 | Phase 10 | Pending |
+| PILOT-06 | Phase 10 | Pending |
 
 **Coverage:**
 - v1 requirements: 100 total
-- Mapped to phases: 0
-- Unmapped: 100 — roadmap pending
+- Mapped to phases: 100
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-20*
-*Last updated: 2026-08-20 after approved research scope*
+*Last updated: 2026-08-25 after approved horizontal roadmap*
