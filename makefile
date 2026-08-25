@@ -1,7 +1,52 @@
-.PHONY: build help
+.PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-functions test-financial-concurrency-fixture test-financial-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+financial-gate-help: ## list the blocking financial release gate targets
+	@grep -E '^(financial-gate-help|test-financial-migration-clean|test-financial-schema-push|test-financial-migration-upgrade|test-financial-database-sql|test-financial-database-http|test-financial-functions|test-financial-concurrency-fixture|test-financial-concurrency|test-release-secrets|test-release-bundle|test-release-security|financial-gate):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-36s %s\n", $$1, $$2}'
+
+test-financial-migration-clean: ## replay every migration and verify schema contracts on a clean local stack
+	node scripts/release/run-supabase-lane.mjs run --lane migration-clean -- node scripts/release/verify-migration-chain.mjs clean
+
+test-financial-schema-push: ## prove schema push against an isolated loopback database
+	node scripts/release/run-supabase-lane.mjs run --lane migration-clean -- node scripts/release/verify-migration-chain.mjs schema-push
+
+test-financial-migration-upgrade: ## apply pending migrations to the checked-in baseline and verify fingerprints
+	node scripts/release/run-supabase-lane.mjs run --lane migration-upgrade -- node scripts/release/fingerprint-upgrade.mjs
+
+test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC, and trigger contracts
+	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db --local
+
+test-financial-database-http: ## execute Auth, REST, and RPC contracts through local HTTP APIs
+	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/auth-rls-rpc-trigger.test.ts
+
+test-financial-functions: ## execute Edge Function and provider-boundary contracts
+	node scripts/release/run-supabase-lane.mjs run --lane edge-provider-contracts -- npm test -- --run tests/release/edge-webhook-provider.test.ts
+
+test-financial-concurrency-fixture: ## validate the deterministic replay/concurrency database fixture
+	node scripts/release/run-supabase-lane.mjs run --lane replay-concurrency -- supabase test db supabase/tests/support/replay-concurrency.sql --local
+
+test-financial-concurrency: ## execute replay and concurrency assertions exactly once
+	node scripts/release/run-supabase-lane.mjs run --lane replay-concurrency -- npm test -- --run tests/release/replay-concurrency.test.ts
+
+test-release-secrets: ## scan Git history and the current tree for secret exposure
+	node scripts/release/security-gate.mjs secrets
+
+test-release-bundle: ## scan production source maps and bundles for sensitive data
+	node scripts/release/security-gate.mjs bundle
+
+test-release-security: ## run dependency, secret, source-map, and bundle security gates
+	node scripts/release/security-gate.mjs all
+
+financial-gate: ## run all six blocking financial release lanes
+	$(MAKE) test-financial-migration-clean
+	$(MAKE) test-financial-migration-upgrade
+	$(MAKE) test-financial-database-sql
+	$(MAKE) test-financial-database-http
+	$(MAKE) test-financial-functions
+	$(MAKE) test-financial-concurrency
+	$(MAKE) test-release-security
 
 install: package.json ## install dependencies
 	npm install;
