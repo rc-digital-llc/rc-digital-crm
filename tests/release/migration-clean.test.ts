@@ -2,9 +2,12 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertSafeSchemaPushTarget,
+  cleanupSchemaPushTarget,
   parseMigrationFilenames,
   parseMigrationListOutput,
   verifyCleanMigrationChain,
+  verifySchemaPushTarget,
 } from "../../scripts/release/verify-migration-chain.mjs";
 
 const migrations = ["20240101000000_first.sql", "20240202000000_second.sql"];
@@ -145,5 +148,155 @@ describe("clean migration verifier", () => {
         .update(migrations.join("\n"))
         .digest("hex"),
     });
+  });
+});
+
+describe("schema push verifier", () => {
+  const target = {
+    databaseUrl: "postgresql://postgres:local@127.0.0.1:55432/postgres",
+    projectId: "rc-digital-schema-push-1234-a1b2c3d4",
+    workdir: "/tmp/rc-digital-schema-push-1234-a1b2c3d4",
+  };
+
+  it.each([
+    {
+      name: "remote host",
+      target: { ...target, databaseUrl: "postgresql://postgres:pw@db.example.com/postgres" },
+      environment: {},
+      argv: [],
+      pattern: /loopback/i,
+    },
+    {
+      name: "linked mode",
+      target,
+      environment: {},
+      argv: ["--linked"],
+      pattern: /linked/i,
+    },
+    {
+      name: "unresolved variable",
+      target: { ...target, databaseUrl: "postgresql://postgres:$LOCAL_PASSWORD@127.0.0.1:55432/postgres" },
+      environment: {},
+      argv: [],
+      pattern: /unresolved/i,
+    },
+    {
+      name: "production identifier",
+      target: { ...target, projectId: "rc-digital-production" },
+      environment: {},
+      argv: [],
+      pattern: /test-scoped/i,
+    },
+    {
+      name: "access token",
+      target,
+      environment: { SUPABASE_ACCESS_TOKEN: "present-but-never-printed" },
+      argv: [],
+      pattern: /access token/i,
+    },
+    {
+      name: "project reference",
+      target,
+      environment: { SUPABASE_PROJECT_REF: "production-ref" },
+      argv: [],
+      pattern: /project ref/i,
+    },
+  ])("rejects $name before executing a command", async ({
+    target: unsafeTarget,
+    environment,
+    argv,
+    pattern,
+  }) => {
+    const calls: string[][] = [];
+    const execute = async (command: string, args: string[]) => {
+      calls.push([command, ...args]);
+      return { code: 0, stdout: "", stderr: "" };
+    };
+
+    expect(() =>
+      assertSafeSchemaPushTarget({
+        target: unsafeTarget,
+        environment,
+        argv,
+      }),
+    ).toThrow(pattern);
+    await expect(
+      verifySchemaPushTarget({
+        target: unsafeTarget,
+        migrationFilenames: migrations,
+        environment,
+        argv,
+        execute,
+      }),
+    ).rejects.toThrow(pattern);
+    expect(calls).toEqual([]);
+  });
+
+  it("pushes the ordered history and schema contracts to the validated URL", async () => {
+    const calls: string[][] = [];
+    const execute = async (command: string, args: string[]) => {
+      calls.push([command, ...args]);
+      if (args[0] === "migration") {
+        return { code: 0, stdout: matchingHistory, stderr: "" };
+      }
+      return { code: 0, stdout: "ok", stderr: "" };
+    };
+
+    const result = await verifySchemaPushTarget({
+      target,
+      migrationFilenames: migrations,
+      environment: {},
+      argv: [],
+      execute,
+    });
+
+    expect(calls).toEqual([
+      [
+        "supabase",
+        "db",
+        "push",
+        "--db-url",
+        target.databaseUrl,
+        "--include-all",
+      ],
+      ["supabase", "migration", "list", "--db-url", target.databaseUrl],
+      [
+        "supabase",
+        "test",
+        "db",
+        "supabase/tests/database/00_schema_contracts.sql",
+        "--db-url",
+        target.databaseUrl,
+      ],
+    ]);
+    expect(result).toMatchObject({
+      project_id: target.projectId,
+      first_version: "20240101000000",
+      latest_version: "20240202000000",
+      migration_count: 2,
+    });
+    expect(JSON.stringify(result)).not.toContain(target.databaseUrl);
+  });
+
+  it("cleans up only the exact validated project", async () => {
+    const calls: string[][] = [];
+    const execute = async (command: string, args: string[]) => {
+      calls.push([command, ...args]);
+      return { code: 0, stdout: "", stderr: "" };
+    };
+
+    await cleanupSchemaPushTarget({ target, execute });
+
+    expect(calls).toEqual([
+      [
+        "supabase",
+        "stop",
+        "--project-id",
+        target.projectId,
+        "--no-backup",
+        "--workdir",
+        target.workdir,
+      ],
+    ]);
   });
 });
