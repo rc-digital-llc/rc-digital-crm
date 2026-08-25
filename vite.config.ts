@@ -28,6 +28,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
+        sourcemap: false,
       },
       manifest: false, // Use existing manifest.json from public/
     }),
@@ -54,7 +55,7 @@ export default defineConfig({
     keepNames: true,
   },
   build: {
-    sourcemap: true,
+    sourcemap: false,
   },
   resolve: {
     preserveSymlinks: true,

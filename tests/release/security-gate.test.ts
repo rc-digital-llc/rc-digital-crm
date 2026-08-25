@@ -95,7 +95,9 @@ describe("release security secret gate", () => {
       expect(() => validateGitleaksConfig(config)).toThrow(/allowlist/i);
     }
     expect(() =>
-      validateGitleaksConfig('title = "RC Digital release scan"\n[extend]\nuseDefault = true'),
+      validateGitleaksConfig(
+        'title = "RC Digital release scan"\n[extend]\nuseDefault = true',
+      ),
     ).not.toThrow();
   });
 
@@ -138,7 +140,9 @@ describe("release security dependency, bundle, and coupling gates", () => {
     try {
       assertDependencyAudit(audit);
     } catch (error) {
-      expect(String(error)).not.toContain("fixture-exploit-detail-must-not-appear");
+      expect(String(error)).not.toContain(
+        "fixture-exploit-detail-must-not-appear",
+      );
     }
   });
 
@@ -150,7 +154,9 @@ describe("release security dependency, bundle, and coupling gates", () => {
       const mapPath = path.join(temporaryRoot, "assets", "app.js.map");
       fs.mkdirSync(path.dirname(mapPath), { recursive: true });
       fs.writeFileSync(mapPath, "{}", "utf8");
-      expect(() => scanBundleTree(temporaryRoot)).toThrow(/bundle.*source_map/i);
+      expect(() => scanBundleTree(temporaryRoot)).toThrow(
+        /bundle.*source_map/i,
+      );
 
       fs.rmSync(mapPath);
       fs.writeFileSync(
