@@ -51,7 +51,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Encode the release policy, receipt schema, isolated Supabase runner, and stable command surface.
+- [x] 01-01-PLAN.md — Encode the release policy, receipt schema, isolated Supabase runner, and stable command surface.
 - [ ] 01-07-PLAN.md — Remediate critical/high dependencies, tracked-secret exposure, and public source maps.
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -225,7 +225,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Executable Financial Test and Release Gate | 0/10 | Planned    |  |
+| 1. Executable Financial Test and Release Gate | 1/10 | In Progress|  |
 | 2. Tenant, Role, and Evidence Security | 0/TBD | Not started | - |
 | 3. Exact Money and Rounding Contract | 0/TBD | Not started | - |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
