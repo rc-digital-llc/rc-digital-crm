@@ -1,0 +1,4 @@
+title = "RC Digital release secret scan"
+
+[extend]
+useDefault = true
