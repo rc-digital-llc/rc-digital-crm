@@ -3,13 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseMigrationFilenames,
+  parseMigrationListOutput,
   verifyCleanMigrationChain,
 } from "../../scripts/release/verify-migration-chain.mjs";
 
-const migrations = [
-  "20240101000000_first.sql",
-  "20240202000000_second.sql",
-];
+const migrations = ["20240101000000_first.sql", "20240202000000_second.sql"];
 
 const matchingHistory = `
   LOCAL          | REMOTE         | TIME (UTC)
@@ -35,6 +33,29 @@ describe("clean migration verifier", () => {
     expect(() => parseMigrationFilenames(["not-a-migration.sql"])).toThrow(
       /filename/i,
     );
+  });
+
+  it("parses structured CLI history and rejects local/database divergence", () => {
+    expect(
+      parseMigrationListOutput(
+        JSON.stringify({
+          migrations: [
+            {
+              local: "20240101000000",
+              remote: "20240101000000",
+              time: "2024-01-01 00:00:00",
+            },
+          ],
+        }),
+      ),
+    ).toEqual(["20240101000000"]);
+    expect(() =>
+      parseMigrationListOutput(
+        JSON.stringify({
+          migrations: [{ local: "20240101000000", remote: "20240202000000" }],
+        }),
+      ),
+    ).toThrow(/differ/i);
   });
 
   it("stops after one reset failure without retrying assertions", async () => {
