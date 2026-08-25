@@ -56,7 +56,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Repair and prove clean migration replay plus local schema push.
+- [x] 01-02-PLAN.md — Repair and prove clean migration replay plus local schema push.
 - [ ] 01-08-PLAN.md — Build content-addressed receipts and private evidence publication/readback.
 
 **Wave 3** *(blocked on Wave 2 completion)*
