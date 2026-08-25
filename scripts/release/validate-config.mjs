@@ -34,10 +34,7 @@ const expected = Object.freeze({
     "provider_contract",
     "critical_high_production_vulnerability",
   ],
-  exceptionClasses: [
-    "unrelated_nonfinancial",
-    "classified_infrastructure",
-  ],
+  exceptionClasses: ["unrelated_nonfinancial", "classified_infrastructure"],
   exceptionFields: [
     "authenticated_owner",
     "linked_issue",
@@ -48,6 +45,9 @@ const expected = Object.freeze({
   ],
   receiptFields: [
     "schema_version",
+    "policy_version",
+    "stage",
+    "predecessor",
     "commit_sha",
     "artifact_digests",
     "migration_range",
@@ -135,17 +135,11 @@ export function validateReleaseConfiguration({ paths, policy, schema }) {
     "release-policy.non_overridable_failures",
   );
   add(
-    sameArray(
-      policy?.exceptions?.allowed_classes,
-      expected.exceptionClasses,
-    ),
+    sameArray(policy?.exceptions?.allowed_classes, expected.exceptionClasses),
     "release-policy.exceptions.allowed_classes",
   );
   add(
-    sameArray(
-      policy?.exceptions?.required_fields,
-      expected.exceptionFields,
-    ),
+    sameArray(policy?.exceptions?.required_fields, expected.exceptionFields),
     "release-policy.exceptions.required_fields",
   );
   add(
@@ -235,11 +229,16 @@ function main() {
     }
     process.stdout.write("release configuration: PASS\n");
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : "error"}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : "error"}\n`,
+    );
     process.exitCode = 1;
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main();
 }

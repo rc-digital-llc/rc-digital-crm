@@ -34,6 +34,9 @@ const nonOverridableFailures = [
 
 const receiptFields = [
   "schema_version",
+  "policy_version",
+  "stage",
+  "predecessor",
   "commit_sha",
   "artifact_digests",
   "migration_range",
@@ -183,9 +186,7 @@ describe("release receipt schema", () => {
   const schema = readJson("release-receipt.schema.json");
 
   it("uses Draft 2020-12 and requires every release receipt field", () => {
-    expect(schema.$schema).toBe(
-      "https://json-schema.org/draft/2020-12/schema",
-    );
+    expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.required).toEqual(receiptFields);
   });
 
@@ -211,6 +212,7 @@ describe("release receipt schema", () => {
       "report_hashes",
       "target_environment",
       "feature_flag_state",
+      "predecessor",
       "timestamps",
       "attestation",
     ]) {
