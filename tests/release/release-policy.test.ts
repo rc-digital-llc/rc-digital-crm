@@ -127,6 +127,64 @@ function policyErrors(policy: Record<string, unknown>): string[] {
   return errors;
 }
 
+function rulesetErrors(document: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const ruleset = document.ruleset as Record<string, unknown> | undefined;
+  const conditions = ruleset?.conditions as Record<string, unknown> | undefined;
+  const refName = conditions?.ref_name as Record<string, unknown> | undefined;
+  const rules = (ruleset?.rules as Record<string, unknown>[] | undefined) ?? [];
+  const required = rules.find((rule) => rule.type === "required_status_checks");
+  const requiredParameters = required?.parameters as
+    | Record<string, unknown>
+    | undefined;
+  const requiredStatuses =
+    (requiredParameters?.required_status_checks as
+      | Record<string, unknown>[]
+      | undefined) ?? [];
+  const contexts = requiredStatuses.map((status) => status.context).sort();
+
+  if (document.repository !== "Rconman99/atomic-crm") {
+    errors.push("repository");
+  }
+  if (ruleset?.name !== "main-financial-release") errors.push("name");
+  if (ruleset?.target !== "branch" || ruleset?.enforcement !== "active") {
+    errors.push("enforcement");
+  }
+  if (
+    JSON.stringify(refName?.include) !== JSON.stringify(["refs/heads/main"])
+  ) {
+    errors.push("main-target");
+  }
+  if (
+    !Array.isArray(ruleset?.bypass_actors) ||
+    ruleset.bypass_actors.length !== 0
+  ) {
+    errors.push("bypass-actors");
+  }
+  if (
+    JSON.stringify(contexts) !==
+    JSON.stringify([...fastChecks, ...financialChecks].sort())
+  ) {
+    errors.push("required-status-checks");
+  }
+  if (requiredStatuses.some((status) => status.integration_id !== 15368)) {
+    errors.push("required-status-app");
+  }
+  if (!rules.some((rule) => rule.type === "merge_queue")) {
+    errors.push("merge-queue");
+  }
+  if (!rules.some((rule) => rule.type === "pull_request")) {
+    errors.push("pull-request");
+  }
+  if (!rules.some((rule) => rule.type === "required_signatures")) {
+    errors.push("signed-commits");
+  }
+  if (!rules.some((rule) => rule.type === "required_linear_history")) {
+    errors.push("linear-history");
+  }
+  return errors;
+}
+
 describe("financial release path ownership", () => {
   const paths = readJson("financial-paths.json");
 
@@ -249,7 +307,7 @@ describe("GitHub workflow release contracts", () => {
     for (const suffix of ["lint", "typecheck", "unit", "build"]) {
       expect(workflow).toMatch(
         new RegExp(
-          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*${suffix}\\s*$`,
+          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*check / ${suffix}\\s*$`,
           "m",
         ),
       );
@@ -281,7 +339,7 @@ describe("GitHub workflow release contracts", () => {
     for (const [suffix, command] of Object.entries(commands)) {
       expect(workflow).toMatch(
         new RegExp(
-          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*${suffix}\\s*$`,
+          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*financial / ${suffix}\\s*$`,
           "m",
         ),
       );
@@ -293,7 +351,7 @@ describe("GitHub workflow release contracts", () => {
     const workflow = readWorkflow("financial-release-gate.yml");
     const financialJobBlocks = workflow.split(/^ {2}(?=[a-z][a-z-]+:)/m);
     const jobs = financialJobBlocks.filter((block) =>
-      /name:\s*(?:migration-clean|migration-upgrade|database-contracts|edge-provider-contracts|replay-concurrency|release-security)\s*$/m.test(
+      /name:\s*financial \/ (?:migration-clean|migration-upgrade|database-contracts|edge-provider-contracts|replay-concurrency|release-security)\s*$/m.test(
         block,
       ),
     );
@@ -322,5 +380,40 @@ describe("GitHub workflow release contracts", () => {
     expect(financial).not.toMatch(
       /contents:\s*write|checks:\s*write|secrets\./,
     );
+  });
+});
+
+describe("GitHub ruleset release contracts", () => {
+  it("ruleset targets main with exact checks, merge queue, and no bypass", () => {
+    const document = readJson("main-ruleset.json");
+    expect(rulesetErrors(document)).toEqual([]);
+  });
+
+  it("ruleset rejects a missing queue, renamed check, or bypass actor", () => {
+    const document = readJson("main-ruleset.json");
+    const missingQueue = structuredClone(document);
+    const queueRules = (missingQueue.ruleset as Record<string, unknown>)
+      .rules as Record<string, unknown>[];
+    (missingQueue.ruleset as Record<string, unknown>).rules = queueRules.filter(
+      (rule) => rule.type !== "merge_queue",
+    );
+    expect(rulesetErrors(missingQueue)).toContain("merge-queue");
+
+    const renamed = structuredClone(document);
+    const renamedRules = (renamed.ruleset as Record<string, unknown>)
+      .rules as Record<string, unknown>[];
+    const required = renamedRules.find(
+      (rule) => rule.type === "required_status_checks",
+    )!;
+    const statuses = (required.parameters as Record<string, unknown>)
+      .required_status_checks as Record<string, unknown>[];
+    statuses[0].context = "renamed-check";
+    expect(rulesetErrors(renamed)).toContain("required-status-checks");
+
+    const bypass = structuredClone(document);
+    (bypass.ruleset as Record<string, unknown>).bypass_actors = [
+      { actor_id: 1, actor_type: "RepositoryRole", bypass_mode: "always" },
+    ];
+    expect(rulesetErrors(bypass)).toContain("bypass-actors");
   });
 });
