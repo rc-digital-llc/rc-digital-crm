@@ -1,13 +1,14 @@
-.PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-functions test-financial-concurrency-fixture test-financial-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
+.PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-database-contracts test-financial-functions test-financial-concurrency-fixture test-financial-concurrency test-financial-replay-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 financial-gate-help: ## list the blocking financial release gate targets
-	@grep -E '^(financial-gate-help|test-financial-migration-clean|test-financial-schema-push|test-financial-migration-upgrade|test-financial-database-sql|test-financial-database-http|test-financial-functions|test-financial-concurrency-fixture|test-financial-concurrency|test-release-secrets|test-release-bundle|test-release-security|financial-gate):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-36s %s\n", $$1, $$2}'
+	@grep -E '^(financial-gate-help|test-financial-migration-clean|test-financial-schema-push|test-financial-migration-upgrade|test-financial-database-sql|test-financial-database-http|test-financial-database-contracts|test-financial-functions|test-financial-concurrency-fixture|test-financial-concurrency|test-financial-replay-concurrency|test-release-secrets|test-release-bundle|test-release-security|financial-gate):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-36s %s\n", $$1, $$2}'
 
 test-financial-migration-clean: ## replay every migration and verify schema contracts on a clean local stack
 	node scripts/release/run-supabase-lane.mjs run --lane migration-clean -- node scripts/release/verify-migration-chain.mjs clean
+	$(MAKE) test-financial-schema-push
 
 test-financial-schema-push: ## prove schema push against an isolated loopback database
 	node scripts/release/run-supabase-lane.mjs run --lane migration-clean -- node scripts/release/verify-migration-chain.mjs schema-push
@@ -21,6 +22,10 @@ test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC,
 test-financial-database-http: ## execute Auth, REST, and RPC contracts through local HTTP APIs
 	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/auth-rls-rpc-trigger.test.ts
 
+test-financial-database-contracts: ## execute all live database and HTTP authorization contracts
+	$(MAKE) test-financial-database-sql
+	$(MAKE) test-financial-database-http
+
 test-financial-functions: ## execute Edge Function and provider-boundary contracts
 	node scripts/release/run-supabase-lane.mjs run --lane edge-provider-contracts -- npm test -- --run tests/release/edge-webhook-provider.test.ts
 
@@ -29,6 +34,10 @@ test-financial-concurrency-fixture: ## validate the deterministic replay/concurr
 
 test-financial-concurrency: ## execute replay and concurrency assertions exactly once
 	node scripts/release/run-supabase-lane.mjs run --lane replay-concurrency -- npm test -- --run tests/release/replay-concurrency.test.ts
+
+test-financial-replay-concurrency: ## execute sequential and parallel replay/concurrency contracts
+	$(MAKE) test-financial-concurrency-fixture
+	$(MAKE) test-financial-concurrency
 
 test-release-secrets: ## scan Git history and the current tree for secret exposure
 	node scripts/release/security-gate.mjs secrets
@@ -42,10 +51,9 @@ test-release-security: ## run dependency, secret, source-map, and bundle securit
 financial-gate: ## run all six blocking financial release lanes
 	$(MAKE) test-financial-migration-clean
 	$(MAKE) test-financial-migration-upgrade
-	$(MAKE) test-financial-database-sql
-	$(MAKE) test-financial-database-http
+	$(MAKE) test-financial-database-contracts
 	$(MAKE) test-financial-functions
-	$(MAKE) test-financial-concurrency
+	$(MAKE) test-financial-replay-concurrency
 	$(MAKE) test-release-security
 
 install: package.json ## install dependencies

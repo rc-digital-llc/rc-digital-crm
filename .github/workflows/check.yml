@@ -1,89 +1,78 @@
-name: ✅ Check
+name: check
+
 on:
-    push:
-        branches:
-            - main
-    pull_request:
-        types:
-            - opened
-            - reopened
-            - synchronize
-            - ready_for_review
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
-    contents: write
-    checks: write
+  contents: read
 
 jobs:
-    lint:
-        name: 🔬 ESLint
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        if: ${{ !github.event.pull_request.draft || github.event_name == 'push' }}
-        steps:
-            - name: 📥 Checkout repo
-              uses: actions/checkout@v4
+  lint:
+    name: lint
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run prettier
 
-            - name: ⚙️ Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: npm
+  typecheck:
+    name: typecheck
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
 
-            - name: 📥 Download deps
-              run: npm ci
+  unit:
+    name: unit
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --run
 
-            - name: 🔬 Lint
-              uses: wearerequired/lint-action@v2
-              with:
-                  eslint: true
-                  eslint_args: "**/*.{mjs,ts,tsx}"
-                  prettier: true
-                  prettier_args: "--config ./.prettierrc.json \"**/*.{js,json,ts,tsx,css,md,html}\""
-
-    test:
-        name: 🔎 Test
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        if: ${{ !github.event.pull_request.draft || github.event_name == 'push' }}
-        steps:
-            - name: 📥 Checkout repo
-              uses: actions/checkout@v4
-
-            - name: ⚙️ Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: npm
-
-            - name: 📥 Download deps
-              run: npm ci
-
-            - name: 🔎 Test
-              run: make test-ci
-
-
-    build:
-        name: 🔨 Build
-        timeout-minutes: 10
-        runs-on: ubuntu-latest
-        if: ${{ !github.event.pull_request.draft || github.event_name == 'push' }}
-        steps:
-            - name: 📥 Checkout repo
-              uses: actions/checkout@v4
-
-            - name: ⚙️ Setup node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 20
-                  cache: npm
-
-            - name: 📥 Download deps
-              run: npm ci
-
-            - name: 🔨 Build
-              run: npm run build
+  build:
+    name: build
+    if: ${{ github.event.pull_request.draft == false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
