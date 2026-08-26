@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-08-26T00:39:00.000Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-08-26T00:49:00.000Z"
 last_activity: 2026-08-25
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 10
-  completed_plans: 5
-  percent: 50
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -29,29 +29,29 @@ history.
 ## Current Position
 
 Phase: 01 (executable-financial-test-and-release-gate) — EXECUTING
-Plan: 5 of 10
+Plan: 6 of 10
 Status: Ready to execute
 Last activity: 2026-08-25
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 5
-- Average duration: 16 min
-- Total execution time: 1.3 hours
+- Total plans completed: 6
+- Average duration: 14 min
+- Total execution time: 1.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 01 | 5 | 78 min | 16 min |
+| Phase 01 | 6 | 84 min | 14 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 8 min, 24 min, 13 min, 19 min, 14 min
+- Last 5 plans: 24 min, 13 min, 19 min, 14 min, 6 min
 - Trend: Establishing baseline
 
 *Updated after each plan completion*
@@ -60,6 +60,7 @@ Progress: [█████░░░░░] 50%
 | Phase 01 P08 | 13min | 2 tasks | 7 files |
 | Phase 01 P03 | 19min | 2 tasks | 8 files |
 | Phase 01 P04 | 14min | 2 tasks | 9 files |
+| Phase 01 P05 | 6min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Later release stages require the actual predecessor receipt, and authoritative publication accepts only API-verified PRIVATE storage with immutable asset readback. — Caller-supplied hashes and public artifacts cannot become release authority.
 - [Phase 01]: Baseline 001 is the immutable pre-financial cutoff; exact PostgreSQL numeric text and seven distinct preservation categories are compared across every future upgrade. — Clean installs alone cannot prove existing facts and authorization survive migration.
 - [Phase 01]: Authorization policy is proven twice: representative claims inside live PostgreSQL and real local Auth JWTs across PostgREST/RPC. — Source inspection and status-only checks cannot prove row isolation or failure atomicity.
+- [Phase 01]: A provider acknowledgement is successful only after exact database effects succeed; every financial provider must register executable auth, body, failure, replay, concurrency, and success cases. — Provider HTTP status alone cannot establish financial safety.
 
 ### Pending Todos
 
@@ -95,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-26T00:39:00.000Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-08-26T00:49:00.000Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
