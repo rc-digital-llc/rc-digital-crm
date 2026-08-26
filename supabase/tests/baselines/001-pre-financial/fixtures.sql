@@ -546,6 +546,15 @@ VALUES
     1
   );
 
+ALTER TABLE public.leads DISABLE TRIGGER leads_updated_at;
+UPDATE public.leads
+SET updated_at = CASE id
+  WHEN 7001 THEN '2026-02-18T12:00:00Z'::timestamptz
+  WHEN 7002 THEN '2026-02-19T12:00:00Z'::timestamptz
+END
+WHERE id IN (7001, 7002);
+ALTER TABLE public.leads ENABLE TRIGGER leads_updated_at;
+
 INSERT INTO public.touchpoints (
   id,
   created_at,

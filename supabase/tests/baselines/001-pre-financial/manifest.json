@@ -60,8 +60,8 @@
   "files": {
     "schema.sql": "4c96249a5e640fdbed76d59e5174ccd206692b5bb415b057674b6b74ba848131",
     "migration-history.sql": "b443aef4e207e605dc6f266b5681b5c23f2c05db1116e57e1e43c7ff489e82ee",
-    "fixtures.sql": "3731f941b3e98feb4f900b368c58f969da1db8c0d1123a7eb1747e1186dd409f",
-    "expected-fingerprints.json": "71e5363d4999e9fa3778446eb424274028a074cf70f465d8b1215c0bb1e3083a"
+    "fixtures.sql": "a8e721982c4c284845b28ecb957caf1d4b3166fae190e5c2481d5d0a084289b4",
+    "expected-fingerprints.json": "dfb37579f294927f43a8b397c1223190360fb31ac12fec1989c2e85709713ba5"
   },
-  "expected_fingerprints_sha256": "71e5363d4999e9fa3778446eb424274028a074cf70f465d8b1215c0bb1e3083a"
+  "expected_fingerprints_sha256": "dfb37579f294927f43a8b397c1223190360fb31ac12fec1989c2e85709713ba5"
 }

@@ -84,10 +84,7 @@ describe("representative upgrade fingerprints", () => {
 
   it("uses explicit Docker/psql argv and contains no remote or reversal mode", () => {
     const source = fs.readFileSync(
-      path.resolve(
-        __dirname,
-        "../../scripts/release/fingerprint-upgrade.mjs",
-      ),
+      path.resolve(__dirname, "../../scripts/release/fingerprint-upgrade.mjs"),
       "utf8",
     );
     expect(source).toContain('"docker"');
