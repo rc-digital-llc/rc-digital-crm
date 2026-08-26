@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   lint:
-    name: lint
+    name: check / lint
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -30,7 +30,7 @@ jobs:
       - run: npm run prettier
 
   typecheck:
-    name: typecheck
+    name: check / typecheck
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -46,7 +46,7 @@ jobs:
       - run: npm run typecheck
 
   unit:
-    name: unit
+    name: check / unit
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -62,7 +62,7 @@ jobs:
       - run: npm test -- --run
 
   build:
-    name: build
+    name: check / build
     if: ${{ github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
