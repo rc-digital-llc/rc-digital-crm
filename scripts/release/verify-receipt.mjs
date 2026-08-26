@@ -176,6 +176,37 @@ function assertExactSuccessfulChecks(receipt) {
   }
 }
 
+function assertSafeEvidenceIdentities(receipt) {
+  const artifactNames = receipt.artifact_digests.artifacts.map(
+    ({ name }) => name,
+  );
+  if (
+    artifactNames.some((name) => !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name))
+  ) {
+    throw new Error("artifact name is not a safe basename");
+  }
+  if (new Set(artifactNames).size !== artifactNames.length) {
+    throw new Error("artifact names contain duplicates");
+  }
+  const migrationNames = receipt.migration_range.hashes.map(({ name }) => name);
+  const safeMigrationBasename = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+  const safeRepositoryMigration =
+    /^supabase\/migrations\/[0-9]+_[A-Za-z0-9_-]+\.sql$/;
+  if (
+    migrationNames.some(
+      (name) =>
+        (!safeMigrationBasename.test(name) &&
+          !safeRepositoryMigration.test(name)) ||
+        name.includes(".."),
+    )
+  ) {
+    throw new Error("migration evidence path is not safe or versioned");
+  }
+  if (new Set(migrationNames).size !== migrationNames.length) {
+    throw new Error("migration evidence paths contain duplicates");
+  }
+}
+
 function assertStageChain(receipt, predecessorReceipt) {
   const stageIndex = policy.stage_order.indexOf(receipt.stage);
   if (stageIndex === -1) throw new Error("receipt stage is not in policy");
@@ -333,6 +364,7 @@ export function verifyReceipt(
     throw new Error("receipt timestamps are out of order");
   }
   assertExactSuccessfulChecks(receipt);
+  assertSafeEvidenceIdentities(receipt);
   assertStageChain(receipt, predecessorReceipt);
   assertApprovalsAndExceptions(receipt, authenticatedOwner, now);
 

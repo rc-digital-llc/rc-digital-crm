@@ -119,7 +119,7 @@ jobs:
         run: |
           test -n "$CUSTOMER_FRONTEND_REPOSITORY"
           test -n "$CUSTOMER_FRONTEND_TOKEN"
-          npx --no-install gh-pages --repo "https://x-access-token:${CUSTOMER_FRONTEND_TOKEN}@github.com/${CUSTOMER_FRONTEND_REPOSITORY}" -d .release/promotion/frontend -b production
+          npx --no-install gh-pages --dotfiles --repo "https://x-access-token:${CUSTOMER_FRONTEND_TOKEN}@github.com/${CUSTOMER_FRONTEND_REPOSITORY}" -d .release/promotion/frontend -b production
       - name: Register feature as dormant
         if: ${{ inputs.stage == 'dormant' }}
         run: |
@@ -130,11 +130,12 @@ jobs:
         env:
           CUSTOMER_FRONTEND_REPOSITORY: ${{ vars.CUSTOMER_FRONTEND_REPOSITORY }}
           CUSTOMER_FRONTEND_TOKEN: ${{ secrets.CUSTOMER_FRONTEND_TOKEN }}
+          GH_TOKEN: ${{ secrets.CUSTOMER_FRONTEND_TOKEN }}
         run: |
           case "${{ inputs.stage }}" in
             schema) (cd .release/promotion/schema && supabase migration list --linked) > .release/provider-state.txt ;;
             functions) supabase functions list --project-ref "$SUPABASE_PROJECT_ID" > .release/provider-state.txt ;;
-            frontend) git ls-remote "https://x-access-token:${CUSTOMER_FRONTEND_TOKEN}@github.com/${CUSTOMER_FRONTEND_REPOSITORY}" refs/heads/production > .release/provider-state.txt ;;
+            frontend) gh repo clone "$CUSTOMER_FRONTEND_REPOSITORY" "$RUNNER_TEMP/frontend-readback" -- --depth=1 --branch production && node scripts/release/verify-frontend-readback.mjs .release/promotion/frontend "$RUNNER_TEMP/frontend-readback" .release/provider-state.txt ;;
             dormant) test -s .release/provider-state.txt ;;
             *) exit 1 ;;
           esac

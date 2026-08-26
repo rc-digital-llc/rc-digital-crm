@@ -76,7 +76,7 @@ export function verifyPromotionInput(resultPath, stage, outputDirectory) {
     manifest_sha256: evidence.manifest_sha256,
     workspace: outputRoot,
   };
-  const verificationPath = path.join(outputRoot, "promotion-input.json");
+  const verificationPath = `${outputRoot}.input.json`;
   fs.writeFileSync(
     verificationPath,
     `${JSON.stringify(result, null, 2)}\n`,

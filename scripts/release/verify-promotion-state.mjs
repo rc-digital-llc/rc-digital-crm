@@ -36,8 +36,17 @@ export function verifyPromotionState({ evidence, stage, sourceText }) {
       throw new Error("provider state omits an expected function");
     }
   } else if (stage === "frontend") {
-    if (!/^[0-9a-f]{40}\s+refs\/heads\/[A-Za-z0-9._/-]+$/m.test(sourceText)) {
-      throw new Error("frontend provider state has no immutable branch head");
+    const state = JSON.parse(sourceText);
+    if (
+      !/^[0-9a-f]{40}$/.test(state.remote_head ?? "") ||
+      !/^[0-9a-f]{64}$/.test(state.artifact_tree_sha256 ?? "") ||
+      state.artifact_tree_sha256 !== state.readback_tree_sha256 ||
+      !Number.isSafeInteger(state.file_count) ||
+      state.file_count < 1
+    ) {
+      throw new Error(
+        "frontend provider state differs from the pinned artifact",
+      );
     }
   } else if (stage === "dormant" || stage === "enable") {
     const state = JSON.parse(sourceText);

@@ -170,6 +170,49 @@ describe("canonical release receipt", () => {
     expect(first.receiptId).not.toBe(second.receiptId);
   });
 
+  it.each(["../frontend.tar.gz", "nested/frontend.tar.gz", "frontend tar.gz"])(
+    "rejects an unsafe artifact name: %s",
+    (name) => {
+      const input = validInput();
+      input.artifact_digests.artifacts[0].name = name;
+      expect(() =>
+        buildCanonicalReceipt(input, {
+          authenticatedOwner: "release-owner",
+          now: NOW,
+        }),
+      ).toThrow(/safe basename/i);
+    },
+  );
+
+  it.each([
+    "../migration.sql",
+    "nested/migration.sql",
+    "supabase/migrations/../migration.sql",
+    "supabase\\migrations\\20260825000001_migration.sql",
+  ])("rejects an unsafe migration evidence path: %s", (name) => {
+    const input = validInput();
+    input.migration_range.hashes[0].name = name;
+    expect(() =>
+      buildCanonicalReceipt(input, {
+        authenticatedOwner: "release-owner",
+        now: NOW,
+      }),
+    ).toThrow(/migration evidence path/i);
+  });
+
+  it("rejects duplicate migration evidence paths", () => {
+    const duplicate = validInput();
+    duplicate.migration_range.hashes.push({
+      ...duplicate.migration_range.hashes[0],
+    });
+    expect(() =>
+      buildCanonicalReceipt(duplicate, {
+        authenticatedOwner: "release-owner",
+        now: NOW,
+      }),
+    ).toThrow(/duplicates/i);
+  });
+
   it.each([
     "schema_version",
     "policy_version",

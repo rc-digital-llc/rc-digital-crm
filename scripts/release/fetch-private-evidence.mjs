@@ -166,12 +166,21 @@ async function main() {
       throw new Error("RELEASE_AUTHENTICATED_OWNER is required");
     }
     const repository = requireRepository();
-    const releaseAssets = listReleases(repository).flatMap((release) =>
-      listAssets(repository, release.id).map((asset) => ({
-        ...asset,
-        release,
-      })),
-    );
+    let evidenceRelease;
+    let releaseAssets;
+    for (const release of listReleases(repository)) {
+      const assets = listAssets(repository, release.id);
+      if (
+        assets.some(({ name }) => name.endsWith(`.${evidenceId}.receipt.json`))
+      ) {
+        evidenceRelease = release;
+        releaseAssets = assets;
+        break;
+      }
+    }
+    if (!evidenceRelease || !releaseAssets) {
+      throw new Error("predecessor receipt is not present in private evidence");
+    }
     const outputRoot = path.resolve(outputDirectory);
     const receiptDirectory = path.join(outputRoot, "receipts");
     const receipts = [];
@@ -214,6 +223,9 @@ async function main() {
     const build = receipts[0];
     if (build.receipt.stage !== "build") {
       throw new Error("receipt chain has no build root");
+    }
+    if (evidenceRelease.tag_name !== `evidence-${build.receipt.commit_sha}`) {
+      throw new Error("evidence release tag differs from receipt commit");
     }
     const artifactDirectory = path.join(outputRoot, "artifacts");
     const artifactPaths = {};

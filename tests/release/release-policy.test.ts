@@ -494,7 +494,11 @@ describe("release promotion workflow contracts", () => {
     expect(workflow).toContain("verify-promotion-input.mjs");
     expect(workflow).toMatch(/supabase db push/);
     expect(workflow).toMatch(/supabase functions deploy/);
-    expect(workflow).toMatch(/gh-pages[^\n]*\.release\/promotion\/frontend/);
+    expect(workflow).toMatch(
+      /gh-pages[^\n]*--dotfiles[^\n]*\.release\/promotion\/frontend/,
+    );
+    expect(workflow).toContain("gh repo clone");
+    expect(workflow).toContain("verify-frontend-readback.mjs");
     expect(workflow).toContain("feature-transition.mjs dormant");
     expect(workflow).not.toMatch(/npm run build|make build/);
     expect(workflow).not.toMatch(/workflow_call|workflow_run|gh workflow run/);
