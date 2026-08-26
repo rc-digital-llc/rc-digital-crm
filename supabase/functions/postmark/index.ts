@@ -132,7 +132,7 @@ const checkBody = (json: any) => {
   5. In another terminal, make an HTTP request:
   curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/postmark' \
     --header 'Content-Type: application/json' \
-    --header 'Authorization: Basic dGVzdHVzZXI6dGVzdHB3ZA==' \
+    --user "${POSTMARK_WEBHOOK_USER}:${POSTMARK_WEBHOOK_PASSWORD}" \
     --data '{
         "FromName": "Postmarkapp Support",
         "From": "support@postmarkapp.com",
