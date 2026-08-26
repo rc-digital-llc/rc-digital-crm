@@ -11,6 +11,11 @@ const policyPath = path.join(
   repositoryRoot,
   ".github/release/release-policy.json",
 );
+const supabaseConfigPath = path.join(repositoryRoot, "supabase/config.toml");
+const databaseFixturePath = path.join(
+  repositoryRoot,
+  "supabase/tests/support/auth-fixtures.sql",
+);
 
 const retryableBootstrapPatterns = [
   /docker (?:daemon|engine).*not running/i,
@@ -40,7 +45,10 @@ export function redactText(value, secrets = []) {
     redacted = redacted.split(String(secret)).join("[REDACTED]");
   }
   return redacted
-    .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[REDACTED_JWT]")
+    .replace(
+      /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+      "[REDACTED_JWT]",
+    )
     .replace(/((?:key|token|secret|password)\s*[=:]\s*)\S+/gi, "$1[REDACTED]");
 }
 
@@ -96,6 +104,44 @@ function loadLaneNames() {
   const policy = JSON.parse(fs.readFileSync(policyPath, "utf-8"));
   return policy.required_checks.financial.map((identity) =>
     identity.replace(/^financial \/ /, ""),
+  );
+}
+
+function localProjectId() {
+  const config = fs.readFileSync(supabaseConfigPath, "utf8");
+  const match = /^project_id\s*=\s*"([A-Za-z0-9_-]+)"/m.exec(config);
+  if (!match) throw new Error("local Supabase project identifier is missing");
+  return match[1];
+}
+
+async function loadDatabaseContractFixtures(execute) {
+  const projectId = localProjectId();
+  const container = `supabase_db_${projectId}`;
+  const containerPath = "/tmp/rc-auth-fixtures.sql";
+  const copied = await execute(
+    "docker",
+    ["cp", databaseFixturePath, `${container}:${containerPath}`],
+    { cwd: repositoryRoot, timeoutMs: 60000 },
+  );
+  if (copied.code !== 0) return copied;
+  return execute(
+    "docker",
+    [
+      "exec",
+      container,
+      "psql",
+      "-X",
+      "-q",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "--file",
+      containerPath,
+    ],
+    { cwd: repositoryRoot, timeoutMs: 120000 },
   );
 }
 
@@ -195,6 +241,7 @@ export async function runLane({ lane, command, execute = executeProcess }) {
   let result = { code: 1, stdout: "", stderr: "lane did not execute" };
   let secrets = [];
   let cleanupResult;
+  let assertionAttempts = 0;
   try {
     await stopStack(execute);
     for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -207,6 +254,14 @@ export async function runLane({ lane, command, execute = executeProcess }) {
       });
       if (boot.ok) {
         secrets = boot.secrets;
+        if (lane === "database-contracts") {
+          const fixtures = await loadDatabaseContractFixtures(execute);
+          if (fixtures.code !== 0) {
+            result = fixtures;
+            break;
+          }
+        }
+        assertionAttempts = 1;
         result = await execute(command[0], command.slice(1), {
           cwd: repositoryRoot,
           env: { ...process.env, ...boot.environment },
@@ -228,7 +283,7 @@ export async function runLane({ lane, command, execute = executeProcess }) {
 
   const metadata = {
     lane,
-    assertion_attempts: result.code === 0 || bootstrapAttempts.at(-1)?.classification === "success" ? 1 : 0,
+    assertion_attempts: assertionAttempts,
     bootstrap_attempts: bootstrapAttempts,
     cleanup: cleanupResult?.code === 0 ? "success" : "failure",
   };
@@ -312,11 +367,16 @@ async function main() {
     });
     process.exitCode = exitCode;
   } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : "error"}\n`);
+    process.stderr.write(
+      `${error instanceof Error ? error.message : "error"}\n`,
+    );
     process.exitCode = 1;
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   await main();
 }
