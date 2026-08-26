@@ -337,219 +337,222 @@ describe("Edge/provider fixtures", () => {
   });
 });
 
-describe("running Edge and provider contracts", () => {
-  let principal: Principal;
+describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
+  "running Edge and provider contracts",
+  () => {
+    let principal: Principal;
 
-  beforeAll(async () => {
-    principal = await createPrincipal();
-  });
+    beforeAll(async () => {
+      principal = await createPrincipal();
+    });
 
-  afterAll(async () => {
-    if (!principal?.accessToken || !process.env.SUPABASE_URL) return;
-    await fetch(
-      `${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1/logout?scope=global`,
-      {
-        method: "POST",
-        headers: {
-          apikey: process.env.SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${principal.accessToken}`,
+    afterAll(async () => {
+      if (!principal?.accessToken || !process.env.SUPABASE_URL) return;
+      await fetch(
+        `${process.env.SUPABASE_URL.replace(/\/$/, "")}/auth/v1/logout?scope=global`,
+        {
+          method: "POST",
+          headers: {
+            apikey: process.env.SUPABASE_ANON_KEY!,
+            Authorization: `Bearer ${principal.accessToken}`,
+          },
         },
-      },
-    );
-  });
-
-  it("rejects missing or untrusted forwarded IPs and Basic credentials", async () => {
-    const fixture = readJson<Record<string, unknown>>(fixturePath);
-    for (const headers of [
-      { "x-forwarded-for": "" },
-      { "x-forwarded-for": "203.0.113.50" },
-      {
-        Authorization: `Basic ${Buffer.from("synthetic-user:wrong").toString("base64")}`,
-      },
-    ]) {
-      const response = await invokePostmark(fixture, { headers });
-      expect(response.status).toBe(401);
-      expect(await response.text()).toBe("Unauthorized");
-    }
-  });
-
-  it("rejects unsupported methods and missing required fields", async () => {
-    const fixture = readJson<Record<string, unknown>>(fixturePath);
-    const method = await invokePostmark(fixture, { method: "GET" });
-    expect(method.status).toBe(405);
-
-    const malformed = clone(fixture);
-    delete malformed.Subject;
-    const body = await invokePostmark(malformed);
-    expect(body.status).toBe(403);
-    expect(await body.text()).toBe("Missing parameter: Subject");
-  });
-
-  it("rejects missing and invalid Bearer JWTs in authenticated functions", async () => {
-    const local = localConfiguration();
-    for (const authorization of [
-      undefined,
-      `Bearer ${["invalid", "jwt", "signature"].join(".")}`,
-    ]) {
-      const response = await fetch(`${local.apiUrl}/functions/v1/users`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authorization ? { Authorization: authorization } : {}),
-        },
-        body: JSON.stringify({}),
-      });
-      expect(response.status).toBe(401);
-      const body = (await responseJson(response)) as Record<string, unknown>;
-      expect(body.status).toBe(401);
-      expect(String(body.message)).not.toMatch(
-        /auth\.users|postgres|stack trace|search_path/i,
       );
-    }
-  });
+    });
 
-  it("returns database helper 403 and 500 failures without acknowledging success", async () => {
-    const fixture = readJson<Record<string, unknown>>(fixturePath);
-    const missingSales = clone(fixture);
-    (missingSales.FromFull as Record<string, unknown>).Email =
-      "missing-sender@example.com";
+    it("rejects missing or untrusted forwarded IPs and Basic credentials", async () => {
+      const fixture = readJson<Record<string, unknown>>(fixturePath);
+      for (const headers of [
+        { "x-forwarded-for": "" },
+        { "x-forwarded-for": "203.0.113.50" },
+        {
+          Authorization: `Basic ${Buffer.from("synthetic-user:wrong").toString("base64")}`,
+        },
+      ]) {
+        const response = await invokePostmark(fixture, { headers });
+        expect(response.status).toBe(401);
+        expect(await response.text()).toBe("Unauthorized");
+      }
+    });
 
-    const beforeCompanies = await selectRows(
-      "companies",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    const beforeContacts = await selectRows(
-      "contacts",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    const beforeNotes = await selectRows(
-      "contact_notes",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
+    it("rejects unsupported methods and missing required fields", async () => {
+      const fixture = readJson<Record<string, unknown>>(fixturePath);
+      const method = await invokePostmark(fixture, { method: "GET" });
+      expect(method.status).toBe(405);
 
-    const missingSalesResponse = await invokePostmark(missingSales);
-    expect(missingSalesResponse.status).toBe(403);
-    expect(
-      await selectRows(
+      const malformed = clone(fixture);
+      delete malformed.Subject;
+      const body = await invokePostmark(malformed);
+      expect(body.status).toBe(403);
+      expect(await body.text()).toBe("Missing parameter: Subject");
+    });
+
+    it("rejects missing and invalid Bearer JWTs in authenticated functions", async () => {
+      const local = localConfiguration();
+      for (const authorization of [
+        undefined,
+        `Bearer ${["invalid", "jwt", "signature"].join(".")}`,
+      ]) {
+        const response = await fetch(`${local.apiUrl}/functions/v1/users`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authorization ? { Authorization: authorization } : {}),
+          },
+          body: JSON.stringify({}),
+        });
+        expect(response.status).toBe(401);
+        const body = (await responseJson(response)) as Record<string, unknown>;
+        expect(body.status).toBe(401);
+        expect(String(body.message)).not.toMatch(
+          /auth\.users|postgres|stack trace|search_path/i,
+        );
+      }
+    });
+
+    it("returns database helper 403 and 500 failures without acknowledging success", async () => {
+      const fixture = readJson<Record<string, unknown>>(fixturePath);
+      const missingSales = clone(fixture);
+      (missingSales.FromFull as Record<string, unknown>).Email =
+        "missing-sender@example.com";
+
+      const beforeCompanies = await selectRows(
         "companies",
         `sales_id=eq.${principal.salesId}`,
         principal,
-      ),
-    ).toEqual(beforeCompanies);
-    expect(
-      await selectRows(
+      );
+      const beforeContacts = await selectRows(
         "contacts",
         `sales_id=eq.${principal.salesId}`,
         principal,
-      ),
-    ).toEqual(beforeContacts);
-    expect(
-      await selectRows(
+      );
+      const beforeNotes = await selectRows(
         "contact_notes",
         `sales_id=eq.${principal.salesId}`,
         principal,
-      ),
-    ).toEqual(beforeNotes);
+      );
 
-    const ambiguousEmail = "ambiguous-recipient@example.com";
-    const duplicates = await restRequest(
-      "contacts?select=id",
-      principal.accessToken,
-      {
-        method: "POST",
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify([
-          {
-            first_name: "Duplicate",
-            last_name: "One",
-            email_jsonb: [{ email: ambiguousEmail, type: "Work" }],
-            sales_id: principal.salesId,
-          },
-          {
-            first_name: "Duplicate",
-            last_name: "Two",
-            email_jsonb: [{ email: ambiguousEmail, type: "Work" }],
-            sales_id: principal.salesId,
-          },
-        ]),
-      },
-    );
-    expect(duplicates.status).toBe(201);
-    expect(await responseJson(duplicates)).toHaveLength(2);
+      const missingSalesResponse = await invokePostmark(missingSales);
+      expect(missingSalesResponse.status).toBe(403);
+      expect(
+        await selectRows(
+          "companies",
+          `sales_id=eq.${principal.salesId}`,
+          principal,
+        ),
+      ).toEqual(beforeCompanies);
+      expect(
+        await selectRows(
+          "contacts",
+          `sales_id=eq.${principal.salesId}`,
+          principal,
+        ),
+      ).toEqual(beforeContacts);
+      expect(
+        await selectRows(
+          "contact_notes",
+          `sales_id=eq.${principal.salesId}`,
+          principal,
+        ),
+      ).toEqual(beforeNotes);
 
-    const ambiguous = clone(fixture);
-    ambiguous.ToFull = [
-      {
-        Email: ambiguousEmail,
-        Name: "Ambiguous Recipient",
-        MailboxHash: "fixture-ambiguous",
-      },
-    ];
-    const notesBeforeFailure = await selectRows(
-      "contact_notes",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    const ambiguousResponse = await invokePostmark(ambiguous);
-    expect(ambiguousResponse.status).toBe(500);
-    expect(
-      await selectRows(
+      const ambiguousEmail = "ambiguous-recipient@example.com";
+      const duplicates = await restRequest(
+        "contacts?select=id",
+        principal.accessToken,
+        {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify([
+            {
+              first_name: "Duplicate",
+              last_name: "One",
+              email_jsonb: [{ email: ambiguousEmail, type: "Work" }],
+              sales_id: principal.salesId,
+            },
+            {
+              first_name: "Duplicate",
+              last_name: "Two",
+              email_jsonb: [{ email: ambiguousEmail, type: "Work" }],
+              sales_id: principal.salesId,
+            },
+          ]),
+        },
+      );
+      expect(duplicates.status).toBe(201);
+      expect(await responseJson(duplicates)).toHaveLength(2);
+
+      const ambiguous = clone(fixture);
+      ambiguous.ToFull = [
+        {
+          Email: ambiguousEmail,
+          Name: "Ambiguous Recipient",
+          MailboxHash: "fixture-ambiguous",
+        },
+      ];
+      const notesBeforeFailure = await selectRows(
         "contact_notes",
         `sales_id=eq.${principal.salesId}`,
         principal,
-      ),
-    ).toEqual(notesBeforeFailure);
-  });
-
-  it("creates one contact and one note before returning success", async () => {
-    const fixture = readJson<Record<string, unknown>>(fixturePath);
-    const beforeContacts = await selectRows(
-      "contacts",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    const beforeNotes = await selectRows(
-      "contact_notes",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-
-    const response = await invokePostmark(fixture);
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe("OK");
-
-    const contacts = await selectRows(
-      "contacts",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    const notes = await selectRows(
-      "contact_notes",
-      `sales_id=eq.${principal.salesId}`,
-      principal,
-    );
-    expect(contacts).toHaveLength(beforeContacts.length + 1);
-    expect(notes).toHaveLength(beforeNotes.length + 1);
-
-    const createdContact = contacts.find((contact) =>
-      JSON.stringify(contact.email_jsonb).includes(
-        "webhook-recipient@example.com",
-      ),
-    );
-    expect(createdContact).toMatchObject({
-      first_name: "Synthetic",
-      last_name: "Recipient",
-      sales_id: principal.salesId,
+      );
+      const ambiguousResponse = await invokePostmark(ambiguous);
+      expect(ambiguousResponse.status).toBe(500);
+      expect(
+        await selectRows(
+          "contact_notes",
+          `sales_id=eq.${principal.salesId}`,
+          principal,
+        ),
+      ).toEqual(notesBeforeFailure);
     });
-    expect(notes).toContainEqual(
-      expect.objectContaining({
-        contact_id: createdContact?.id,
+
+    it("creates one contact and one note before returning success", async () => {
+      const fixture = readJson<Record<string, unknown>>(fixturePath);
+      const beforeContacts = await selectRows(
+        "contacts",
+        `sales_id=eq.${principal.salesId}`,
+        principal,
+      );
+      const beforeNotes = await selectRows(
+        "contact_notes",
+        `sales_id=eq.${principal.salesId}`,
+        principal,
+      );
+
+      const response = await invokePostmark(fixture);
+      expect(response.status).toBe(200);
+      expect(await response.text()).toBe("OK");
+
+      const contacts = await selectRows(
+        "contacts",
+        `sales_id=eq.${principal.salesId}`,
+        principal,
+      );
+      const notes = await selectRows(
+        "contact_notes",
+        `sales_id=eq.${principal.salesId}`,
+        principal,
+      );
+      expect(contacts).toHaveLength(beforeContacts.length + 1);
+      expect(notes).toHaveLength(beforeNotes.length + 1);
+
+      const createdContact = contacts.find((contact) =>
+        JSON.stringify(contact.email_jsonb).includes(
+          "webhook-recipient@example.com",
+        ),
+      );
+      expect(createdContact).toMatchObject({
+        first_name: "Synthetic",
+        last_name: "Recipient",
         sales_id: principal.salesId,
-        text: "Deterministic provider contract\n\nSynthetic inbound note body.",
-      }),
-    );
-  });
-});
+      });
+      expect(notes).toContainEqual(
+        expect.objectContaining({
+          contact_id: createdContact?.id,
+          sales_id: principal.salesId,
+          text: "Deterministic provider contract\n\nSynthetic inbound note body.",
+        }),
+      );
+    });
+  },
+);

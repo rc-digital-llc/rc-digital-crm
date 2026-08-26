@@ -250,69 +250,72 @@ describe("replay/concurrency fixture contracts", () => {
   });
 });
 
-describe("live PostgreSQL replay and concurrency", () => {
-  it("applies 32 same-key claims once and preserves restart replay", async () => {
-    const container = await resolveDatabaseContainer();
-    const results = await Promise.all(
-      Array.from({ length: 32 }, () =>
-        applyCommand(container, {
-          eventKey: "same-event",
-          streamKey: "same-stream",
-          sequence: 1,
-          holdMs: 250,
-        }),
-      ),
-    );
-    expect(results).toHaveLength(32);
-    expect(
-      results.filter((result) => result.result === "applied"),
-    ).toHaveLength(1);
-    expect(
-      results.filter((result) => result.result === "duplicate"),
-    ).toHaveLength(31);
-    expect(await countEffects(container, { eventKey: "same-event" })).toBe(1);
+describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
+  "live PostgreSQL replay and concurrency",
+  () => {
+    it("applies 32 same-key claims once and preserves restart replay", async () => {
+      const container = await resolveDatabaseContainer();
+      const results = await Promise.all(
+        Array.from({ length: 32 }, () =>
+          applyCommand(container, {
+            eventKey: "same-event",
+            streamKey: "same-stream",
+            sequence: 1,
+            holdMs: 250,
+          }),
+        ),
+      );
+      expect(results).toHaveLength(32);
+      expect(
+        results.filter((result) => result.result === "applied"),
+      ).toHaveLength(1);
+      expect(
+        results.filter((result) => result.result === "duplicate"),
+      ).toHaveLength(31);
+      expect(await countEffects(container, { eventKey: "same-event" })).toBe(1);
 
-    const processRestartReplay = await applyCommand(container, {
-      eventKey: "same-event",
-      streamKey: "same-stream",
-      sequence: 1,
-    });
-    expect(processRestartReplay.result).toBe("duplicate");
-    expect(await countEffects(container, { eventKey: "same-event" })).toBe(1);
-  }, 30000);
+      const processRestartReplay = await applyCommand(container, {
+        eventKey: "same-event",
+        streamKey: "same-stream",
+        sequence: 1,
+      });
+      expect(processRestartReplay.result).toBe("duplicate");
+      expect(await countEffects(container, { eventKey: "same-event" })).toBe(1);
+    }, 30000);
 
-  it("applies 32 distinct keys exactly once without missing results", async () => {
-    const container = await resolveDatabaseContainer();
-    const results = await Promise.all(
-      Array.from({ length: 32 }, (_, index) =>
-        applyCommand(container, {
-          eventKey: `distinct-event-${String(index).padStart(2, "0")}`,
-          streamKey: `distinct-stream-${String(index).padStart(2, "0")}`,
-          sequence: index + 1,
-        }),
-      ),
-    );
-    expect(results).toHaveLength(32);
-    expect(results.every((result) => result.result === "applied")).toBe(true);
-    expect(await countEffects(container)).toBe(33);
-  }, 30000);
+    it("applies 32 distinct keys exactly once without missing results", async () => {
+      const container = await resolveDatabaseContainer();
+      const results = await Promise.all(
+        Array.from({ length: 32 }, (_, index) =>
+          applyCommand(container, {
+            eventKey: `distinct-event-${String(index).padStart(2, "0")}`,
+            streamKey: `distinct-stream-${String(index).padStart(2, "0")}`,
+            sequence: index + 1,
+          }),
+        ),
+      );
+      expect(results).toHaveLength(32);
+      expect(results.every((result) => result.result === "applied")).toBe(true);
+      expect(await countEffects(container)).toBe(33);
+    }, 30000);
 
-  it("ignores an earlier sequence after a later process completes", async () => {
-    const container = await resolveDatabaseContainer();
-    const later = await applyCommand(container, {
-      eventKey: "ordered-event-20",
-      streamKey: "ordered-stream",
-      sequence: 20,
+    it("ignores an earlier sequence after a later process completes", async () => {
+      const container = await resolveDatabaseContainer();
+      const later = await applyCommand(container, {
+        eventKey: "ordered-event-20",
+        streamKey: "ordered-stream",
+        sequence: 20,
+      });
+      const earlier = await applyCommand(container, {
+        eventKey: "ordered-event-10",
+        streamKey: "ordered-stream",
+        sequence: 10,
+      });
+      expect(later.result).toBe("applied");
+      expect(earlier).toMatchObject({ result: "ignored", last_sequence: 20 });
+      expect(
+        await countEffects(container, { streamKey: "ordered-stream" }),
+      ).toBe(1);
     });
-    const earlier = await applyCommand(container, {
-      eventKey: "ordered-event-10",
-      streamKey: "ordered-stream",
-      sequence: 10,
-    });
-    expect(later.result).toBe("applied");
-    expect(earlier).toMatchObject({ result: "ignored", last_sequence: 20 });
-    expect(await countEffects(container, { streamKey: "ordered-stream" })).toBe(
-      1,
-    );
-  });
-});
+  },
+);

@@ -155,194 +155,205 @@ afterAll(async () => {
   );
 });
 
-describe("live local Auth, RLS, RPC, and trigger boundaries", () => {
-  it("keeps owner access, denials, and effects aligned across HTTP", async () => {
-    const credential = ["local", "release", "fixture", "2026!"].join("-");
-    const ownerOne = await createPrincipal("one", credential);
-    const ownerTwo = await createPrincipal("two", credential);
+describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
+  "live local Auth, RLS, RPC, and trigger boundaries",
+  () => {
+    it("keeps owner access, denials, and effects aligned across HTTP", async () => {
+      const credential = ["local", "release", "fixture", "2026!"].join("-");
+      const ownerOne = await createPrincipal("one", credential);
+      const ownerTwo = await createPrincipal("two", credential);
 
-    expect(ownerOne.userId).not.toBe(ownerTwo.userId);
-    expect(ownerOne.accessToken).not.toBe(ownerTwo.accessToken);
+      expect(ownerOne.userId).not.toBe(ownerTwo.userId);
+      expect(ownerOne.accessToken).not.toBe(ownerTwo.accessToken);
 
-    const ownerOneLead = await insertLead(ownerOne, "one");
-    const ownerTwoLead = await insertLead(ownerTwo, "two");
+      const ownerOneLead = await insertLead(ownerOne, "one");
+      const ownerTwoLead = await insertLead(ownerTwo, "two");
 
-    const sameOwner = await selectRows(
-      "leads",
-      `id=eq.${ownerOneLead}`,
-      ownerOne,
-    );
-    expect(sameOwner).toHaveLength(1);
-
-    const crossOwner = await selectRows(
-      "leads",
-      `id=eq.${ownerTwoLead}`,
-      ownerOne,
-    );
-    expect(crossOwner).toEqual([]);
-
-    const crossMutation = await restRequest(
-      `leads?id=eq.${ownerTwoLead}&select=id`,
-      ownerOne.accessToken,
-      {
-        method: "PATCH",
-        headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ status: "qualified" }),
-      },
-    );
-    expect(crossMutation.status).toBe(200);
-    expect(await json(crossMutation)).toEqual([]);
-
-    const crossRpc = await restRequest(
-      "rpc/convert_lead_to_contact",
-      ownerOne.accessToken,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          p_lead_id: ownerTwoLead,
-          p_deal_name: "Cross-owner deal",
-          p_deal_amount: 7500,
-        }),
-      },
-    );
-    expect(crossRpc.ok).toBe(false);
-    const crossRpcBody = (await json(crossRpc)) as JsonObject;
-    expect(Object.keys(crossRpcBody).sort()).toEqual([
-      "code",
-      "details",
-      "hint",
-      "message",
-    ]);
-    expect(crossRpcBody.message).toBe("Lead not found or not authorized");
-    expect(JSON.stringify(crossRpcBody)).not.toMatch(
-      /auth\.users|public\.|postgres|stack trace|search_path/i,
-    );
-
-    expect(
-      await selectRows(
-        "companies",
-        `sales_id=eq.${ownerTwo.salesId}`,
-        ownerTwo,
-      ),
-    ).toEqual([]);
-    expect(
-      await selectRows("contacts", `sales_id=eq.${ownerTwo.salesId}`, ownerTwo),
-    ).toEqual([]);
-    expect(
-      await selectRows("deals", `sales_id=eq.${ownerTwo.salesId}`, ownerTwo),
-    ).toEqual([]);
-    expect(
-      await selectRows(
-        "lead_activities",
-        `lead_id=eq.${ownerTwoLead}`,
-        ownerTwo,
-      ),
-    ).toEqual([]);
-    expect(
-      await selectRows("leads", `id=eq.${ownerTwoLead}`, ownerTwo),
-    ).toEqual([expect.objectContaining({ status: "new" })]);
-
-    for (const token of [
-      undefined,
-      ["not", "a", "token"].join("-"),
-      ["invalid", "jwt", "signature"].join("."),
-    ]) {
-      const denied = await restRequest(
-        `leads?select=id&id=eq.${ownerTwoLead}`,
-        token,
+      const sameOwner = await selectRows(
+        "leads",
+        `id=eq.${ownerOneLead}`,
+        ownerOne,
       );
-      expectSafeAuthFailure(denied, await json(denied));
-    }
+      expect(sameOwner).toHaveLength(1);
 
-    const afterTokenFailures = await selectRows(
-      "leads",
-      `id=eq.${ownerTwoLead}`,
-      ownerTwo,
-    );
-    expect(afterTokenFailures).toEqual([
-      expect.objectContaining({ status: "new" }),
-    ]);
-
-    const conversion = await restRequest(
-      "rpc/convert_lead_to_contact",
-      ownerOne.accessToken,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          p_lead_id: ownerOneLead,
-          p_deal_name: "HTTP Converted Deal",
-          p_deal_amount: 12500,
-        }),
-      },
-    );
-    expect(conversion.status).toBe(200);
-    const conversionBody = (await json(conversion)) as JsonObject;
-    expect(conversionBody.contact_id).toEqual(expect.any(Number));
-    expect(conversionBody.company_id).toEqual(expect.any(Number));
-    expect(conversionBody.deal_id).toEqual(expect.any(Number));
-
-    expect(
-      await selectRows(
-        "companies",
-        `sales_id=eq.${ownerOne.salesId}`,
+      const crossOwner = await selectRows(
+        "leads",
+        `id=eq.${ownerTwoLead}`,
         ownerOne,
-      ),
-    ).toHaveLength(1);
-    expect(
-      await selectRows("contacts", `sales_id=eq.${ownerOne.salesId}`, ownerOne),
-    ).toHaveLength(1);
-    expect(
-      await selectRows("deals", `sales_id=eq.${ownerOne.salesId}`, ownerOne),
-    ).toEqual([
-      expect.objectContaining({ name: "HTTP Converted Deal", amount: 12500 }),
-    ]);
-    expect(
-      await selectRows(
-        "lead_activities",
-        `lead_id=eq.${ownerOneLead}`,
-        ownerOne,
-      ),
-    ).toEqual([
-      expect.objectContaining({
-        activity_type: "status_change",
-        description: "Lead converted to contact",
-      }),
-    ]);
+      );
+      expect(crossOwner).toEqual([]);
 
-    for (const [index, source] of ["first", "second"].entries()) {
-      const touchpoint = await restRequest(
-        "touchpoints?select=id,is_first_touch,is_last_touch",
+      const crossMutation = await restRequest(
+        `leads?id=eq.${ownerTwoLead}&select=id`,
+        ownerOne.accessToken,
+        {
+          method: "PATCH",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "qualified" }),
+        },
+      );
+      expect(crossMutation.status).toBe(200);
+      expect(await json(crossMutation)).toEqual([]);
+
+      const crossRpc = await restRequest(
+        "rpc/convert_lead_to_contact",
         ownerOne.accessToken,
         {
           method: "POST",
-          headers: { Prefer: "return=representation" },
           body: JSON.stringify({
-            lead_id: ownerOneLead,
-            anonymous_id: `http-${source}`,
-            touchpoint_type: "page_view",
-            channel: "direct",
-            source,
-            sales_id: ownerOne.salesId,
+            p_lead_id: ownerTwoLead,
+            p_deal_name: "Cross-owner deal",
+            p_deal_amount: 7500,
           }),
         },
       );
-      expect(touchpoint.status).toBe(201);
-      expect(await json(touchpoint)).toEqual([
+      expect(crossRpc.ok).toBe(false);
+      const crossRpcBody = (await json(crossRpc)) as JsonObject;
+      expect(Object.keys(crossRpcBody).sort()).toEqual([
+        "code",
+        "details",
+        "hint",
+        "message",
+      ]);
+      expect(crossRpcBody.message).toBe("Lead not found or not authorized");
+      expect(JSON.stringify(crossRpcBody)).not.toMatch(
+        /auth\.users|public\.|postgres|stack trace|search_path/i,
+      );
+
+      expect(
+        await selectRows(
+          "companies",
+          `sales_id=eq.${ownerTwo.salesId}`,
+          ownerTwo,
+        ),
+      ).toEqual([]);
+      expect(
+        await selectRows(
+          "contacts",
+          `sales_id=eq.${ownerTwo.salesId}`,
+          ownerTwo,
+        ),
+      ).toEqual([]);
+      expect(
+        await selectRows("deals", `sales_id=eq.${ownerTwo.salesId}`, ownerTwo),
+      ).toEqual([]);
+      expect(
+        await selectRows(
+          "lead_activities",
+          `lead_id=eq.${ownerTwoLead}`,
+          ownerTwo,
+        ),
+      ).toEqual([]);
+      expect(
+        await selectRows("leads", `id=eq.${ownerTwoLead}`, ownerTwo),
+      ).toEqual([expect.objectContaining({ status: "new" })]);
+
+      for (const token of [
+        undefined,
+        ["not", "a", "token"].join("-"),
+        ["invalid", "jwt", "signature"].join("."),
+      ]) {
+        const denied = await restRequest(
+          `leads?select=id&id=eq.${ownerTwoLead}`,
+          token,
+        );
+        expectSafeAuthFailure(denied, await json(denied));
+      }
+
+      const afterTokenFailures = await selectRows(
+        "leads",
+        `id=eq.${ownerTwoLead}`,
+        ownerTwo,
+      );
+      expect(afterTokenFailures).toEqual([
+        expect.objectContaining({ status: "new" }),
+      ]);
+
+      const conversion = await restRequest(
+        "rpc/convert_lead_to_contact",
+        ownerOne.accessToken,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            p_lead_id: ownerOneLead,
+            p_deal_name: "HTTP Converted Deal",
+            p_deal_amount: 12500,
+          }),
+        },
+      );
+      expect(conversion.status).toBe(200);
+      const conversionBody = (await json(conversion)) as JsonObject;
+      expect(conversionBody.contact_id).toEqual(expect.any(Number));
+      expect(conversionBody.company_id).toEqual(expect.any(Number));
+      expect(conversionBody.deal_id).toEqual(expect.any(Number));
+
+      expect(
+        await selectRows(
+          "companies",
+          `sales_id=eq.${ownerOne.salesId}`,
+          ownerOne,
+        ),
+      ).toHaveLength(1);
+      expect(
+        await selectRows(
+          "contacts",
+          `sales_id=eq.${ownerOne.salesId}`,
+          ownerOne,
+        ),
+      ).toHaveLength(1);
+      expect(
+        await selectRows("deals", `sales_id=eq.${ownerOne.salesId}`, ownerOne),
+      ).toEqual([
+        expect.objectContaining({ name: "HTTP Converted Deal", amount: 12500 }),
+      ]);
+      expect(
+        await selectRows(
+          "lead_activities",
+          `lead_id=eq.${ownerOneLead}`,
+          ownerOne,
+        ),
+      ).toEqual([
         expect.objectContaining({
-          is_first_touch: index === 0,
-          is_last_touch: true,
+          activity_type: "status_change",
+          description: "Lead converted to contact",
         }),
       ]);
-    }
 
-    const touchpoints = await selectRows(
-      "touchpoints",
-      `lead_id=eq.${ownerOneLead}&order=id.asc`,
-      ownerOne,
-    );
-    expect(touchpoints).toEqual([
-      expect.objectContaining({ is_first_touch: true, is_last_touch: false }),
-      expect.objectContaining({ is_first_touch: false, is_last_touch: true }),
-    ]);
-  });
-});
+      for (const [index, source] of ["first", "second"].entries()) {
+        const touchpoint = await restRequest(
+          "touchpoints?select=id,is_first_touch,is_last_touch",
+          ownerOne.accessToken,
+          {
+            method: "POST",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({
+              lead_id: ownerOneLead,
+              anonymous_id: `http-${source}`,
+              touchpoint_type: "page_view",
+              channel: "direct",
+              source,
+              sales_id: ownerOne.salesId,
+            }),
+          },
+        );
+        expect(touchpoint.status).toBe(201);
+        expect(await json(touchpoint)).toEqual([
+          expect.objectContaining({
+            is_first_touch: index === 0,
+            is_last_touch: true,
+          }),
+        ]);
+      }
+
+      const touchpoints = await selectRows(
+        "touchpoints",
+        `lead_id=eq.${ownerOneLead}&order=id.asc`,
+        ownerOne,
+      );
+      expect(touchpoints).toEqual([
+        expect.objectContaining({ is_first_touch: true, is_last_touch: false }),
+        expect.objectContaining({ is_first_touch: false, is_last_touch: true }),
+      ]);
+    });
+  },
+);
