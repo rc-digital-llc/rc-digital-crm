@@ -61,7 +61,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Freeze baseline 001 and prove exact representative upgrades.
+- [x] 01-03-PLAN.md — Freeze baseline 001 and prove exact representative upgrades.
 - [ ] 01-04-PLAN.md — Execute real PostgreSQL, Auth, RLS, RPC, and trigger authorization tests.
 - [ ] 01-05-PLAN.md — Execute running Edge Function, webhook, and provider failure contracts.
 - [ ] 01-06-PLAN.md — Prove replay, ordering, and simultaneous-command safety in PostgreSQL.

@@ -26,7 +26,7 @@ history.
 
 ### Release Assurance
 
-- [ ] **REL-01**: A maintainer can apply the complete database migration chain
+- [x] **REL-01**: A maintainer can apply the complete database migration chain
   to a clean local Supabase instance and upgrade a production-like prior schema
   without losing or silently rewriting financial facts.
 - [ ] **REL-02**: A maintainer can execute PostgreSQL, RLS, RPC, trigger, Edge
@@ -427,7 +427,7 @@ A v1 requirement is complete only when:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REL-01 | Phase 1 | Pending |
+| REL-01 | Phase 1 | Complete |
 | REL-02 | Phase 1 | Pending |
 | REL-03 | Phase 1 | Pending |
 | REL-04 | Phase 1 | Pending |
