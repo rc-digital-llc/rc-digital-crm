@@ -57,6 +57,19 @@ function readJson(filename: string): Record<string, unknown> {
   ) as Record<string, unknown>;
 }
 
+function readWorkflow(filename: string): string {
+  return fs.readFileSync(
+    path.join(repositoryRoot, ".github/workflows", filename),
+    "utf8",
+  );
+}
+
+function actionReferences(workflow: string): string[] {
+  return [...workflow.matchAll(/\buses:\s*([^\s#]+)(?:\s*#.*)?$/gm)].map(
+    (match) => match[1],
+  );
+}
+
 function policyErrors(policy: Record<string, unknown>): string[] {
   const errors: string[] = [];
   const checks = policy.required_checks as Record<string, unknown> | undefined;
@@ -225,5 +238,89 @@ describe("release receipt schema", () => {
         field,
       ).toBe(false);
     }
+  });
+});
+
+describe("GitHub workflow release contracts", () => {
+  it("workflow exposes the four exact read-only fast check identities", () => {
+    const workflow = readWorkflow("check.yml");
+    expect(workflow).toMatch(/^name:\s*check\s*$/m);
+    expect(workflow).toMatch(/permissions:\s*\n\s+contents:\s*read/m);
+    for (const suffix of ["lint", "typecheck", "unit", "build"]) {
+      expect(workflow).toMatch(
+        new RegExp(
+          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*${suffix}\\s*$`,
+          "m",
+        ),
+      );
+    }
+    expect(workflow).toMatch(/node-version:\s*["']?22["']?/);
+    expect(workflow).not.toMatch(/contents:\s*write|checks:\s*write|secrets\./);
+    expect(workflow).not.toMatch(
+      /supabase\s+(?:link|db\s+push|functions\s+deploy)|gh-pages|vercel\s+deploy/,
+    );
+  });
+
+  it("workflow exposes six independent financial jobs and exact Make commands", () => {
+    const workflow = readWorkflow("financial-release-gate.yml");
+    expect(workflow).toMatch(/^name:\s*financial\s*$/m);
+    expect(workflow).toMatch(
+      /merge_group:\s*\n\s+types:\s*\[checks_requested\]/m,
+    );
+    expect(workflow).toMatch(/pull_request:/);
+    expect(workflow).not.toMatch(/\bmatrix:/);
+
+    const commands: Record<string, string> = {
+      "migration-clean": "make test-financial-migration-clean",
+      "migration-upgrade": "make test-financial-migration-upgrade",
+      "database-contracts": "make test-financial-database-contracts",
+      "edge-provider-contracts": "make test-financial-functions",
+      "replay-concurrency": "make test-financial-replay-concurrency",
+      "release-security": "make test-release-security",
+    };
+    for (const [suffix, command] of Object.entries(commands)) {
+      expect(workflow).toMatch(
+        new RegExp(
+          `^\\s{2}${suffix}:\\s*\\n(?:.|\\n)*?^\\s{4}name:\\s*${suffix}\\s*$`,
+          "m",
+        ),
+      );
+      expect(workflow).toContain(`run: ${command}`);
+    }
+  });
+
+  it("workflow makes merge-group financial jobs unconditional on paths", () => {
+    const workflow = readWorkflow("financial-release-gate.yml");
+    const financialJobBlocks = workflow.split(/^ {2}(?=[a-z][a-z-]+:)/m);
+    const jobs = financialJobBlocks.filter((block) =>
+      /name:\s*(?:migration-clean|migration-upgrade|database-contracts|edge-provider-contracts|replay-concurrency|release-security)\s*$/m.test(
+        block,
+      ),
+    );
+    expect(jobs).toHaveLength(6);
+    for (const job of jobs) {
+      expect(job).toContain("github.event_name == 'merge_group'");
+      expect(job).toContain("needs.classify.outputs.financial == 'true'");
+      expect(job).not.toMatch(/continue-on-error|retry/i);
+    }
+  });
+
+  it("workflow pins every action, Node, and local Supabase CLI", () => {
+    const workflows = [
+      readWorkflow("check.yml"),
+      readWorkflow("financial-release-gate.yml"),
+    ];
+    for (const workflow of workflows) {
+      for (const reference of actionReferences(workflow)) {
+        expect(reference).toMatch(/^[^@\s]+@[a-f0-9]{40}$/);
+      }
+      expect(workflow).toMatch(/node-version:\s*["']?22["']?/);
+    }
+    const financial = workflows[1];
+    expect(financial).toContain("version: 2.115.0");
+    expect(financial).toMatch(/permissions:\s*\n\s+contents:\s*read/m);
+    expect(financial).not.toMatch(
+      /contents:\s*write|checks:\s*write|secrets\./,
+    );
   });
 });
