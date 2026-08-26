@@ -472,3 +472,63 @@ describe("release build workflow contracts", () => {
     }
   });
 });
+
+describe("release promotion workflow contracts", () => {
+  it("dispatches exactly one typed stage behind the protected release environment", () => {
+    const workflow = readWorkflow("release-promote.yml");
+    expect(workflow).toMatch(/^name:\s*release-promote\s*$/m);
+    expect(workflow).toMatch(/workflow_dispatch:/);
+    expect(workflow).not.toMatch(/^\s+(?:push|pull_request|workflow_run):/m);
+    expect(workflow).toMatch(/evidence_id:[\s\S]*required:\s*true/);
+    expect(workflow).toMatch(
+      /stage:[\s\S]*type:\s*choice[\s\S]*- schema[\s\S]*- functions[\s\S]*- frontend[\s\S]*- dormant/,
+    );
+    expect(workflow).toMatch(/environment:\s*production-release/);
+    expect(workflow).toMatch(/group:\s*production-release-/);
+  });
+
+  it("verifies predecessor evidence and pinned inputs immediately before one mutation", () => {
+    const workflow = readWorkflow("release-promote.yml");
+    expect(workflow).toContain("fetch-private-evidence.mjs");
+    expect(workflow).toContain("verify-receipt.mjs");
+    expect(workflow).toContain("verify-promotion-input.mjs");
+    expect(workflow).toMatch(/supabase db push/);
+    expect(workflow).toMatch(/supabase functions deploy/);
+    expect(workflow).toMatch(/gh-pages[^\n]*\.release\/promotion\/frontend/);
+    expect(workflow).toContain("feature-transition.mjs dormant");
+    expect(workflow).not.toMatch(/npm run build|make build/);
+    expect(workflow).not.toMatch(/workflow_call|workflow_run|gh workflow run/);
+  });
+
+  it("fails on missing protected inputs and receipts every post-state", () => {
+    const workflow = readWorkflow("release-promote.yml");
+    for (const secret of [
+      "RELEASE_EVIDENCE_TOKEN",
+      "SUPABASE_ACCESS_TOKEN",
+      "SUPABASE_DB_PASSWORD",
+      "SUPABASE_PROJECT_ID",
+    ]) {
+      expect(workflow).toMatch(new RegExp(`test -n .*${secret}`));
+    }
+    expect(workflow).toContain("verify-promotion-state.mjs");
+    expect(workflow).toContain("prepare-stage-receipt.mjs");
+    expect(workflow).toContain("build-receipt.mjs");
+    expect(workflow).toContain("publish-evidence.mjs");
+  });
+
+  it("pins every promotion action and documents approval and stop conditions", () => {
+    const workflow = readWorkflow("release-promote.yml");
+    for (const reference of actionReferences(workflow)) {
+      expect(reference).toMatch(/^[^@\s]+@[a-f0-9]{40}$/);
+    }
+    const runbook = fs.readFileSync(
+      path.join(repositoryRoot, "docs/runbooks/financial-release.md"),
+      "utf8",
+    );
+    expect(runbook).toMatch(/evidence_id/);
+    expect(runbook).toMatch(/production-release/);
+    expect(runbook).toMatch(/schema.*functions.*frontend.*dormant/is);
+    expect(runbook).toMatch(/stop conditions/i);
+    expect(runbook).toMatch(/private.*receipt.*readback/is);
+  });
+});
