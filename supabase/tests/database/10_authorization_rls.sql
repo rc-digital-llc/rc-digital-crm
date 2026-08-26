@@ -103,27 +103,14 @@ SELECT throws_ok(
   'owner one cannot insert an owner-two lead'
 );
 
-SELECT is(
-  (
-    WITH affected AS (
-      UPDATE public.leads SET first_name = 'Unauthorized' WHERE id = 940002
-      RETURNING 1
-    )
-    SELECT count(*) FROM affected
-  ),
-  0::bigint,
-  'cross-owner update affects zero rows'
+SELECT lives_ok(
+  $$UPDATE public.leads SET first_name = 'Unauthorized' WHERE id = 940002$$,
+  'cross-owner update completes without exposing a row'
 );
 
-SELECT is(
-  (
-    WITH affected AS (
-      DELETE FROM public.leads WHERE id = 940002 RETURNING 1
-    )
-    SELECT count(*) FROM affected
-  ),
-  0::bigint,
-  'cross-owner delete affects zero rows'
+SELECT lives_ok(
+  $$DELETE FROM public.leads WHERE id = 940002$$,
+  'cross-owner delete completes without exposing a row'
 );
 
 SELECT is(
@@ -184,7 +171,7 @@ RESET ROLE;
 SELECT is(
   (SELECT first_name FROM public.leads WHERE id = 940002),
   'Owner',
-  'cross-owner update left owner-two lead unchanged'
+  'cross-owner update and delete left owner-two lead unchanged'
 );
 
 SELECT is(
