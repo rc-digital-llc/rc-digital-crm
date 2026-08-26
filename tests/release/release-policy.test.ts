@@ -425,3 +425,50 @@ describe("GitHub ruleset release contracts", () => {
     expect(rulesetErrors(bypass)).toContain("bypass-actors");
   });
 });
+
+describe("release build workflow contracts", () => {
+  it("build workflow builds once, attests, and publishes private evidence", () => {
+    const workflow = readWorkflow("release-build.yml");
+    expect(workflow).toMatch(/^name:\s*release-build\s*$/m);
+    expect(workflow).toMatch(/push:\s*\n\s+branches:\s*\[main\]/m);
+    expect(workflow).toMatch(/workflow_dispatch:/);
+    expect(workflow.match(/run:\s*npm run build\s*$/gm)).toHaveLength(1);
+    expect(workflow).toContain("node scripts/release/build-receipt.mjs");
+    expect(workflow).toContain("node scripts/release/publish-evidence.mjs");
+    expect(workflow).toMatch(/uses:\s*actions\/attest[^@]*@[a-f0-9]{40}/);
+    expect(workflow).toMatch(/id-token:\s*write/);
+    expect(workflow).toMatch(/attestations:\s*write/);
+    expect(workflow).toMatch(/contents:\s*read/);
+  });
+
+  it("build workflow has no production mutation or production environment", () => {
+    const workflow = readWorkflow("release-build.yml");
+    expect(workflow).not.toMatch(/environment:\s*production/i);
+    expect(workflow).not.toMatch(
+      /supabase\s+(?:link|db\s+push|functions\s+deploy|secrets\s+set)|gh-pages|vercel\s+deploy|feature.*(?:enable|mutate)/i,
+    );
+    expect(workflow).not.toMatch(
+      /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|SUPABASE_PROJECT_ID/,
+    );
+  });
+
+  it("legacy deploy workflow cannot mutate Supabase or publish the customer frontend", () => {
+    const workflow = readWorkflow("deploy.yml");
+    expect(workflow).not.toMatch(/deploy-supabase|supabase\s+/i);
+    expect(workflow).not.toMatch(
+      /VITE_SUPABASE_URL|SB_PUBLISHABLE_KEY|SUPABASE_ACCESS_TOKEN/,
+    );
+    expect(workflow).not.toMatch(/npm run build\s*$/m);
+  });
+
+  it("build and remaining deploy actions use immutable action SHAs", () => {
+    for (const workflow of [
+      readWorkflow("release-build.yml"),
+      readWorkflow("deploy.yml"),
+    ]) {
+      for (const reference of actionReferences(workflow)) {
+        expect(reference).toMatch(/^[^@\s]+@[a-f0-9]{40}$/);
+      }
+    }
+  });
+});
