@@ -16,7 +16,7 @@ test-financial-migration-upgrade: ## apply pending migrations to the checked-in 
 	node scripts/release/run-supabase-lane.mjs run --lane migration-upgrade -- node scripts/release/fingerprint-upgrade.mjs
 
 test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC, and trigger contracts
-	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db --local
+	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database --local
 
 test-financial-database-http: ## execute Auth, REST, and RPC contracts through local HTTP APIs
 	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/auth-rls-rpc-trigger.test.ts
