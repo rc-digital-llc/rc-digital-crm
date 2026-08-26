@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    await addNoteToContact({
+    const addNoteResponse = await addNoteToContact({
       salesEmail,
       email,
       domain,
@@ -69,6 +69,7 @@ Deno.serve(async (req) => {
       noteContent,
       attachments,
     });
+    if (addNoteResponse) return addNoteResponse;
   }
 
   return new Response("OK");
