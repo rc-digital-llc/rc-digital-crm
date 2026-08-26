@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
@@ -77,21 +78,94 @@ function archiveFrontend(outputPath) {
   if (!fs.existsSync(distPath) || !fs.statSync(distPath).isDirectory()) {
     throw new Error("production frontend build is missing");
   }
-  const tarPath = outputPath.replace(/\.gz$/, "");
-  run("tar", [
-    "--sort=name",
-    "--mtime=@0",
-    "--owner=0",
-    "--group=0",
-    "--numeric-owner",
-    "--format=gnu",
-    "-cf",
-    tarPath,
-    "-C",
-    distPath,
-    ".",
-  ]);
-  return gzipTar(tarPath);
+  const files = [];
+  const pending = [distPath];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    const stat = fs.lstatSync(current);
+    if (stat.isSymbolicLink()) {
+      throw new Error("frontend artifact contains a symbolic link");
+    }
+    if (stat.isDirectory()) {
+      for (const entry of fs.readdirSync(current)) {
+        pending.push(path.join(current, entry));
+      }
+    } else if (stat.isFile()) {
+      files.push(current);
+    }
+  }
+  files.sort((left, right) =>
+    path.relative(distPath, left).localeCompare(path.relative(distPath, right)),
+  );
+  if (files.length === 0) throw new Error("production frontend build is empty");
+
+  const records = [];
+  for (const filename of files) {
+    const relativeName = path
+      .relative(distPath, filename)
+      .split(path.sep)
+      .join("/");
+    const content = fs.readFileSync(filename);
+    const header = ustarHeader(relativeName, content.length);
+    records.push(header, content);
+    const padding = (512 - (content.length % 512)) % 512;
+    if (padding) records.push(Buffer.alloc(padding));
+  }
+  records.push(Buffer.alloc(1024));
+  fs.writeFileSync(
+    outputPath,
+    gzipSync(Buffer.concat(records), { level: 9, mtime: 0 }),
+    { mode: 0o600 },
+  );
+  return outputPath;
+}
+
+function writeAscii(buffer, offset, length, value) {
+  const bytes = Buffer.from(value, "ascii");
+  if (bytes.length > length) throw new Error("USTAR field exceeds its limit");
+  bytes.copy(buffer, offset);
+}
+
+function writeOctal(buffer, offset, length, value) {
+  const octal = value.toString(8).padStart(length - 1, "0");
+  if (octal.length >= length)
+    throw new Error("USTAR numeric field is too large");
+  writeAscii(buffer, offset, length, `${octal}\0`);
+}
+
+function splitUstarName(name) {
+  if (Buffer.byteLength(name) <= 100) return { name, prefix: "" };
+  const separators = [...name.matchAll(/\//g)].map(({ index }) => index);
+  for (const index of separators.reverse()) {
+    const prefix = name.slice(0, index);
+    const basename = name.slice(index + 1);
+    if (
+      Buffer.byteLength(prefix) <= 155 &&
+      Buffer.byteLength(basename) <= 100
+    ) {
+      return { name: basename, prefix };
+    }
+  }
+  throw new Error(`frontend artifact path exceeds USTAR limits: ${name}`);
+}
+
+function ustarHeader(relativeName, size) {
+  const header = Buffer.alloc(512);
+  const split = splitUstarName(relativeName);
+  writeAscii(header, 0, 100, split.name);
+  writeOctal(header, 100, 8, 0o644);
+  writeOctal(header, 108, 8, 0);
+  writeOctal(header, 116, 8, 0);
+  writeOctal(header, 124, 12, size);
+  writeOctal(header, 136, 12, 0);
+  header.fill(0x20, 148, 156);
+  writeAscii(header, 156, 1, "0");
+  writeAscii(header, 257, 6, "ustar\0");
+  writeAscii(header, 263, 2, "00");
+  writeAscii(header, 345, 155, split.prefix);
+  const checksum = header.reduce((sum, byte) => sum + byte, 0);
+  writeAscii(header, 148, 8, `${checksum.toString(8).padStart(6, "0")}\0 `);
+  return header;
 }
 
 export function prepareBuildEvidence(commitSha, outputDirectory) {
