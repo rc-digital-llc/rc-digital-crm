@@ -1,0 +1,38 @@
+{
+  "FromName": "Synthetic Webhook Sender",
+  "From": "webhook-sender@example.com",
+  "FromFull": {
+    "Email": "webhook-sender@example.com",
+    "Name": "Synthetic Webhook Sender",
+    "MailboxHash": "fixture-sender"
+  },
+  "To": "Synthetic Recipient <webhook-recipient@example.com>",
+  "ToFull": [
+    {
+      "Email": "webhook-recipient@example.com",
+      "Name": "Synthetic Recipient",
+      "MailboxHash": "fixture-recipient"
+    }
+  ],
+  "Cc": "",
+  "CcFull": [],
+  "Bcc": "",
+  "BccFull": [],
+  "OriginalRecipient": "webhook-recipient@example.com",
+  "Subject": "Deterministic provider contract",
+  "MessageID": "00000000-0000-4000-8000-000000000501",
+  "ReplyTo": "reply@example.com",
+  "MailboxHash": "fixture-inbound",
+  "Date": "2026-08-25T20:00:00.000Z",
+  "TextBody": "Synthetic inbound note body.",
+  "HtmlBody": "<p>Synthetic inbound note body.</p>",
+  "StrippedTextReply": "Synthetic inbound note body.",
+  "Tag": "release-fixture",
+  "Headers": [
+    {
+      "Name": "X-Fixture-ID",
+      "Value": "postmark-000501"
+    }
+  ],
+  "Attachments": []
+}

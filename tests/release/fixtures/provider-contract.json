@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "required_case_classes": [
+    "auth",
+    "malformed-body",
+    "downstream-failure",
+    "duplicate-replay",
+    "concurrency",
+    "success"
+  ],
+  "providers": [
+    {
+      "provider": "postmark",
+      "path": "supabase/functions/postmark/**",
+      "endpoint": "functions/v1/postmark",
+      "financial": false,
+      "event_identity_field": "MessageID",
+      "fixture": "tests/release/fixtures/postmark-inbound.json",
+      "test_file": "tests/release/edge-webhook-provider.test.ts",
+      "cases": {
+        "auth": {
+          "tests": [
+            "rejects missing or untrusted forwarded IPs and Basic credentials"
+          ]
+        },
+        "malformed-body": {
+          "tests": ["rejects unsupported methods and missing required fields"]
+        },
+        "downstream-failure": {
+          "tests": [
+            "returns database helper 403 and 500 failures without acknowledging success"
+          ]
+        },
+        "duplicate-replay": {
+          "tests": [],
+          "limitation": "Postmark is non-financial in v1 and does not claim replay safety."
+        },
+        "concurrency": {
+          "tests": [],
+          "limitation": "Postmark is non-financial in v1 and does not claim concurrency safety."
+        },
+        "success": {
+          "tests": ["creates one contact and one note before returning success"]
+        }
+      }
+    }
+  ]
+}
