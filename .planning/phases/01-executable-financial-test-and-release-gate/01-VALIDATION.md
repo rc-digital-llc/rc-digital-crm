@@ -1,9 +1,9 @@
 ---
 phase: 1
 slug: executable-financial-test-and-release-gate
-status: draft
+status: blocked
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-08-25
 ---
 
@@ -73,18 +73,37 @@ created: 2026-08-25
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
+The map above is the planning-time Wave 0 baseline. Current execution is
+authoritatively recorded below; the historical `W0` cells are retained to show
+that each test was written during implementation rather than assumed in the
+plan.
+
+## Execution Results — 2026-08-26
+
+| Scope | Result | Evidence |
+|-------|--------|----------|
+| Plans 01-01 through 01-06 and 01-08 | ✅ green | All targeted contracts, clean replay, isolated push, representative upgrade, live authorization/provider tests, replay/concurrency, receipt, and publisher self-tests pass. |
+| Plan 01-07 dependency and bundle controls | ✅ green | Production audit reports zero high/critical findings; built publish tree has no source maps or secret markers. |
+| Plan 01-07 history secret gate | ❌ blocked | Two fully redacted historical findings remain pending owner rotation evidence. |
+| Plan 01-09 workflow/ruleset source contracts | ✅ green | Exact independent checks, merge-group behavior, no-bypass intent, API self-test, and coupling checks pass. |
+| Plan 01-09 live main protection | ❌ blocked | Current public user-owned repository does not support merge queue; named live ruleset is absent. |
+| Plan 01-10 build/promotion/enable/rollback source contracts | ✅ green | Deterministic artifacts, attestations, predecessor receipts, private-only publisher, exact deploy readback, and fail-closed enablement tests pass. |
+| Plan 01-10 protected environment/private evidence proof | ❌ blocked | Required environments, secrets, reviewers, and authoritative private evidence destination are unavailable. |
+
+**Mapped task checks:** 20 green, 4 blocked by external/security state.
+
 ---
 
 ## Wave 0 Requirements
 
-- [ ] `.github/release/financial-paths.json` — financial and privileged path ownership.
-- [ ] `.github/release/release-policy.json` — exact checks, stages, exception rules, and private-evidence contract.
-- [ ] `.github/release/release-receipt.schema.json` — D-15 receipt schema.
-- [ ] `scripts/release/run-supabase-lane.mjs` — isolated stack lifecycle and bootstrap classification.
-- [ ] `scripts/release/verify-baseline.mjs` and `fingerprint-upgrade.mjs` — immutable baseline and D-08 proof.
-- [ ] `supabase/tests/database/*.sql` and `supabase/tests/support/*.sql` — pgTAP/live DB coverage.
-- [ ] `tests/release/*.test.ts` — migration, claims, Edge/provider, concurrency, policy, receipt, and security coverage.
-- [ ] `makefile` financial lane targets — stable local/CI entry points.
+- [x] `.github/release/financial-paths.json` — financial and privileged path ownership.
+- [x] `.github/release/release-policy.json` — exact checks, stages, exception rules, and private-evidence contract.
+- [x] `.github/release/release-receipt.schema.json` — D-15 receipt schema.
+- [x] `scripts/release/run-supabase-lane.mjs` — isolated stack lifecycle and bootstrap classification.
+- [x] `scripts/release/verify-baseline.mjs` and `fingerprint-upgrade.mjs` — immutable baseline and D-08 proof.
+- [x] `supabase/tests/database/*.sql` and `supabase/tests/support/*.sql` — pgTAP/live DB coverage.
+- [x] `tests/release/*.test.ts` — migration, claims, Edge/provider, concurrency, policy, receipt, and security coverage.
+- [x] `makefile` financial lane targets — stable local/CI entry points.
 
 ---
 
@@ -110,5 +129,4 @@ test behavior, receipt contents, stage order, and gate logic remain automated.
 - [x] Fast checks target under 30 seconds; live financial lanes are independently timed and capped at 15 minutes.
 - [x] `nyquist_compliant: true` is set in frontmatter.
 
-**Approval:** planning contract approved 2026-08-25; execution results pending
-
+**Approval:** repository validation complete 2026-08-26; live release controls blocked

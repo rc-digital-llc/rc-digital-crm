@@ -62,9 +62,9 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 01-03-PLAN.md — Freeze baseline 001 and prove exact representative upgrades.
-- [ ] 01-04-PLAN.md — Execute real PostgreSQL, Auth, RLS, RPC, and trigger authorization tests.
-- [ ] 01-05-PLAN.md — Execute running Edge Function, webhook, and provider failure contracts.
-- [ ] 01-06-PLAN.md — Prove replay, ordering, and simultaneous-command safety in PostgreSQL.
+- [x] 01-04-PLAN.md — Execute real PostgreSQL, Auth, RLS, RPC, and trigger authorization tests.
+- [x] 01-05-PLAN.md — Execute running Edge Function, webhook, and provider failure contracts.
+- [x] 01-06-PLAN.md — Prove replay, ordering, and simultaneous-command safety in PostgreSQL.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -225,7 +225,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Executable Financial Test and Release Gate | 1/10 | In Progress|  |
+| 1. Executable Financial Test and Release Gate | 7/10 | Blocked |  |
 | 2. Tenant, Role, and Evidence Security | 0/TBD | Not started | - |
 | 3. Exact Money and Rounding Contract | 0/TBD | Not started | - |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
