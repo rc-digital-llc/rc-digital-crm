@@ -11,5 +11,11 @@
     "queryability": "da02d1e5bfcecbbb7392bd216327bc27b4cf316210a96a48cb5106e398ca2a5c"
   },
   "categories_sha256": "768ab710470268919cba217b51410942a2161009258f51153c4ac04bd1bff0fb",
-  "transformations": {}
+  "transformations": {
+    "grant_matrix": {
+      "migration": "20260825000002",
+      "before_sha256": "1205c0ffbb0462ec66f585904cbfd8871b795334b6c608a5b43d5bbf37b92e6d",
+      "after_sha256": "fa359d682025b08e8c6a27a7c82b828aeb70bf3bc7353dab67320cb6514d737a"
+    }
+  }
 }
