@@ -162,6 +162,7 @@ function extensionFor(localPath) {
 function buildAssets(
   receiptPath,
   attestationPaths,
+  artifactPaths,
   reportPaths,
   receipt,
   receiptId,
@@ -187,6 +188,15 @@ function buildAssets(
       kind: "attestation",
     });
   });
+  const artifacts = (artifactPaths ?? []).map((localPath) => {
+    const bytes = fs.readFileSync(localPath);
+    const digest = sha256(bytes);
+    return contentAddressedAsset({
+      localPath,
+      name: `${prefix}.${digest}.artifact${extensionFor(localPath)}`,
+      kind: "artifact",
+    });
+  });
   const reports = reportPaths.map((localPath) => {
     const bytes = fs.readFileSync(localPath);
     const digest = sha256(bytes);
@@ -196,7 +206,7 @@ function buildAssets(
       kind: "report",
     });
   });
-  const assets = [receiptAsset, ...attestations, ...reports];
+  const assets = [receiptAsset, ...attestations, ...artifacts, ...reports];
   if (new Set(assets.map(({ name }) => name)).size !== assets.length) {
     throw new Error("evidence asset names are not unique");
   }
@@ -276,6 +286,7 @@ export async function publishEvidence({
   receiptPath,
   predecessorReceipt,
   attestationPaths,
+  artifactPaths = [],
   reportPaths,
   authenticatedOwner,
   now = new Date(),
@@ -302,6 +313,7 @@ export async function publishEvidence({
   const assets = buildAssets(
     receiptPath,
     attestationPaths,
+    artifactPaths,
     reportPaths,
     receipt,
     verified.receiptId,
@@ -337,6 +349,10 @@ export async function publishEvidence({
     destination_id: sha256(Buffer.from(repository.toLowerCase())).slice(0, 12),
     report_hashes: assets
       .filter(({ kind }) => kind === "report")
+      .map(({ sha256: digest }) => digest)
+      .sort(),
+    artifact_hashes: assets
+      .filter(({ kind }) => kind === "artifact")
       .map(({ sha256: digest }) => digest)
       .sort(),
     evidence_url: `https://api.github.com/repositories/${repositoryInfo.id}/releases/assets/${uploadedReceipt.id}`,
@@ -540,10 +556,26 @@ async function main() {
     }
     const receiptPath = process.argv[2];
     const attestationPath = process.argv[3];
-    const reportPaths = process.argv.slice(4);
+    const remaining = process.argv.slice(4);
+    const artifactsIndex = remaining.indexOf("--artifacts");
+    const reportsIndex = remaining.indexOf("--reports");
+    let artifactPaths = [];
+    let reportPaths = remaining;
+    if (artifactsIndex !== -1 || reportsIndex !== -1) {
+      if (
+        artifactsIndex !== 0 ||
+        reportsIndex <= artifactsIndex + 1 ||
+        remaining.includes("--artifacts", 1) ||
+        remaining.includes("--reports", reportsIndex + 1)
+      ) {
+        throw new Error("evidence artifact/report arguments are malformed");
+      }
+      artifactPaths = remaining.slice(artifactsIndex + 1, reportsIndex);
+      reportPaths = remaining.slice(reportsIndex + 1);
+    }
     if (!receiptPath || !attestationPath || reportPaths.length === 0) {
       throw new Error(
-        "usage: publish-evidence.mjs <receipt> <attestation> <redacted-report...>",
+        "usage: publish-evidence.mjs <receipt> <attestation> [--artifacts <artifact...> --reports] <redacted-report...>",
       );
     }
     const predecessorReceipt = process.env.RELEASE_PREDECESSOR_RECEIPT
@@ -556,6 +588,7 @@ async function main() {
       receiptPath,
       predecessorReceipt,
       attestationPaths: [attestationPath],
+      artifactPaths,
       reportPaths,
       authenticatedOwner: process.env.RELEASE_AUTHENTICATED_OWNER,
     });

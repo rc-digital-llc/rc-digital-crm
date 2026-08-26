@@ -1,0 +1,94 @@
+name: release-build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full protected-main commit SHA to build
+        required: false
+        type: string
+
+concurrency:
+  group: release-build-${{ inputs.commit_sha || github.sha }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  build:
+    name: build and attest immutable release inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
+      RELEASE_AUTHENTICATED_OWNER: ${{ github.actor }}
+      RELEASE_PROVIDER_TARGET: ${{ vars.RELEASE_PROVIDER_TARGET }}
+      RELEASE_EVIDENCE_REPOSITORY: ${{ vars.RELEASE_EVIDENCE_REPOSITORY }}
+    steps:
+      - name: Require immutable build inputs
+        env:
+          RELEASE_EVIDENCE_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
+        run: |
+          test "${#RELEASE_COMMIT_SHA}" -eq 40
+          test -n "$RELEASE_PROVIDER_TARGET"
+          test -n "$RELEASE_EVIDENCE_REPOSITORY"
+          test -n "$RELEASE_EVIDENCE_TOKEN"
+      - name: Checkout exact protected commit
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          ref: ${{ env.RELEASE_COMMIT_SHA }}
+          fetch-depth: 0
+      - name: Refuse a non-main commit
+        run: |
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT_SHA"
+          git merge-base --is-ancestor "$RELEASE_COMMIT_SHA" origin/main
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify exact required checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/release/collect-required-checks.mjs "$GITHUB_REPOSITORY" "$RELEASE_COMMIT_SHA" .release/reports/required-checks.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Run pre-build release security gates
+        run: |
+          mkdir -p .release/reports
+          node scripts/release/security-gate.mjs dependencies | tee .release/reports/security.jsonl
+          node scripts/release/security-gate.mjs secrets | tee -a .release/reports/security.jsonl
+          node scripts/release/security-gate.mjs coupling | tee -a .release/reports/security.jsonl
+      - name: Build production frontend exactly once
+        run: npm run build
+      - name: Scan the built bundle
+        run: node scripts/release/security-gate.mjs bundle-existing | tee -a .release/reports/security.jsonl
+      - name: Package deterministic promotion inputs
+        run: node scripts/release/prepare-build-evidence.mjs "$RELEASE_COMMIT_SHA" .release/artifacts
+      - name: Attest every checksummed promotion input
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-checksums: .release/artifacts/SHA256SUMS
+      - name: Build canonical receipt
+        id: receipt
+        env:
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          node scripts/release/prepare-build-receipt.mjs .release/artifacts/release-artifacts.manifest.json .release/reports/required-checks.json .release/reports/security.jsonl "$ATTESTATION_URL" .release/build-receipt-input.json
+          node scripts/release/build-receipt.mjs .release/build-receipt-input.json .release/receipts > .release/receipt-result.json
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(".release/receipt-result.json","utf8"));process.stdout.write(`path=${value.path}\nreceipt_id=${value.receipt_id}\n`)' >> "$GITHUB_OUTPUT"
+      - name: Publish and read back private evidence
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
+          RELEASE_AUTHENTICATED_OWNER: ${{ github.actor }}
+        run: |
+          node scripts/release/publish-evidence.mjs "${{ steps.receipt.outputs.path }}" "${{ steps.attest.outputs.bundle-path }}" --artifacts .release/artifacts/* --reports .release/reports/required-checks.json .release/reports/security.jsonl | tee .release/publish-result.json
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(".release/publish-result.json","utf8"));if(value.readback!=="verified")process.exit(1);process.stdout.write(`receipt ${value.receipt_id} private readback verified\n`)' >> "$GITHUB_STEP_SUMMARY"

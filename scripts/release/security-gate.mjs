@@ -394,6 +394,11 @@ export async function runBundleGate({ execute = executeProcess } = {}) {
   return { mode: "bundle", status: "pass", ...summary };
 }
 
+export function runExistingBundleGate() {
+  const summary = scanBundleTree(path.join(repositoryRoot, "dist"));
+  return { mode: "bundle-existing", status: "pass", ...summary };
+}
+
 export function runCouplingGate() {
   const workflowDirectory = path.join(repositoryRoot, ".github/workflows");
   const workflowNames = fs
@@ -423,9 +428,10 @@ async function runNamedGate(mode) {
     }));
   }
   if (mode === "bundle") return [await runBundleGate()];
+  if (mode === "bundle-existing") return [runExistingBundleGate()];
   if (mode === "coupling") return [runCouplingGate()];
   throw new Error(
-    "usage: security-gate.mjs dependencies|secrets|bundle|coupling|all",
+    "usage: security-gate.mjs dependencies|secrets|bundle|bundle-existing|coupling|all",
   );
 }
 
