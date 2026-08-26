@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "repository": "Rconman99/atomic-crm",
+  "repository": "rc-digital-llc/rc-digital-crm",
   "ruleset": {
     "name": "main-financial-release",
     "target": "branch",

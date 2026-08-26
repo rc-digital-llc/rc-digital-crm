@@ -15,6 +15,7 @@ const repositoryRoot = path.resolve(scriptDirectory, "../..");
 const sourceRepositories = new Set([
   "marmelab/atomic-crm",
   "rconman99/atomic-crm",
+  "rc-digital-llc/rc-digital-crm",
 ]);
 
 function executeProcess(command, args, options = {}) {

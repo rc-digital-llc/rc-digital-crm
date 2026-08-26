@@ -406,7 +406,7 @@ export async function applyControls({ api, intent }) {
 class FakeApi {
   constructor({ repository, ruleset, admin = true }) {
     this.repository = {
-      full_name: "Rconman99/atomic-crm",
+      full_name: "rc-digital-llc/rc-digital-crm",
       default_branch: "main",
       owner: { type: "Organization" },
       permissions: { admin },
@@ -417,7 +417,9 @@ class FakeApi {
   }
 
   async request(method, endpoint, body) {
-    if (endpoint === "/repos/Rconman99/atomic-crm") return this.repository;
+    if (endpoint === "/repos/rc-digital-llc/rc-digital-crm") {
+      return this.repository;
+    }
     if (endpoint.includes("/rulesets?")) {
       return this.ruleset ? [{ id: 42, name: this.ruleset.name }] : [];
     }

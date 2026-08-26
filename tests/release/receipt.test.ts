@@ -598,6 +598,11 @@ describe("private evidence publisher", () => {
       pattern: /source repository/i,
     },
     {
+      repository: "rc-digital-llc/rc-digital-crm",
+      visibility: "private",
+      pattern: /source repository/i,
+    },
+    {
       repository: "private/evidence",
       visibility: "public",
       pattern: /private/i,

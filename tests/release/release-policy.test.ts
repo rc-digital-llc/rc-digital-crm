@@ -150,7 +150,7 @@ function rulesetErrors(document: Record<string, unknown>): string[] {
       | undefined) ?? [];
   const contexts = requiredStatuses.map((status) => status.context).sort();
 
-  if (document.repository !== "Rconman99/atomic-crm") {
+  if (document.repository !== "rc-digital-llc/rc-digital-crm") {
     errors.push("repository");
   }
   if (ruleset?.name !== "main-financial-release") errors.push("name");
