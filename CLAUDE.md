@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # RC Digital LLC — Custom CRM
 
 ## Project Overview
@@ -73,3 +75,30 @@ src/components/atomic-crm/
 - react-patterns — component structure and state management
 - javascript-testing-patterns — test organization
 - frontend-dev-guidelines — UI consistency
+
+## Custom Slash Commands
+
+All custom build commands live in `.claude/commands/`.
+
+### Build Phases (Lead Management + Attribution)
+
+- `/phase10` — Lead Management Database & Backend
+- `/phase11` — Lead Management UI
+- `/phase12` — Attribution Engine Backend
+- `/phase13` — Attribution Dashboard UI
+- `/phase14` — Lead + Attribution Testing & Hardening
+
+### Utilities
+
+- `/catchup` — Summarize recent changes
+- `/deploy-check` — Pre-deployment verification
+- `/pr` — Create a pull request
+- `/debug` — Debug issues
+- `/refactor` — Refactor code
+- `/architecture` — Architecture review
+- `/spec` — Write feature specs
+- `/resource` — Generate a CRM resource
+- `/meeting-prep` — Prep for sales meetings
+- `/deal-review` — Review the deal pipeline
+- `/email-sequence` — Generate email sequences
+- `/battle-card` — Generate battle cards
