@@ -31,7 +31,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
   return {
     schema_version: "1.0.0",
     policy_version: "1.0.0",
-    stage: "schema",
+    stage: "build",
     predecessor: null,
     commit_sha: "1".repeat(40),
     artifact_digests: {
@@ -75,7 +75,7 @@ function validInput(overrides: Record<string, unknown> = {}) {
       verified_at: "2026-08-25T19:59:00.000Z",
     },
     exceptions: [],
-    rollback_references: ["runbook://financial-rollback#schema"],
+    rollback_references: ["runbook://financial-rollback#build"],
     attestation: {
       provider: "github_oidc",
       subject_digest: SHA_A,
@@ -83,6 +83,28 @@ function validInput(overrides: Record<string, unknown> = {}) {
     },
     ...overrides,
   };
+}
+
+function validSchemaPredecessor() {
+  const build = buildCanonicalReceipt(validInput(), {
+    authenticatedOwner: "release-owner",
+    now: NOW,
+  });
+  return buildCanonicalReceipt(
+    validInput({
+      stage: "schema",
+      predecessor: {
+        stage: "build",
+        receipt_id: build.receiptId,
+        subject_digest: build.receipt.attestation.subject_digest,
+      },
+    }),
+    {
+      authenticatedOwner: "release-owner",
+      now: NOW,
+      predecessorReceipt: build.receipt,
+    },
+  );
 }
 
 function withoutPath(input: Record<string, unknown>, fieldPath: string) {
@@ -231,10 +253,7 @@ describe("canonical release receipt", () => {
   });
 
   it("requires the exact predecessor for every stage", () => {
-    const predecessor = buildCanonicalReceipt(validInput(), {
-      authenticatedOwner: "release-owner",
-      now: NOW,
-    });
+    const predecessor = validSchemaPredecessor();
     expect(() =>
       buildCanonicalReceipt(
         validInput({ stage: "functions", predecessor: null }),
@@ -292,10 +311,7 @@ describe("canonical release receipt", () => {
   it.each(["stage", "receipt_id", "subject_digest"])(
     "rejects a predecessor missing %s",
     (field) => {
-      const predecessor = buildCanonicalReceipt(validInput(), {
-        authenticatedOwner: "release-owner",
-        now: NOW,
-      });
+      const predecessor = validSchemaPredecessor();
       const link: Record<string, unknown> = {
         stage: "schema",
         receipt_id: predecessor.receiptId,

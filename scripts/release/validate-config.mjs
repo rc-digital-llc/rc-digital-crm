@@ -23,7 +23,7 @@ const expected = Object.freeze({
     "financial / replay-concurrency",
     "financial / release-security",
   ],
-  stages: ["schema", "functions", "frontend", "dormant", "enable"],
+  stages: ["build", "schema", "functions", "frontend", "dormant", "enable"],
   nonOverridable: [
     "migration_clean",
     "migration_upgrade",

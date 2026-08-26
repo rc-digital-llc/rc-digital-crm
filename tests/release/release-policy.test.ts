@@ -85,7 +85,14 @@ function policyErrors(policy: Record<string, unknown>): string[] {
   }
   if (
     JSON.stringify(policy.stage_order) !==
-    JSON.stringify(["schema", "functions", "frontend", "dormant", "enable"])
+    JSON.stringify([
+      "build",
+      "schema",
+      "functions",
+      "frontend",
+      "dormant",
+      "enable",
+    ])
   ) {
     errors.push("stage_order");
   }
@@ -224,6 +231,7 @@ describe("financial release policy", () => {
   it("rejects an unsafe stage order", () => {
     const candidate = structuredClone(policy);
     candidate.stage_order = [
+      "build",
       "functions",
       "schema",
       "frontend",

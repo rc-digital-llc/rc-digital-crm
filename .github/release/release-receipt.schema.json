@@ -30,7 +30,7 @@
       "const": "1.0.0"
     },
     "stage": {
-      "enum": ["schema", "functions", "frontend", "dormant", "enable"]
+      "enum": ["build", "schema", "functions", "frontend", "dormant", "enable"]
     },
     "predecessor": {
       "type": ["object", "null"],
@@ -38,7 +38,7 @@
       "required": ["stage", "receipt_id", "subject_digest"],
       "properties": {
         "stage": {
-          "enum": ["schema", "functions", "frontend", "dormant"]
+          "enum": ["build", "schema", "functions", "frontend", "dormant"]
         },
         "receipt_id": { "$ref": "#/$defs/sha256" },
         "subject_digest": { "$ref": "#/$defs/sha256" }

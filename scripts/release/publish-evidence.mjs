@@ -362,7 +362,7 @@ function selfTestReceipt(now) {
     {
       schema_version: "1.0.0",
       policy_version: "1.0.0",
-      stage: "schema",
+      stage: "build",
       predecessor: null,
       commit_sha: "1".repeat(40),
       artifact_digests: {

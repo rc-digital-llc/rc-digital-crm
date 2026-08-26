@@ -181,7 +181,7 @@ function assertStageChain(receipt, predecessorReceipt) {
   if (stageIndex === -1) throw new Error("receipt stage is not in policy");
   if (stageIndex === 0) {
     if (receipt.predecessor !== null) {
-      throw new Error("schema stage cannot name a predecessor");
+      throw new Error(`${receipt.stage} stage cannot name a predecessor`);
     }
   } else {
     const expectedStage = policy.stage_order[stageIndex - 1];
