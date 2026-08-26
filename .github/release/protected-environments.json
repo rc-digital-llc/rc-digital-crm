@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "repository": "Rconman99/atomic-crm",
+  "required_reviewer_login": "Rconman99",
+  "environments": [
+    {
+      "name": "production-release",
+      "required_secrets": [
+        "CUSTOMER_FRONTEND_TOKEN",
+        "RELEASE_EVIDENCE_TOKEN",
+        "SUPABASE_ACCESS_TOKEN",
+        "SUPABASE_DB_PASSWORD",
+        "SUPABASE_PROJECT_ID"
+      ]
+    },
+    {
+      "name": "production-financial-enable",
+      "required_secrets": [
+        "RELEASE_EVIDENCE_TOKEN",
+        "SUPABASE_ACCESS_TOKEN",
+        "SUPABASE_DB_PASSWORD",
+        "SUPABASE_PROJECT_ID"
+      ]
+    }
+  ]
+}

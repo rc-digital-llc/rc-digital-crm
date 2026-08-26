@@ -27,7 +27,7 @@ jobs:
       attestations: write
     env:
       RELEASE_COMMIT_SHA: ${{ inputs.commit_sha || github.sha }}
-      RELEASE_AUTHENTICATED_OWNER: ${{ github.actor }}
+      RELEASE_AUTHENTICATED_OWNER: ${{ vars.RELEASE_OWNER_LOGIN || github.actor }}
       RELEASE_PROVIDER_TARGET: ${{ vars.RELEASE_PROVIDER_TARGET }}
       RELEASE_EVIDENCE_REPOSITORY: ${{ vars.RELEASE_EVIDENCE_REPOSITORY }}
     steps:
@@ -88,7 +88,7 @@ jobs:
       - name: Publish and read back private evidence
         env:
           GH_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
-          RELEASE_AUTHENTICATED_OWNER: ${{ github.actor }}
+          RELEASE_AUTHENTICATED_OWNER: ${{ vars.RELEASE_OWNER_LOGIN || github.actor }}
         run: |
           node scripts/release/publish-evidence.mjs "${{ steps.receipt.outputs.path }}" "${{ steps.attest.outputs.bundle-path }}" --artifacts .release/artifacts/* --reports .release/reports/required-checks.json .release/reports/security.jsonl | tee .release/publish-result.json
           node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(".release/publish-result.json","utf8"));if(value.readback!=="verified")process.exit(1);process.stdout.write(`receipt ${value.receipt_id} private readback verified\n`)' >> "$GITHUB_STEP_SUMMARY"

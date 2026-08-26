@@ -483,7 +483,7 @@ describe("release promotion workflow contracts", () => {
     expect(workflow).toMatch(
       /stage:[\s\S]*type:\s*choice[\s\S]*- schema[\s\S]*- functions[\s\S]*- frontend[\s\S]*- dormant/,
     );
-    expect(workflow).toMatch(/environment:\s*production-release/);
+    expect(workflow).toMatch(/environment:\s*\n\s+name:\s*production-release/);
     expect(workflow).toMatch(/group:\s*production-release-/);
   });
 

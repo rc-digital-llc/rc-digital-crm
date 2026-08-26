@@ -16,6 +16,10 @@ const policyPath = path.join(
   repositoryRoot,
   ".github/release/release-policy.json",
 );
+const environmentsPath = path.join(
+  repositoryRoot,
+  ".github/release/protected-environments.json",
+);
 const apiVersion = "2022-11-28";
 
 function sha256(value) {
@@ -141,6 +145,109 @@ function loadIntent() {
     throw new Error("main ruleset financial bypass actors are forbidden");
   }
   return document;
+}
+
+function loadEnvironmentIntent() {
+  const intent = JSON.parse(fs.readFileSync(environmentsPath, "utf8"));
+  if (
+    intent.version !== "1.0.0" ||
+    typeof intent.repository !== "string" ||
+    typeof intent.required_reviewer_login !== "string" ||
+    !Array.isArray(intent.environments) ||
+    intent.environments.length !== 2
+  ) {
+    throw new Error("protected environment intent is invalid");
+  }
+  const names = intent.environments.map(({ name }) => name).sort();
+  if (
+    JSON.stringify(names) !==
+    JSON.stringify(["production-financial-enable", "production-release"])
+  ) {
+    throw new Error("protected environment names are invalid");
+  }
+  return intent;
+}
+
+function environmentErrors(environment, secrets, intent, reviewerLogin) {
+  const errors = [];
+  const requiredReviewers = environment?.protection_rules?.find(
+    ({ type }) => type === "required_reviewers",
+  );
+  const reviewerPresent = requiredReviewers?.reviewers?.some(
+    ({ reviewer }) =>
+      reviewer?.type === "User" &&
+      reviewer?.login?.toLowerCase() === reviewerLogin.toLowerCase(),
+  );
+  if (!reviewerPresent)
+    errors.push("required release-owner reviewer is missing");
+  if (requiredReviewers?.prevent_self_review !== true) {
+    errors.push("self-review prevention is not enabled");
+  }
+  if (environment?.can_admins_bypass !== false) {
+    errors.push("administrator protection-rule bypass is enabled");
+  }
+  if (
+    environment?.deployment_branch_policy?.protected_branches !== true ||
+    environment?.deployment_branch_policy?.custom_branch_policies !== false
+  ) {
+    errors.push("environment is not limited to protected branches");
+  }
+  const secretNames = new Set(
+    (secrets?.secrets ?? []).map(({ name }) => String(name)),
+  );
+  for (const secret of intent.required_secrets) {
+    if (!secretNames.has(secret))
+      errors.push(`required secret is missing: ${secret}`);
+  }
+  return errors;
+}
+
+export async function checkEnvironmentControls({ api, intent }) {
+  const errors = [];
+  const reports = [];
+  for (const expected of intent.environments) {
+    let environment;
+    let secrets;
+    try {
+      environment = await api.request(
+        "GET",
+        `/repos/${intent.repository}/environments/${expected.name}`,
+      );
+      secrets = await api.request(
+        "GET",
+        `/repos/${intent.repository}/environments/${expected.name}/secrets?per_page=100`,
+      );
+    } catch {
+      errors.push(
+        `${expected.name}: environment or secret inventory is unavailable`,
+      );
+      continue;
+    }
+    const currentErrors = environmentErrors(
+      environment,
+      secrets,
+      expected,
+      intent.required_reviewer_login,
+    );
+    errors.push(...currentErrors.map((error) => `${expected.name}: ${error}`));
+    reports.push({
+      name: expected.name,
+      protection_sha256: sha256(
+        JSON.stringify(
+          stable({
+            protection_rules: environment.protection_rules,
+            can_admins_bypass: environment.can_admins_bypass,
+            deployment_branch_policy: environment.deployment_branch_policy,
+            secret_names: [...(secrets?.secrets ?? [])]
+              .map(({ name }) => name)
+              .sort(),
+          }),
+        ),
+      ),
+    });
+  }
+  if (errors.length > 0) throw new Error(errors.join("; "));
+  return { repository: intent.repository, environments: reports };
 }
 
 export function repositoryCapabilityErrors(repository, expectedRepository) {
@@ -376,6 +483,52 @@ async function selfTest() {
     throw new Error("exact fake apply did not mutate once");
   }
   await checkControls({ api: exactApply, intent });
+  const environmentIntent = loadEnvironmentIntent();
+  const environmentsByName = Object.fromEntries(
+    environmentIntent.environments.map((environment) => [
+      environment.name,
+      {
+        name: environment.name,
+        protection_rules: [
+          {
+            type: "required_reviewers",
+            prevent_self_review: true,
+            reviewers: [
+              {
+                type: "User",
+                reviewer: {
+                  type: "User",
+                  login: environmentIntent.required_reviewer_login,
+                },
+              },
+            ],
+          },
+        ],
+        can_admins_bypass: false,
+        deployment_branch_policy: {
+          protected_branches: true,
+          custom_branch_policies: false,
+        },
+        secrets: environment.required_secrets.map((name) => ({ name })),
+      },
+    ]),
+  );
+  const environmentApi = {
+    async request(_method, endpoint) {
+      const name = environmentIntent.environments.find(({ name: candidate }) =>
+        endpoint.includes(`/environments/${candidate}`),
+      )?.name;
+      if (!name) throw new Error("unexpected fake environment request");
+      if (endpoint.includes("/secrets")) {
+        return { secrets: environmentsByName[name].secrets };
+      }
+      return environmentsByName[name];
+    },
+  };
+  await checkEnvironmentControls({
+    api: environmentApi,
+    intent: environmentIntent,
+  });
   process.stdout.write("GitHub controls self-test: PASS\n");
 }
 
@@ -393,12 +546,20 @@ async function expectFailure(promise, pattern) {
 
 async function main() {
   const mode = process.argv[2] ?? "--check";
-  const intent = loadIntent();
   if (mode === "--self-test") {
     await selfTest();
     return;
   }
   const api = new GhApi();
+  if (mode === "--check-environments") {
+    const result = await checkEnvironmentControls({
+      api,
+      intent: loadEnvironmentIntent(),
+    });
+    process.stdout.write(`${JSON.stringify(result)}\n`);
+    return;
+  }
+  const intent = loadIntent();
   const result =
     mode === "--check"
       ? await checkControls({ api, intent })
@@ -406,7 +567,7 @@ async function main() {
         ? await applyControls({ api, intent })
         : (() => {
             throw new Error(
-              "usage: verify-github-controls.mjs --check|--apply|--self-test",
+              "usage: verify-github-controls.mjs --check|--check-environments|--apply|--self-test",
             );
           })();
   process.stdout.write(`${JSON.stringify(result)}\n`);

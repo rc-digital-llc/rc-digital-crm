@@ -1,0 +1,158 @@
+name: release-promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      evidence_id:
+        description: Content-addressed predecessor receipt ID
+        required: true
+        type: string
+      stage:
+        description: Exactly one next promotion stage
+        required: true
+        type: choice
+        options:
+          - schema
+          - functions
+          - frontend
+          - dormant
+      feature:
+        description: Registered feature name; required only for dormant
+        required: false
+        type: string
+
+concurrency:
+  group: production-release-${{ inputs.evidence_id }}-${{ inputs.stage }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  promote:
+    name: promote one verified stage
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production-release
+      url: ${{ steps.publish.outputs.evidence_url }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_AUTHENTICATED_OWNER: ${{ vars.RELEASE_OWNER_LOGIN }}
+      RELEASE_EVIDENCE_REPOSITORY: ${{ vars.RELEASE_EVIDENCE_REPOSITORY }}
+      RELEASE_PROVIDER_TARGET: ${{ vars.RELEASE_PROVIDER_TARGET }}
+      RELEASE_FEATURE: ${{ inputs.feature }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - name: Protected environment inputs must exist
+        env:
+          RELEASE_EVIDENCE_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
+        run: |
+          test -n "$RELEASE_AUTHENTICATED_OWNER"
+          test -n "$RELEASE_EVIDENCE_REPOSITORY"
+          test -n "$RELEASE_PROVIDER_TARGET"
+          test -n "$RELEASE_EVIDENCE_TOKEN"
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$SUPABASE_PROJECT_ID"
+      - name: Checkout release controls
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Set up pinned Supabase CLI
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
+        with:
+          version: 2.115.0
+      - name: Fetch and verify private predecessor chain
+        id: evidence
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
+        run: |
+          result=$(node scripts/release/fetch-private-evidence.mjs "${{ inputs.evidence_id }}" "$RUNNER_TEMP/release-evidence" "${{ inputs.stage }}")
+          printf '%s\n' "$result" > "$RUNNER_TEMP/release-evidence-result.json"
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));for(const key of ["commit_sha","manifest_sha256","predecessor_receipt_path","prior_receipt_path","result_path"]){process.stdout.write(`${key}=${value[key]??""}\n`)}' "$RUNNER_TEMP/release-evidence-result.json" >> "$GITHUB_OUTPUT"
+      - name: Checkout exact attested commit
+        run: |
+          git checkout --detach "${{ steps.evidence.outputs.commit_sha }}"
+          test "$(git rev-parse HEAD)" = "${{ steps.evidence.outputs.commit_sha }}"
+      - name: Install locked deployment tooling
+        run: npm ci
+      - name: Reverify predecessor immediately before promotion
+        run: |
+          if test -n "${{ steps.evidence.outputs.prior_receipt_path }}"; then
+            node scripts/release/verify-receipt.mjs "${{ steps.evidence.outputs.predecessor_receipt_path }}" "${{ steps.evidence.outputs.prior_receipt_path }}"
+          else
+            node scripts/release/verify-receipt.mjs "${{ steps.evidence.outputs.predecessor_receipt_path }}"
+          fi
+          node scripts/release/verify-promotion-input.mjs "${{ steps.evidence.outputs.result_path }}" "${{ inputs.stage }}" ".release/promotion/${{ inputs.stage }}"
+      - name: Promote schema expansion
+        if: ${{ inputs.stage == 'schema' }}
+        run: |
+          cd .release/promotion/schema
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          supabase db push --dry-run
+          supabase db push
+      - name: Promote backward-compatible functions
+        if: ${{ inputs.stage == 'functions' }}
+        run: |
+          cd .release/promotion/functions
+          supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
+      - name: Promote pinned frontend artifact
+        if: ${{ inputs.stage == 'frontend' }}
+        env:
+          CUSTOMER_FRONTEND_REPOSITORY: ${{ vars.CUSTOMER_FRONTEND_REPOSITORY }}
+          CUSTOMER_FRONTEND_TOKEN: ${{ secrets.CUSTOMER_FRONTEND_TOKEN }}
+        run: |
+          test -n "$CUSTOMER_FRONTEND_REPOSITORY"
+          test -n "$CUSTOMER_FRONTEND_TOKEN"
+          npx --no-install gh-pages --repo "https://x-access-token:${CUSTOMER_FRONTEND_TOKEN}@github.com/${CUSTOMER_FRONTEND_REPOSITORY}" -d .release/promotion/frontend -b production
+      - name: Register feature as dormant
+        if: ${{ inputs.stage == 'dormant' }}
+        run: |
+          test -n "$RELEASE_FEATURE"
+          node scripts/release/feature-transition.mjs dormant "$RELEASE_FEATURE" disabled .release/provider-state.txt
+      - name: Capture provider post-state
+        env:
+          CUSTOMER_FRONTEND_REPOSITORY: ${{ vars.CUSTOMER_FRONTEND_REPOSITORY }}
+          CUSTOMER_FRONTEND_TOKEN: ${{ secrets.CUSTOMER_FRONTEND_TOKEN }}
+        run: |
+          case "${{ inputs.stage }}" in
+            schema) (cd .release/promotion/schema && supabase migration list --linked) > .release/provider-state.txt ;;
+            functions) supabase functions list --project-ref "$SUPABASE_PROJECT_ID" > .release/provider-state.txt ;;
+            frontend) git ls-remote "https://x-access-token:${CUSTOMER_FRONTEND_TOKEN}@github.com/${CUSTOMER_FRONTEND_REPOSITORY}" refs/heads/production > .release/provider-state.txt ;;
+            dormant) test -s .release/provider-state.txt ;;
+            *) exit 1 ;;
+          esac
+          node scripts/release/verify-promotion-state.mjs "${{ steps.evidence.outputs.result_path }}" "${{ inputs.stage }}" .release/provider-state.txt .release/post-state.json
+      - name: Attest promoted manifest identity
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: release-artifacts.manifest.json
+          subject-digest: sha256:${{ steps.evidence.outputs.manifest_sha256 }}
+      - name: Build linked stage receipt
+        id: receipt
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ATTESTATION_URL: ${{ steps.attest.outputs.attestation-url }}
+        run: |
+          node scripts/release/prepare-stage-receipt.mjs "${{ steps.evidence.outputs.predecessor_receipt_path }}" "${{ inputs.stage }}" .release/post-state.json "$ATTESTATION_URL" .release/stage-receipt-input.json
+          node scripts/release/build-receipt.mjs .release/stage-receipt-input.json .release/receipts "${{ steps.evidence.outputs.predecessor_receipt_path }}" > .release/stage-receipt-result.json
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(".release/stage-receipt-result.json","utf8"));process.stdout.write(`path=${value.path}\nreceipt_id=${value.receipt_id}\n`)' >> "$GITHUB_OUTPUT"
+      - name: Publish and read back linked private receipt
+        id: publish
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
+          RELEASE_PREDECESSOR_RECEIPT: ${{ steps.evidence.outputs.predecessor_receipt_path }}
+        run: |
+          node scripts/release/publish-evidence.mjs "${{ steps.receipt.outputs.path }}" "${{ steps.attest.outputs.bundle-path }}" .release/post-state.json | tee .release/publish-result.json
+          node -e 'const fs=require("node:fs");const value=JSON.parse(fs.readFileSync(".release/publish-result.json","utf8"));if(value.readback!=="verified")process.exit(1);process.stdout.write(`evidence_url=${value.evidence_url}\n`)' >> "$GITHUB_OUTPUT"

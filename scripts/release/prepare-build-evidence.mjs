@@ -59,7 +59,7 @@ function gzipTar(tarPath) {
   return `${tarPath}.gz`;
 }
 
-function archiveTracked(commitSha, prefix, outputPath) {
+function archiveTracked(commitSha, prefixes, outputPath) {
   const tarPath = outputPath.replace(/\.gz$/, "");
   run("git", [
     "archive",
@@ -67,7 +67,7 @@ function archiveTracked(commitSha, prefix, outputPath) {
     "--output",
     tarPath,
     commitSha,
-    prefix,
+    ...prefixes,
   ]);
   return gzipTar(tarPath);
 }
@@ -133,12 +133,12 @@ export function prepareBuildEvidence(commitSha, outputDirectory) {
     archiveFrontend(path.join(outputRoot, "frontend.tar.gz")),
     archiveTracked(
       commitSha,
-      "supabase/functions",
+      ["supabase/config.toml", "supabase/functions"],
       path.join(outputRoot, "functions.tar.gz"),
     ),
     archiveTracked(
       commitSha,
-      "supabase/migrations",
+      ["supabase/config.toml", "supabase/migrations"],
       path.join(outputRoot, "migrations.tar.gz"),
     ),
     functionsManifestPath,

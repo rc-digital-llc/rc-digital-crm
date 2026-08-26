@@ -42,7 +42,9 @@ function executeProcess(command, args, options = {}) {
     child.on("close", (code) => {
       finish({
         code: code ?? 1,
-        stdout: Buffer.concat(stdout).toString("utf8"),
+        stdout: options.binary
+          ? Buffer.concat(stdout)
+          : Buffer.concat(stdout).toString("utf8"),
         stderr: Buffer.concat(stderr).toString("utf8"),
       });
     });
@@ -222,14 +224,16 @@ async function downloadAsset(repository, assetId, execute) {
       "-H",
       "Accept: application/octet-stream",
     ],
-    { cwd: repositoryRoot, timeoutMs: 60000 },
+    { cwd: repositoryRoot, timeoutMs: 60000, binary: true },
   );
   if (result.code !== 0) {
     throw new Error(
       `authenticated evidence readback failed with exit code ${result.code}`,
     );
   }
-  return Buffer.from(result.stdout, "utf8");
+  return Buffer.isBuffer(result.stdout)
+    ? result.stdout
+    : Buffer.from(result.stdout, "utf8");
 }
 
 async function assertExistingAssetsImmutable(
