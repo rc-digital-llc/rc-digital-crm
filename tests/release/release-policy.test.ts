@@ -532,3 +532,76 @@ describe("release promotion workflow contracts", () => {
     expect(runbook).toMatch(/private.*receipt.*readback/is);
   });
 });
+
+describe("financial enablement contracts", () => {
+  it("uses a separate dispatch and protected approval boundary", () => {
+    const workflow = readWorkflow("release-enable.yml");
+    expect(workflow).toMatch(/^name:\s*release-enable\s*$/m);
+    expect(workflow).toMatch(/workflow_dispatch:/);
+    expect(workflow).not.toMatch(/^\s+(?:push|pull_request|workflow_run):/m);
+    expect(workflow).toMatch(
+      /environment:\s*\n\s+name:\s*production-financial-enable/,
+    );
+    expect(workflow).not.toContain("environment: production-release");
+    expect(workflow).toMatch(/group:\s*production-financial-enable-/);
+  });
+
+  it("verifies a dormant full chain and invariants immediately before enablement", () => {
+    const workflow = readWorkflow("release-enable.yml");
+    expect(workflow).toContain("fetch-private-evidence.mjs");
+    expect(workflow).toContain("verify-receipt.mjs");
+    expect(workflow).toContain("verify-financial-enable.mjs");
+    expect(workflow).toContain("feature-transition.mjs enabled");
+    expect(workflow).toContain("prepare-stage-receipt.mjs");
+    expect(workflow).toContain("publish-evidence.mjs");
+    expect(workflow).not.toMatch(/npm run build|make build/);
+    expect(workflow).not.toMatch(/workflow_call|workflow_run|gh workflow run/);
+  });
+
+  it("keeps Phase 1 fail-closed with an empty live feature registry", () => {
+    const policy = readJson("release-policy.json");
+    expect(policy.financial_features).toEqual([]);
+    const transition = fs.readFileSync(
+      path.join(repositoryRoot, "scripts/release/feature-transition.mjs"),
+      "utf8",
+    );
+    expect(transition).toMatch(/not registered in policy/);
+    expect(transition).not.toMatch(/allowUnknown|forceEnable|skipRegistry/);
+  });
+
+  it("pins every enablement action", () => {
+    for (const reference of actionReferences(
+      readWorkflow("release-enable.yml"),
+    )) {
+      expect(reference).toMatch(/^[^@\s]+@[a-f0-9]{40}$/);
+    }
+  });
+});
+
+describe("financial rollback contracts", () => {
+  it("requires pinned known-good artifacts and compensating receipts", () => {
+    const runbook = fs.readFileSync(
+      path.join(repositoryRoot, "docs/runbooks/financial-rollback.md"),
+      "utf8",
+    );
+    expect(runbook).toMatch(/known-good.*digest/is);
+    expect(runbook).toMatch(/private.*readback/is);
+    expect(runbook).toMatch(/post-state/i);
+    expect(runbook).toMatch(/compensating receipt/i);
+    expect(runbook).toMatch(/disable|demot/i);
+  });
+
+  it("uses forward database repair and incident-only destructive restore", () => {
+    const runbook = fs.readFileSync(
+      path.join(repositoryRoot, "docs/runbooks/financial-rollback.md"),
+      "utf8",
+    );
+    expect(runbook).toMatch(/forward repair/i);
+    expect(runbook).toMatch(/feature.*disabled/is);
+    expect(runbook).toMatch(/incident authorization/i);
+    expect(runbook).toMatch(/backup.*evidence/is);
+    expect(runbook).not.toMatch(
+      /^\s*(?:supabase\s+db\s+(?:reset|down)|DROP\s)/im,
+    );
+  });
+});
