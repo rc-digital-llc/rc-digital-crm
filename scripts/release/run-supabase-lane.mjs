@@ -20,6 +20,10 @@ const functionFixturePath = path.join(
   repositoryRoot,
   "supabase/tests/fixtures/functions.env",
 );
+const replayFixturePath = path.join(
+  repositoryRoot,
+  "supabase/tests/support/replay-concurrency.sql",
+);
 
 const retryableBootstrapPatterns = [
   /docker (?:daemon|engine).*not running/i,
@@ -214,6 +218,39 @@ async function loadDatabaseContractFixtures(execute) {
   );
 }
 
+async function loadReplayConcurrencyFixture(execute) {
+  const projectId = localProjectId();
+  const container = `supabase_db_${projectId}`;
+  const containerPath = "/tmp/rc-replay-concurrency.sql";
+  const copied = await execute(
+    "docker",
+    ["cp", replayFixturePath, `${container}:${containerPath}`],
+    { cwd: repositoryRoot, timeoutMs: 60000 },
+  );
+  if (copied.code !== 0) return copied;
+  return execute(
+    "docker",
+    [
+      "exec",
+      container,
+      "psql",
+      "-X",
+      "-q",
+      "-U",
+      "postgres",
+      "-d",
+      "postgres",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-v",
+      "setup_only=true",
+      "--file",
+      containerPath,
+    ],
+    { cwd: repositoryRoot, timeoutMs: 120000 },
+  );
+}
+
 function assertSafeCommand(command) {
   if (!Array.isArray(command) || command.length === 0) {
     throw new Error("a command argv is required after --");
@@ -328,6 +365,13 @@ export async function runLane({ lane, command, execute = executeProcess }) {
           const fixtures = await loadDatabaseContractFixtures(execute);
           if (fixtures.code !== 0) {
             result = fixtures;
+            break;
+          }
+        }
+        if (lane === "replay-concurrency") {
+          const fixture = await loadReplayConcurrencyFixture(execute);
+          if (fixture.code !== 0) {
+            result = fixture;
             break;
           }
         }
