@@ -152,11 +152,13 @@ async function main() {
     if (
       !/^[0-9a-f]{64}$/.test(evidenceId ?? "") ||
       !outputDirectory ||
-      !["schema", "functions", "frontend", "dormant"].includes(nextStage) ||
+      !["schema", "functions", "frontend", "dormant", "enable"].includes(
+        nextStage,
+      ) ||
       process.argv.length !== 5
     ) {
       throw new Error(
-        "usage: fetch-private-evidence.mjs <predecessor-receipt-id> <output-directory> <schema|functions|frontend|dormant>",
+        "usage: fetch-private-evidence.mjs <predecessor-receipt-id> <output-directory> <schema|functions|frontend|dormant|enable>",
       );
     }
     const authenticatedOwner = process.env.RELEASE_AUTHENTICATED_OWNER;

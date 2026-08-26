@@ -39,10 +39,11 @@ export function verifyPromotionState({ evidence, stage, sourceText }) {
     if (!/^[0-9a-f]{40}\s+refs\/heads\/[A-Za-z0-9._/-]+$/m.test(sourceText)) {
       throw new Error("frontend provider state has no immutable branch head");
     }
-  } else if (stage === "dormant") {
+  } else if (stage === "dormant" || stage === "enable") {
     const state = JSON.parse(sourceText);
-    if (state.to !== "dormant") {
-      throw new Error("feature provider state is not dormant");
+    const expectedState = stage === "dormant" ? "dormant" : "enabled";
+    if (state.to !== expectedState) {
+      throw new Error(`feature provider state is not ${expectedState}`);
     }
   } else {
     throw new Error("unsupported post-state stage");

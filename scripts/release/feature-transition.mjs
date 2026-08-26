@@ -24,16 +24,27 @@ export function assertFeatureTransition({
   const feature = features.find(({ name }) => name === featureName);
   if (!feature)
     throw new Error("financial feature is not registered in policy");
-  const expected = nextState === "dormant" ? "disabled" : "dormant";
-  if (currentState !== expected) {
+  const expectedStates =
+    nextState === "dormant"
+      ? ["disabled"]
+      : nextState === "enabled"
+        ? ["dormant"]
+        : ["dormant", "enabled"];
+  if (!expectedStates.includes(currentState)) {
     throw new Error(
-      `financial feature must be ${expected} before ${nextState}`,
+      `financial feature must be ${expectedStates.join(" or ")} before ${nextState}`,
     );
   }
   if (!feature.provider_target || !feature.control_id) {
     throw new Error("financial feature registration is incomplete");
   }
-  return { feature: featureName, from: currentState, to: nextState };
+  return {
+    feature: featureName,
+    from: currentState,
+    to: nextState,
+    control_id: feature.control_id,
+    provider_target: feature.provider_target,
+  };
 }
 
 async function main() {
@@ -41,14 +52,14 @@ async function main() {
     const [nextState, featureName, currentState, outputPath] =
       process.argv.slice(2);
     if (
-      !["dormant", "enabled"].includes(nextState) ||
+      !["dormant", "enabled", "disabled"].includes(nextState) ||
       !featureName ||
       !currentState ||
       !outputPath ||
       process.argv.length !== 6
     ) {
       throw new Error(
-        "usage: feature-transition.mjs <dormant|enabled> <feature> <current-state> <output.json>",
+        "usage: feature-transition.mjs <dormant|enabled|disabled> <feature> <current-state> <output.json>",
       );
     }
     const transition = assertFeatureTransition({
@@ -57,9 +68,12 @@ async function main() {
       currentState,
       nextState,
     });
-    throw new Error(
-      `no Phase 1 live feature-control adapter is registered for ${transition.feature}`,
+    fs.writeFileSync(
+      outputPath,
+      `${JSON.stringify(transition, null, 2)}\n`,
+      "utf8",
     );
+    process.stdout.write(`${JSON.stringify({ output: outputPath })}\n`);
   } catch (error) {
     process.stderr.write(
       `${error instanceof Error ? error.message : "error"}\n`,

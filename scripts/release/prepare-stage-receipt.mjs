@@ -29,6 +29,7 @@ export function prepareStageReceiptInput({
   const timestamp = now.toISOString();
   const actor = requiredEnvironment("RELEASE_AUTHENTICATED_OWNER");
   const feature = process.env.RELEASE_FEATURE || null;
+  const rollbackReference = process.env.RELEASE_ROLLBACK_REFERENCE;
   const input = {
     ...predecessor,
     stage,
@@ -40,7 +41,9 @@ export function prepareStageReceiptInput({
     feature_flag_state:
       stage === "dormant"
         ? { feature, state: "dormant" }
-        : predecessor.feature_flag_state,
+        : stage === "enable"
+          ? { feature, state: "enabled" }
+          : predecessor.feature_flag_state,
     approvals: [
       {
         actor,
@@ -53,6 +56,7 @@ export function prepareStageReceiptInput({
     exceptions: [],
     rollback_references: [
       `docs/runbooks/financial-rollback.md#${stage}-rollback`,
+      ...(rollbackReference ? [rollbackReference] : []),
     ],
     report_hashes: {
       ...predecessor.report_hashes,

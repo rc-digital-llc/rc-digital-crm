@@ -598,7 +598,7 @@ describe("financial rollback contracts", () => {
     );
     expect(runbook).toMatch(/forward repair/i);
     expect(runbook).toMatch(/feature.*disabled/is);
-    expect(runbook).toMatch(/incident authorization/i);
+    expect(runbook).toMatch(/incident\s+authorization/i);
     expect(runbook).toMatch(/backup.*evidence/is);
     expect(runbook).not.toMatch(
       /^\s*(?:supabase\s+db\s+(?:reset|down)|DROP\s)/im,

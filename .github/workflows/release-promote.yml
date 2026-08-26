@@ -20,6 +20,10 @@ on:
         description: Registered feature name; required only for dormant
         required: false
         type: string
+      rollback_reference:
+        description: Current receipt ID when this is a compensating rollback
+        required: false
+        type: string
 
 concurrency:
   group: production-release-${{ inputs.evidence_id }}-${{ inputs.stage }}
@@ -44,6 +48,7 @@ jobs:
       RELEASE_EVIDENCE_REPOSITORY: ${{ vars.RELEASE_EVIDENCE_REPOSITORY }}
       RELEASE_PROVIDER_TARGET: ${{ vars.RELEASE_PROVIDER_TARGET }}
       RELEASE_FEATURE: ${{ inputs.feature }}
+      RELEASE_ROLLBACK_REFERENCE: ${{ inputs.rollback_reference }}
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
@@ -119,7 +124,8 @@ jobs:
         if: ${{ inputs.stage == 'dormant' }}
         run: |
           test -n "$RELEASE_FEATURE"
-          node scripts/release/feature-transition.mjs dormant "$RELEASE_FEATURE" disabled .release/provider-state.txt
+          node scripts/release/feature-transition.mjs dormant "$RELEASE_FEATURE" disabled .release/feature-request.json
+          supabase functions invoke financial-feature-control --project-ref "$SUPABASE_PROJECT_ID" --body "$(tr -d '\n' < .release/feature-request.json)" > .release/provider-state.txt
       - name: Capture provider post-state
         env:
           CUSTOMER_FRONTEND_REPOSITORY: ${{ vars.CUSTOMER_FRONTEND_REPOSITORY }}
