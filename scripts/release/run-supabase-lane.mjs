@@ -16,6 +16,10 @@ const databaseFixturePath = path.join(
   repositoryRoot,
   "supabase/tests/support/auth-fixtures.sql",
 );
+const functionFixturePath = path.join(
+  repositoryRoot,
+  "supabase/tests/fixtures/functions.env",
+);
 
 const retryableBootstrapPatterns = [
   /docker (?:daemon|engine).*not running/i,
@@ -97,6 +101,71 @@ function executeProcess(command, args, options = {}) {
     child.on("close", (code) => {
       finish({ code: code ?? 1, stdout, stderr });
     });
+  });
+}
+
+function startFunctionRuntime() {
+  const child = spawn(
+    "supabase",
+    ["functions", "serve", "--env-file", functionFixturePath],
+    {
+      cwd: repositoryRoot,
+      env: process.env,
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  let output = "";
+  let settled = false;
+  const ready = new Promise((resolve) => {
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(result);
+    };
+    const inspect = (chunk) => {
+      output += chunk.toString();
+      if (/Serving functions on http:\/\/127\.0\.0\.1:/i.test(output)) {
+        finish({ code: 0, stdout: "", stderr: "" });
+      }
+    };
+    child.stdout.on("data", inspect);
+    child.stderr.on("data", inspect);
+    child.on("error", () => {
+      finish({ code: 127, stdout: "", stderr: "function runtime failed" });
+    });
+    child.on("close", (code) => {
+      finish({
+        code: code ?? 1,
+        stdout: "",
+        stderr: "function runtime exited before readiness",
+      });
+    });
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      finish({
+        code: 124,
+        stdout: "",
+        stderr: "function runtime readiness timed out",
+      });
+    }, 60000);
+  });
+  return { child, ready };
+}
+
+function stopFunctionRuntime(runtime) {
+  if (!runtime || runtime.child.exitCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      runtime.child.kill("SIGKILL");
+      resolve();
+    }, 5000);
+    runtime.child.once("close", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    runtime.child.kill("SIGTERM");
   });
 }
 
@@ -242,6 +311,7 @@ export async function runLane({ lane, command, execute = executeProcess }) {
   let secrets = [];
   let cleanupResult;
   let assertionAttempts = 0;
+  let functionRuntime;
   try {
     await stopStack(execute);
     for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -258,6 +328,14 @@ export async function runLane({ lane, command, execute = executeProcess }) {
           const fixtures = await loadDatabaseContractFixtures(execute);
           if (fixtures.code !== 0) {
             result = fixtures;
+            break;
+          }
+        }
+        if (lane === "edge-provider-contracts") {
+          functionRuntime = startFunctionRuntime();
+          const runtimeReady = await functionRuntime.ready;
+          if (runtimeReady.code !== 0) {
+            result = runtimeReady;
             break;
           }
         }
@@ -278,6 +356,7 @@ export async function runLane({ lane, command, execute = executeProcess }) {
       await stopStack(execute);
     }
   } finally {
+    await stopFunctionRuntime(functionRuntime);
     cleanupResult = await stopStack(execute);
   }
 
