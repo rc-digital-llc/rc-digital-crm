@@ -58,7 +58,7 @@ function selectedParameters(type, parameters = {}) {
         ...(parameters.allowed_merge_methods ?? []),
       ].sort(),
       automatic_copilot_code_review_enabled:
-        parameters.automatic_copilot_code_review_enabled,
+        parameters.automatic_copilot_code_review_enabled ?? false,
       dismiss_stale_reviews_on_push: parameters.dismiss_stale_reviews_on_push,
       require_code_owner_review: parameters.require_code_owner_review,
       require_last_push_approval: parameters.require_last_push_approval,
@@ -462,6 +462,14 @@ async function selfTest() {
     checkControls({ api: new FakeApi({ ruleset: noQueue }), intent }),
     /differs/,
   );
+
+  const serverElidedDefaults = structuredClone(intent.ruleset);
+  delete serverElidedDefaults.rules.find(
+    (rule) => rule.type === "pull_request",
+  ).parameters.automatic_copilot_code_review_enabled;
+  if (compareLiveRuleset(intent.ruleset, serverElidedDefaults).length > 0) {
+    throw new Error("server-elided false defaults caused ruleset drift");
+  }
 
   const unauthorized = new FakeApi({ admin: false });
   await expectFailure(
