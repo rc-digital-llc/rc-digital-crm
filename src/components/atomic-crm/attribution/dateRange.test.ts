@@ -26,13 +26,15 @@ describe("getDateRangeFilter", () => {
 
   it("'7' returns a date ~7 days ago", () => {
     const result = getDateRangeFilter("7")!;
-    const diff = (Date.now() - new Date(result).getTime()) / (1000 * 60 * 60 * 24);
+    const diff =
+      (Date.now() - new Date(result).getTime()) / (1000 * 60 * 60 * 24);
     expect(diff).toBeCloseTo(7, 0);
   });
 
   it("'30' returns a date ~30 days ago", () => {
     const result = getDateRangeFilter("30")!;
-    const diff = (Date.now() - new Date(result).getTime()) / (1000 * 60 * 60 * 24);
+    const diff =
+      (Date.now() - new Date(result).getTime()) / (1000 * 60 * 60 * 24);
     expect(diff).toBeCloseTo(30, 0);
   });
 });

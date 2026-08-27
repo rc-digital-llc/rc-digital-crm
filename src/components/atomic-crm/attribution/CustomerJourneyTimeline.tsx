@@ -135,11 +135,20 @@ const JourneyCard = ({ journey }: { journey: JourneyRow }) => {
   // Journey timeline bar stages
   const stages: { label: string; date: string | null; active: boolean }[] = [
     { label: "Lead Created", date: journey.lead_created, active: true },
-    { label: "Converted", date: journey.converted_at, active: !!journey.converted_at },
-    { label: "Deal Created", date: journey.deal_created, active: !!journey.deal_created },
+    {
+      label: "Converted",
+      date: journey.converted_at,
+      active: !!journey.converted_at,
+    },
+    {
+      label: "Deal Created",
+      date: journey.deal_created,
+      active: !!journey.deal_created,
+    },
     {
       label: journey.deal_stage
-        ? journey.deal_stage.charAt(0).toUpperCase() + journey.deal_stage.slice(1)
+        ? journey.deal_stage.charAt(0).toUpperCase() +
+          journey.deal_stage.slice(1)
         : "No Deal",
       date: null,
       active: !!journey.deal_stage,
@@ -152,10 +161,15 @@ const JourneyCard = ({ journey }: { journey: JourneyRow }) => {
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-semibold">{journey.person_name}</span>
+              <span className="text-sm font-semibold">
+                {journey.person_name}
+              </span>
               <span
                 className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: sourceColors.bg, color: sourceColors.text }}
+                style={{
+                  backgroundColor: sourceColors.bg,
+                  color: sourceColors.text,
+                }}
               >
                 {journey.lead_source}
               </span>
@@ -229,7 +243,10 @@ const JourneyCard = ({ journey }: { journey: JourneyRow }) => {
         {expanded && (
           <div className="mt-3 pt-3 border-t border-border">
             <CrmErrorBoundary fallbackTitle="Touchpoint timeline failed to load">
-              <TouchpointDetails leadId={journey.lead_id} contactId={journey.contact_id} />
+              <TouchpointDetails
+                leadId={journey.lead_id}
+                contactId={journey.contact_id}
+              />
             </CrmErrorBoundary>
           </div>
         )}
@@ -267,7 +284,7 @@ const TouchpointDetails = ({
             filter: { contact_id: contactId },
             sort: { field: "created_at", order: "ASC" },
             pagination: { page: 1, perPage: 100 },
-          }
+          },
         );
         // Merge and deduplicate by id
         const allTouchpoints = [...result.data, ...contactResult.data];
@@ -279,7 +296,7 @@ const TouchpointDetails = ({
         });
         unique.sort(
           (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         );
         return { data: unique, total: unique.length };
       }

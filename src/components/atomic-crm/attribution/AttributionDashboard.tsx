@@ -10,7 +10,10 @@ import {
 
 import { analytics } from "@/providers/posthog";
 import { CrmErrorBoundary } from "../misc/CrmErrorBoundary";
-import { AttributionModelToggle, type AttributionModel } from "./AttributionModelToggle";
+import {
+  AttributionModelToggle,
+  type AttributionModel,
+} from "./AttributionModelToggle";
 import { ChannelPerformance } from "./ChannelPerformance";
 import { LeadSourceAnalytics } from "./LeadSourceAnalytics";
 import { CustomerJourneyTimeline } from "./CustomerJourneyTimeline";
@@ -32,7 +35,8 @@ export function getDateRangeFilter(range: DateRange): string | undefined {
 }
 
 export const AttributionDashboard = () => {
-  const [attributionModel, setAttributionModel] = useState<AttributionModel>("first_touch");
+  const [attributionModel, setAttributionModel] =
+    useState<AttributionModel>("first_touch");
   const [activeTab, setActiveTab] = useState("channels");
   const [dateRange, setDateRange] = useState<DateRange>("30");
 
@@ -49,7 +53,10 @@ export const AttributionDashboard = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold text-foreground">Attribution</h1>
         <div className="flex items-center gap-3">
-          <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
+          <Select
+            value={dateRange}
+            onValueChange={(v) => setDateRange(v as DateRange)}
+          >
             <SelectTrigger className="w-40 h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
@@ -61,7 +68,10 @@ export const AttributionDashboard = () => {
               ))}
             </SelectContent>
           </Select>
-          <AttributionModelToggle value={attributionModel} onChange={setAttributionModel} />
+          <AttributionModelToggle
+            value={attributionModel}
+            onChange={setAttributionModel}
+          />
         </div>
       </div>
 
@@ -91,7 +101,10 @@ export const AttributionDashboard = () => {
 
           <TabsContent value="channels" className="mt-6">
             <CrmErrorBoundary fallbackTitle="Channel performance failed to load">
-              <ChannelPerformance attributionModel={attributionModel} sinceDate={sinceDate} />
+              <ChannelPerformance
+                attributionModel={attributionModel}
+                sinceDate={sinceDate}
+              />
             </CrmErrorBoundary>
           </TabsContent>
 

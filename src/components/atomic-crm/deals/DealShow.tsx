@@ -1,6 +1,12 @@
 import { useMutation } from "@tanstack/react-query";
 import { isValid } from "date-fns";
-import { Archive, ArchiveRestore, Calendar, DollarSign, Tag } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Calendar,
+  DollarSign,
+  Tag,
+} from "lucide-react";
 import {
   ShowBase,
   useDataProvider,
@@ -81,15 +87,13 @@ const DealShowContent = () => {
       {/* Header */}
       <div className="flex justify-between items-start p-6 pb-4">
         <div className="flex items-center gap-4">
-          <ReferenceField
-            source="company_id"
-            reference="companies"
-            link="show"
-          >
+          <ReferenceField source="company_id" reference="companies" link="show">
             <CompanyAvatar />
           </ReferenceField>
           <div>
-            <h2 className="text-2xl font-bold text-foreground">{record.name}</h2>
+            <h2 className="text-2xl font-bold text-foreground">
+              {record.name}
+            </h2>
             <div className="text-sm text-muted-foreground mt-0.5">
               <ReferenceField
                 source="company_id"
@@ -132,7 +136,12 @@ const DealShowContent = () => {
               }
               badge={
                 new Date(record.expected_closing_date) < new Date() ? (
-                  <Badge variant="destructive" className="ml-1 text-[10px] px-1.5 py-0">Past</Badge>
+                  <Badge
+                    variant="destructive"
+                    className="ml-1 text-[10px] px-1.5 py-0"
+                  >
+                    Past
+                  </Badge>
                 ) : null
               }
             />

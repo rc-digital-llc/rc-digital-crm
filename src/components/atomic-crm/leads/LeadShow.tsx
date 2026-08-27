@@ -50,7 +50,10 @@ import { Link } from "react-router";
 import { analytics } from "@/providers/posthog";
 import { CrmErrorBoundary } from "../misc/CrmErrorBoundary";
 import type { Lead, LeadActivity } from "../types";
-import { TouchpointTimeline, type Touchpoint } from "../attribution/TouchpointTimeline";
+import {
+  TouchpointTimeline,
+  type Touchpoint,
+} from "../attribution/TouchpointTimeline";
 import { LeadScoreBadge } from "./LeadScoreBadge";
 import { LeadConvert } from "./LeadConvert";
 import {
@@ -132,8 +135,8 @@ const LeadShowContent = () => {
                       color: statusColors.text,
                     }}
                   >
-                    {leadStatuses.find((s) => s.value === record.status)?.label ??
-                      record.status}
+                    {leadStatuses.find((s) => s.value === record.status)
+                      ?.label ?? record.status}
                   </span>
                 </div>
               </div>
@@ -158,7 +161,9 @@ const LeadShowContent = () => {
                 )}
                 {record.linkedin_url && (
                   <InfoRow
-                    icon={<Linkedin className="w-4 h-4 text-muted-foreground" />}
+                    icon={
+                      <Linkedin className="w-4 h-4 text-muted-foreground" />
+                    }
                     label="LinkedIn"
                     value={
                       <a
@@ -174,7 +179,9 @@ const LeadShowContent = () => {
                 )}
                 {record.job_title && (
                   <InfoRow
-                    icon={<UserPlus className="w-4 h-4 text-muted-foreground" />}
+                    icon={
+                      <UserPlus className="w-4 h-4 text-muted-foreground" />
+                    }
                     label="Job Title"
                     value={record.job_title}
                   />
@@ -186,7 +193,9 @@ const LeadShowContent = () => {
           {/* Source info card */}
           <Card className="border border-border shadow-sm">
             <CardContent className="pt-6">
-              <h3 className="text-base font-semibold mb-3">Source Information</h3>
+              <h3 className="text-base font-semibold mb-3">
+                Source Information
+              </h3>
               <div className="grid grid-cols-2 gap-4">
                 <InfoRow
                   icon={<Globe className="w-4 h-4 text-muted-foreground" />}
@@ -206,7 +215,10 @@ const LeadShowContent = () => {
                   <InfoRow label="UTM Campaign" value={record.utm_campaign} />
                 )}
                 {record.landing_page_url && (
-                  <InfoRow label="Landing Page" value={record.landing_page_url} />
+                  <InfoRow
+                    label="Landing Page"
+                    value={record.landing_page_url}
+                  />
                 )}
                 {record.referrer_url && (
                   <InfoRow label="Referrer" value={record.referrer_url} />
@@ -240,10 +252,7 @@ const LeadShowContent = () => {
                 Log Activity
               </Button>
               {record.status !== "converted" && (
-                <Button
-                  className="w-full"
-                  onClick={() => setConvertOpen(true)}
-                >
+                <Button className="w-full" onClick={() => setConvertOpen(true)}>
                   <UserPlus className="w-4 h-4 mr-2" />
                   Convert to Contact
                 </Button>
@@ -254,7 +263,9 @@ const LeadShowContent = () => {
           {/* Activity Timeline */}
           <Card className="border border-border shadow-sm">
             <CardContent className="pt-6">
-              <h3 className="text-base font-semibold mb-4">Activity Timeline</h3>
+              <h3 className="text-base font-semibold mb-4">
+                Activity Timeline
+              </h3>
               <ActivityTimeline leadId={record.id as number} />
             </CardContent>
           </Card>
@@ -336,7 +347,7 @@ const StatusChanger = ({ lead }: { lead: Lead }) => {
         onError: () => {
           notify("Failed to update status", { type: "error" });
         },
-      }
+      },
     );
   };
 
@@ -407,9 +418,7 @@ const ActivityTimeline = ({ leadId }: { leadId: number }) => {
               {activity.score_delta !== 0 && (
                 <span
                   className={`text-xs font-medium ${
-                    activity.score_delta > 0
-                      ? "text-green-600"
-                      : "text-red-500"
+                    activity.score_delta > 0 ? "text-green-600" : "text-red-500"
                   }`}
                 >
                   {activity.score_delta > 0 ? "+" : ""}
@@ -441,9 +450,7 @@ const ScoreBreakdown = ({ leadId }: { leadId: number }) => {
 
   if (scoringActivities.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No scoring activities yet
-      </p>
+      <p className="text-sm text-muted-foreground">No scoring activities yet</p>
     );
   }
 

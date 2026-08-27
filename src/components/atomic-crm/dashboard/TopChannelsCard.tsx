@@ -17,7 +17,7 @@ export const TopChannelsCard = () => {
     {
       pagination: { page: 1, perPage: 100 },
       sort: { field: "leads_generated", order: "DESC" },
-    }
+    },
   );
 
   if (isPending || !data) return null;
@@ -44,7 +44,9 @@ export const TopChannelsCard = () => {
             <BarChart3 className="w-4 h-4 text-[#7C5EE9]" />
           </div>
           <h3 className="text-base font-semibold">Top Channels</h3>
-          <span className="text-xs text-muted-foreground ml-auto">All time</span>
+          <span className="text-xs text-muted-foreground ml-auto">
+            All time
+          </span>
         </div>
 
         <div className="space-y-3">

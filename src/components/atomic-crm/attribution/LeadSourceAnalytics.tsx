@@ -23,11 +23,7 @@ interface SourceRow {
   avg_days_to_convert: number | null;
 }
 
-export const LeadSourceAnalytics = ({
-  sinceDate,
-}: {
-  sinceDate?: string;
-}) => {
+export const LeadSourceAnalytics = ({ sinceDate }: { sinceDate?: string }) => {
   const [sourceFilter, setSourceFilter] = useState<string>("all");
 
   const filter: Record<string, any> = {};
@@ -47,18 +43,37 @@ export const LeadSourceAnalytics = ({
   const totalQualified = data.reduce((sum, r) => sum + r.qualified_leads, 0);
   const totalConverted = data.reduce((sum, r) => sum + r.converted_leads, 0);
 
-  const qualifiedRate = totalLeads > 0 ? ((totalQualified / totalLeads) * 100).toFixed(1) : "0";
-  const convertedRate = totalQualified > 0 ? ((totalConverted / totalQualified) * 100).toFixed(1) : "0";
+  const qualifiedRate =
+    totalLeads > 0 ? ((totalQualified / totalLeads) * 100).toFixed(1) : "0";
+  const convertedRate =
+    totalQualified > 0
+      ? ((totalConverted / totalQualified) * 100).toFixed(1)
+      : "0";
 
   return (
     <div className="space-y-6">
       {/* Funnel visualization */}
       <div className="flex items-center justify-center gap-4">
-        <FunnelStep label="Total Leads" value={totalLeads} color="#2196F3" width="w-48" />
+        <FunnelStep
+          label="Total Leads"
+          value={totalLeads}
+          color="#2196F3"
+          width="w-48"
+        />
         <FunnelArrow rate={`${qualifiedRate}%`} />
-        <FunnelStep label="Qualified" value={totalQualified} color="#FF9800" width="w-40" />
+        <FunnelStep
+          label="Qualified"
+          value={totalQualified}
+          color="#FF9800"
+          width="w-40"
+        />
         <FunnelArrow rate={`${convertedRate}%`} />
-        <FunnelStep label="Converted" value={totalConverted} color="#4CAF50" width="w-32" />
+        <FunnelStep
+          label="Converted"
+          value={totalConverted}
+          color="#4CAF50"
+          width="w-32"
+        />
       </div>
 
       {/* Source filter */}
@@ -84,16 +99,36 @@ export const LeadSourceAnalytics = ({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-left">
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Source</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">UTM Source</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">UTM Medium</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Campaign</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Leads</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Qualified</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Converted</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Conv. %</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Avg Score</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Avg Days</th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                Source
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                UTM Source
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                UTM Medium
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                Campaign
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Leads
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Qualified
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Converted
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Conv. %
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Avg Score
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Avg Days
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -105,18 +140,30 @@ export const LeadSourceAnalytics = ({
                 }`}
               >
                 <td className="px-3 font-medium">{row.source}</td>
-                <td className="px-3 text-muted-foreground">{row.utm_source || "—"}</td>
-                <td className="px-3 text-muted-foreground">{row.utm_medium || "—"}</td>
-                <td className="px-3 text-muted-foreground">{row.utm_campaign || "—"}</td>
+                <td className="px-3 text-muted-foreground">
+                  {row.utm_source || "—"}
+                </td>
+                <td className="px-3 text-muted-foreground">
+                  {row.utm_medium || "—"}
+                </td>
+                <td className="px-3 text-muted-foreground">
+                  {row.utm_campaign || "—"}
+                </td>
                 <td className="px-3 text-right">{row.total_leads}</td>
                 <td className="px-3 text-right">{row.qualified_leads}</td>
                 <td className="px-3 text-right">{row.converted_leads}</td>
-                <td className={`px-3 text-right font-medium ${row.conversion_rate > 20 ? "text-green-600" : ""}`}>
+                <td
+                  className={`px-3 text-right font-medium ${row.conversion_rate > 20 ? "text-green-600" : ""}`}
+                >
                   {row.conversion_rate}%
                 </td>
-                <td className="px-3 text-right">{Math.round(row.avg_lead_score)}</td>
                 <td className="px-3 text-right">
-                  {row.avg_days_to_convert != null ? `${row.avg_days_to_convert}d` : "—"}
+                  {Math.round(row.avg_lead_score)}
+                </td>
+                <td className="px-3 text-right">
+                  {row.avg_days_to_convert != null
+                    ? `${row.avg_days_to_convert}d`
+                    : "—"}
                 </td>
               </tr>
             ))}
@@ -152,8 +199,18 @@ const FunnelStep = ({
 const FunnelArrow = ({ rate }: { rate: string }) => (
   <div className="flex flex-col items-center gap-0.5">
     <span className="text-xs font-medium text-muted-foreground">{rate}</span>
-    <svg width="24" height="12" viewBox="0 0 24 12" className="text-muted-foreground">
-      <path d="M0 6h20M16 1l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    <svg
+      width="24"
+      height="12"
+      viewBox="0 0 24 12"
+      className="text-muted-foreground"
+    >
+      <path
+        d="M0 6h20M16 1l5 5-5 5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </svg>
   </div>
 );

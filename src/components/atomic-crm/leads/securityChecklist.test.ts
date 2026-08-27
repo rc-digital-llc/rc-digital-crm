@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const migrationsDir = path.resolve(__dirname, "../../../../supabase/migrations");
+const migrationsDir = path.resolve(
+  __dirname,
+  "../../../../supabase/migrations",
+);
 
 function readMigration(filename: string): string {
   return fs.readFileSync(path.join(migrationsDir, filename), "utf-8");
@@ -37,7 +40,9 @@ describe("Security — RLS Policies", () => {
     const sql = readMigration("20260306000002_add_lead_activities_table.sql");
 
     it("enables RLS", () => {
-      expect(sql).toContain("ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY");
+      expect(sql).toContain(
+        "ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY",
+      );
     });
 
     it("has SELECT policy", () => {
@@ -53,7 +58,9 @@ describe("Security — RLS Policies", () => {
     const sql = readMigration("20260306000006_add_touchpoints_table.sql");
 
     it("enables RLS", () => {
-      expect(sql).toContain("ALTER TABLE touchpoints ENABLE ROW LEVEL SECURITY");
+      expect(sql).toContain(
+        "ALTER TABLE touchpoints ENABLE ROW LEVEL SECURITY",
+      );
     });
 
     it("has SELECT policy", () => {

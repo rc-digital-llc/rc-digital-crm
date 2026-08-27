@@ -33,7 +33,7 @@ export const ChannelPerformance = ({
       pagination: { page: 1, perPage: 100 },
       sort: { field: "leads_generated", order: "DESC" },
       filter: sinceDate ? { "created_at@gte": sinceDate } : undefined,
-    }
+    },
   );
 
   if (isPending || !data) return null;
@@ -53,10 +53,8 @@ export const ChannelPerformance = ({
     .sort((a, b) => b.leads - a.leads);
 
   // Revenue by channel for comparison cards
-  const revenueAgg: Record<
-    string,
-    { firstTouch: number; lastTouch: number }
-  > = {};
+  const revenueAgg: Record<string, { firstTouch: number; lastTouch: number }> =
+    {};
   for (const row of data) {
     if (!revenueAgg[row.channel]) {
       revenueAgg[row.channel] = { firstTouch: 0, lastTouch: 0 };
@@ -67,7 +65,7 @@ export const ChannelPerformance = ({
   const topRevenueChannels = Object.entries(revenueAgg)
     .sort(
       (a, b) =>
-        b[1].firstTouch + b[1].lastTouch - (a[1].firstTouch + a[1].lastTouch)
+        b[1].firstTouch + b[1].lastTouch - (a[1].firstTouch + a[1].lastTouch),
     )
     .slice(0, 4);
 
@@ -115,8 +113,7 @@ export const ChannelPerformance = ({
             className={`border ${
               highlightKey === "firstTouch" && rev.firstTouch > rev.lastTouch
                 ? "border-green-500/50"
-                : highlightKey === "lastTouch" &&
-                    rev.lastTouch > rev.firstTouch
+                : highlightKey === "lastTouch" && rev.lastTouch > rev.firstTouch
                   ? "border-blue-500/50"
                   : "border-border"
             }`}
@@ -127,13 +124,17 @@ export const ChannelPerformance = ({
               </p>
               <div className="flex items-center gap-2 mb-1">
                 <DollarSign className="w-3.5 h-3.5 text-green-600" />
-                <span className={`text-sm font-semibold ${attributionModel === "first_touch" ? "text-green-600" : ""}`}>
+                <span
+                  className={`text-sm font-semibold ${attributionModel === "first_touch" ? "text-green-600" : ""}`}
+                >
                   FT: ${rev.firstTouch.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-                <span className={`text-sm font-semibold ${attributionModel === "last_touch" ? "text-blue-600" : ""}`}>
+                <span
+                  className={`text-sm font-semibold ${attributionModel === "last_touch" ? "text-blue-600" : ""}`}
+                >
                   LT: ${rev.lastTouch.toLocaleString()}
                 </span>
               </div>
@@ -147,32 +148,67 @@ export const ChannelPerformance = ({
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/50 text-left">
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Channel</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Source</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Leads</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Contacts</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Deals</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">FT Leads</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">LT Deals</th>
-              <th className={`px-3 py-2.5 text-xs font-medium text-right ${attributionModel === "first_touch" ? "text-green-600" : "text-muted-foreground"}`}>FT Revenue</th>
-              <th className={`px-3 py-2.5 text-xs font-medium text-right ${attributionModel === "last_touch" ? "text-blue-600" : "text-muted-foreground"}`}>LT Revenue</th>
-              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Touchpoints</th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                Channel
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground">
+                Source
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Leads
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Contacts
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Deals
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                FT Leads
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                LT Deals
+              </th>
+              <th
+                className={`px-3 py-2.5 text-xs font-medium text-right ${attributionModel === "first_touch" ? "text-green-600" : "text-muted-foreground"}`}
+              >
+                FT Revenue
+              </th>
+              <th
+                className={`px-3 py-2.5 text-xs font-medium text-right ${attributionModel === "last_touch" ? "text-blue-600" : "text-muted-foreground"}`}
+              >
+                LT Revenue
+              </th>
+              <th className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">
+                Touchpoints
+              </th>
             </tr>
           </thead>
           <tbody>
             {data.map((row) => (
-              <tr key={row.id} className="border-t border-border hover:bg-muted/30 h-10">
-                <td className="px-3 font-medium">{channelLabel(row.channel)}</td>
-                <td className="px-3 text-muted-foreground">{row.source || "—"}</td>
+              <tr
+                key={row.id}
+                className="border-t border-border hover:bg-muted/30 h-10"
+              >
+                <td className="px-3 font-medium">
+                  {channelLabel(row.channel)}
+                </td>
+                <td className="px-3 text-muted-foreground">
+                  {row.source || "—"}
+                </td>
                 <td className="px-3 text-right">{row.leads_generated}</td>
                 <td className="px-3 text-right">{row.contacts_touched}</td>
                 <td className="px-3 text-right">{row.deals_influenced}</td>
                 <td className="px-3 text-right">{row.first_touch_leads}</td>
                 <td className="px-3 text-right">{row.last_touch_deals}</td>
-                <td className={`px-3 text-right ${attributionModel === "first_touch" ? "font-semibold text-green-600" : ""}`}>
+                <td
+                  className={`px-3 text-right ${attributionModel === "first_touch" ? "font-semibold text-green-600" : ""}`}
+                >
                   ${row.first_touch_revenue.toLocaleString()}
                 </td>
-                <td className={`px-3 text-right ${attributionModel === "last_touch" ? "font-semibold text-blue-600" : ""}`}>
+                <td
+                  className={`px-3 text-right ${attributionModel === "last_touch" ? "font-semibold text-blue-600" : ""}`}
+                >
                   ${row.last_touch_revenue.toLocaleString()}
                 </td>
                 <td className="px-3 text-right">{row.total_touchpoints}</td>

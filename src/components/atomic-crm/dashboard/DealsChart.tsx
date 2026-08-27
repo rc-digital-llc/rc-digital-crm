@@ -87,7 +87,10 @@ export const DealsChart = memo(() => {
     <div className="flex flex-col">
       <div className="flex items-center mb-4">
         <div className="mr-3 flex">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(76, 175, 80, 0.12)" }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "rgba(76, 175, 80, 0.12)" }}
+          >
             <DollarSign className="w-4 h-4 text-[#4CAF50]" />
           </div>
         </div>

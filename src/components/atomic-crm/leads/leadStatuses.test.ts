@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  leadStatuses,
-  leadStatusColorMap,
-  leadSources,
-} from "./leadStatuses";
+import { leadStatuses, leadStatusColorMap, leadSources } from "./leadStatuses";
 
 describe("Lead Status Validation", () => {
   const statusValues = leadStatuses.map((s) => s.value);
@@ -21,7 +17,13 @@ describe("Lead Status Validation", () => {
   });
 
   it("valid forward transition: new -> contacted -> qualifying -> qualified -> converted", () => {
-    const forwardPath = ["new", "contacted", "qualifying", "qualified", "converted"];
+    const forwardPath = [
+      "new",
+      "contacted",
+      "qualifying",
+      "qualified",
+      "converted",
+    ];
     for (const status of forwardPath) {
       expect(statusValues).toContain(status);
     }
