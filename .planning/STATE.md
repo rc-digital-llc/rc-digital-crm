@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: blocked
-stopped_at: Phase 01 blocked on owner-controlled live release gates
-last_updated: "2026-08-26T18:58:54.000Z"
-last_activity: 2026-08-26
+stopped_at: Phase 01 blocked on credential rotation and remaining owner inputs
+last_updated: "2026-08-27T03:35:29.000Z"
+last_activity: 2026-08-27
 progress:
   total_phases: 10
   completed_phases: 0
@@ -29,9 +29,9 @@ history.
 ## Current Position
 
 Phase: 01 (executable-financial-test-and-release-gate) — BLOCKED
-Plan: 7 of 10 complete; Plans 07, 09, and 10 blocked on external controls
-Status: Repository implementation and autonomous verification complete; owner action required
-Last activity: 2026-08-26
+Plan: 7 of 10 complete; Plans 07, 09, and 10 remain blocked on exact live acceptance checks
+Status: Organization, live ruleset, private evidence repository, and protected environment shells are provisioned; owner inputs remain
+Last activity: 2026-08-27
 
 Progress: [███████░░░] 70%
 
@@ -90,11 +90,18 @@ None yet.
 - Plan 01-07 remains blocked until the historical credential identified by
   rotation ID `16fb4d8f3aa647db0bb47df5690ee5eb8507c48ed7da4c5b981a9e8de959dcf0`
   is rotated and private evidence is recorded. The public gate cannot waive it.
-- Plan 01-09 remains blocked because GitHub merge queue is unsupported on the
-  current public user-owned repository and the named live main ruleset is absent.
-- Plan 01-10 remains blocked until a private evidence repository plus the
-  `production-release` and `production-financial-enable` protected environments,
-  reviewers, variables, and secrets are provisioned and dry-run verified.
+- Plan 01-09 now has an organization-owned source repository and an exact live
+  no-bypass `main-financial-release` ruleset. PR #2 proves all fast checks and
+  five non-secret financial lanes on the live repository, but the required
+  merge-group candidate cannot run until the historical-secret check passes and
+  a second organization reviewer can approve the author-owned PR.
+- Plan 01-10 now has a private organization-owned evidence repository plus
+  `production-release` and `production-financial-enable` environments with
+  protected-branch restrictions, no admin bypass, and self-review prevention.
+  Scoped production/evidence secrets, provider/frontend target variables, an
+  independent reviewer, and the synthetic protected dry run remain absent.
+- Phase 02 remains dependency-locked until Plans 01-07, 01-09, and 01-10 pass;
+  it was not started or marked complete.
 - The repository has unrelated pre-existing uncommitted scan artifacts and
   source changes; they were preserved and excluded from Phase 1 commits.
 
@@ -108,6 +115,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-26T18:58:54.000Z
-Stopped at: Phase 01 security and goal verification blocked on three owner-controlled actions
+Last session: 2026-08-27T03:35:29.000Z
+Stopped at: Phase 01 live controls partially provisioned; credential rotation, independent reviewer, scoped secrets/targets, and protected dry runs remain
 Resume file: None
