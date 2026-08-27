@@ -395,6 +395,16 @@ describe("GitHub workflow release contracts", () => {
       /contents:\s*write|checks:\s*write|secrets\./,
     );
   });
+
+  it("installs the release secret scanner from a checksum-pinned archive", () => {
+    const workflow = readWorkflow("financial-release-gate.yml");
+    expect(workflow).toContain("GITLEAKS_VERSION: 8.30.1");
+    expect(workflow).toContain(
+      "GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+    );
+    expect(workflow).toContain("sha256sum --check --strict");
+    expect(workflow).toContain('"$binary_dir/gitleaks" version');
+  });
 });
 
 describe("GitHub ruleset release contracts", () => {
