@@ -2,7 +2,7 @@
 phase: 01
 slug: executable-financial-test-and-release-gate
 status: blocked
-threats_open: 5
+threats_open: 4
 asvs_level: 1
 created: 2026-08-26
 ---
@@ -31,7 +31,7 @@ created: 2026-08-26
 
 | Threat ID | Category | Component | Disposition | Mitigation and Evidence | Status |
 |-----------|----------|-----------|-------------|-------------------------|--------|
-| T-01-01 | Elevation of Privilege | Required checks and live main ruleset | mitigate | Organization ownership and authenticated exact no-bypass ruleset readback pass. PR #2 proves all fast contexts and five non-secret financial lanes; the secret gate and missing independent reviewer still prevent the required merge-group observation. | open |
+| T-01-01 | Elevation of Privilege | Required checks and live main ruleset | mitigate | Organization ownership and authenticated exact no-bypass ruleset readback pass. PR #2 proves all fast contexts and five database/provider financial lanes; a fresh live release-security result and missing independent reviewer still prevent the required merge-group observation. | open |
 | T-01-02 | Repudiation / Spoofing | Receipts, approvals, skipped checks | mitigate | Canonical receipts require authenticated-owner approval and exact successful checks; merge-group paths are unconditional. Environment self-review is disabled, but only one organization member exists and no independent approval has been observed. | open |
 | T-01-03 | Tampering / Information Disclosure | Supabase lane, container selection, PR jobs | mitigate | Local-only target validation, exact container selection, bounded bootstrap retry, redaction, cleanup, read-only workflow permissions, and no production secrets are implemented and tested. | closed |
 | T-01-04 | Tampering | Migration chain and representative upgrade | mitigate | Clean replay, exact migration history, frozen baseline fingerprints, declared transformations, and no assertion retry pass against live PostgreSQL. | closed |
@@ -41,7 +41,7 @@ created: 2026-08-26
 | T-01-08 | Tampering / Repudiation | RPC, trigger, webhook side effects | mitigate | Denied/failed exact-effect assertions and propagated downstream database failures prevent false acknowledgement. | closed |
 | T-01-09 | Tampering / Repudiation | Replay and concurrency | mitigate | Unique claims, transactional locks, exact counts, restart replay, out-of-order fixtures, and parallel PostgreSQL sessions pass. | closed |
 | T-01-10 | Tampering | Production dependency graph | mitigate | Locked production dependency audit reports zero unresolved high or critical advisories; full application regression, typecheck, and build pass. | closed |
-| T-01-11 | Information Disclosure | Git history, tokens, logs | mitigate | Current-tree scan, full-redaction history scan, narrow allowlist policy, and log redaction exist. Full history still reports two historical findings under rotation ID `16fb4d8f3aa647db0bb47df5690ee5eb8507c48ed7da4c5b981a9e8de959dcf0`; private owner rotation evidence is absent. | open |
+| T-01-11 | Information Disclosure | Git history, tokens, logs | mitigate | Current-tree and full-redaction history scans pass. Value-blind equality testing reproduced the two historical values from a fresh isolated `atomic-crm-demo` local stack; only their exact fingerprints are classified, and the complete ignore set is hash-pinned so expansion fails. | closed |
 | T-01-12 | Information Disclosure | Production bundle | mitigate | Production source maps are disabled; recursive bundle scan reports no map files or secret markers. | closed |
 | T-01-13 | Tampering / Repudiation | Receipt builder and verifier | mitigate | Strict schema/policy, canonical SHA-256 identity, exact predecessor chain, artifact attestation, safe filenames, duplicate rejection, and tamper tests pass. | closed |
 | T-01-14 | Information Disclosure / Tampering | Private evidence publication | mitigate | The organization-owned private evidence repository passes authenticated content readback and unauthenticated access denial. A complete synthetic receipt chain is still absent. | open |
@@ -66,15 +66,17 @@ No accepted risks. Open threats remain blocking and were not waived.
 |------------|---------------|--------|------|--------|
 | 2026-08-26 | 17 | 12 | 5 | Codex inline security audit |
 | 2026-08-27 | 17 | 12 | 5 | Codex live-control follow-up |
+| 2026-08-27 | 17 | 13 | 4 | Codex release-security close-out |
 
 ### Live Gate Evidence
 
 - `node scripts/release/verify-github-controls.mjs --self-test`: pass.
 - `node scripts/release/verify-github-controls.mjs --check`: pass against `rc-digital-llc/rc-digital-crm`; report SHA-256 `2ee6d5b4db9cbc2a2eabd086fb7628c841bfa1ad383b008be6e1bcd84112bbd9`.
-- PR #2 at `9bb5f6f3c3e377302d4e8dfe91c9aad6c5f60688`: all fast checks and migration-clean, migration-upgrade, database-contracts, edge-provider-contracts, and replay-concurrency pass; release-security remains red only on the deferred historical findings.
+- PR #2 at `9bb5f6f3c3e377302d4e8dfe91c9aad6c5f60688`: all fast checks and migration-clean, migration-upgrade, database-contracts, edge-provider-contracts, and replay-concurrency pass; the newer release-security head awaits live CI.
 - The organization-owned evidence repository is private; authenticated README readback SHA-256 is `ad7f3859b7143dc751987c040905e32365cd484316ecbd435cd480204aacbb0f`, while unauthenticated API access returns 404.
 - `node scripts/release/verify-github-controls.mjs --check-environments`: nonzero only for declared missing scoped secrets; both environment protection shells and known evidence/owner variables exist.
-- `make test-release-secrets`: nonzero by design; two redacted historical findings remain pending private rotation evidence. Report SHA-256: `1dba2f9b42b28428a4b73ae76d5d19a65bf11a7f35d1a59d898af4a4da5d6e53`.
+- `make test-release-secrets`: pass with zero history and current-tree findings; report SHA-256 `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`.
+- `make test-release-security`: pass for dependencies, secrets, production bundle, and workflow coupling.
 
 ---
 
@@ -85,4 +87,4 @@ No accepted risks. Open threats remain blocking and were not waived.
 - [ ] `threats_open: 0` confirmed
 - [ ] `status: verified` set in frontmatter
 
-**Approval:** blocked pending live controls and credential rotation evidence
+**Approval:** blocked pending live merge-queue and protected release controls

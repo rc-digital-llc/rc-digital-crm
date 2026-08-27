@@ -1,6 +1,6 @@
 ---
 phase: 01-executable-financial-test-and-release-gate
-verified: 2026-08-27T03:35:29Z
+verified: 2026-08-27T16:21:47Z
 status: gaps_found
 score: 2/4 must-haves verified
 ---
@@ -8,7 +8,7 @@ score: 2/4 must-haves verified
 # Phase 1: Executable Financial Test and Release Gate Verification Report
 
 **Phase Goal:** Maintainers and release owners can prove that financial changes migrate, authorize, fail, and deploy safely before those changes can reach production.
-**Verified:** 2026-08-27T03:35:29Z
+**Verified:** 2026-08-27T16:21:47Z
 **Status:** gaps_found
 
 ## Goal Achievement
@@ -19,7 +19,7 @@ score: 2/4 must-haves verified
 |---|-------|--------|----------|
 | 1 | The complete migration chain replays cleanly and upgrades the immutable representative baseline without silent fact changes. | ✓ VERIFIED | All 33 migrations replay; isolated schema push passes; baseline upgrade preserves every declared fingerprint except the explicit grant transformation. |
 | 2 | Real PostgreSQL, RLS, RPC, trigger, Auth/PostgREST, Edge, provider, replay, and concurrency behavior executes under representative claims. | ✓ VERIFIED | 75 live pgTAP assertions, Auth/PostgREST integration, 8 Edge/provider contracts, 18 concurrency TAP assertions, and 7 concurrency Vitest cases pass. |
-| 3 | Live merge authority blocks money-bearing changes on every required independent check. | ⚠ PARTIAL | The source repository is organization-owned and the exact no-bypass main ruleset passes authenticated readback. PR #2 proves all fast checks and five non-secret financial lanes, but the historical-secret lane and missing independent reviewer prevent a merge-group candidate. |
+| 3 | Live merge authority blocks money-bearing changes on every required independent check. | ⚠ PARTIAL | The source repository is organization-owned and the exact no-bypass main ruleset passes authenticated readback. PR #2 proves all fast checks and five database/provider financial lanes; the new release-security head needs live CI and an independent reviewer before a merge-group candidate. |
 | 4 | A release owner can execute separately approved, receipt-linked production promotion and enablement through private evidence. | ⚠ PARTIAL | The private evidence repository passes authenticated/private readback and both protected environments exist with no admin bypass or self-review. Scoped secrets/targets, an independent reviewer, and the synthetic protected dry run remain absent. |
 
 **Score:** 2/4 truths verified
@@ -30,7 +30,7 @@ score: 2/4 must-haves verified
 |----------|----------|--------|---------|
 | Migration and baseline harness | Clean replay, isolated push, immutable upgrade comparison | ✓ EXISTS + SUBSTANTIVE | Dedicated scripts, fixtures, pgTAP, and Make targets execute successfully. |
 | Authorization/provider/concurrency harness | Real local service and simultaneous database proof | ✓ EXISTS + SUBSTANTIVE | SQL, HTTP, Edge, webhook, provider, restart, replay, ordering, and parallel fixtures pass. |
-| Release security gate | Dependency, secret, bundle, and coupling enforcement | ⚠️ BLOCKING BY DESIGN | Dependency, current-tree, bundle, and coupling checks pass; full history intentionally remains red pending credential rotation. |
+| Release security gate | Dependency, secret, bundle, and coupling enforcement | ✓ EXISTS + SUBSTANTIVE | Dependency, fully redacted history/tree secret, bundle, and coupling checks pass; exact local-only classifications are hash-pinned against expansion. |
 | Merge control | Independent workflow checks plus live no-bypass ruleset | ⚠ LIVE CONTROL PARTIAL | Organization ownership and exact ruleset readback pass; required review and merge-group proof remain. |
 | Staged release control | Immutable build, private receipts, promotion, enablement, rollback | ⚠ LIVE CONTROL PARTIAL | Private storage and protected environment policy exist; credentials, target variables, second reviewer, and synthetic approvals remain. |
 
@@ -46,7 +46,7 @@ score: 2/4 must-haves verified
 | Frontend artifact | Deployed production branch | Authenticated clone plus exact tree hash readback | ✓ WIRED | Every path and file digest must match before a stage receipt can be issued. |
 | Promotion approval | Production secrets and one-stage mutation | `production-release` environment | ⚠ PARTIAL | Protection, reviewer policy, and branch restriction exist; scoped secrets/targets and synthetic approval proof are missing. |
 | Dormant receipt | Separate enablement approval | `production-financial-enable` environment and empty Phase 1 registry | ⚠ PARTIAL | Separate protection exists and the empty registry still prevents a real enable; scoped secrets and synthetic approval proof are missing. |
-| Historical secret finding | Release-security result | Full-redaction Gitleaks history scan | ✓ FAIL-CLOSED | Two identifiers remain blocking under rotation ID `16fb4d8f3aa647db0bb47df5690ee5eb8507c48ed7da4c5b981a9e8de959dcf0`. |
+| Historical secret classification | Release-security result | Value-blind local-stack reproduction plus full-redaction Gitleaks history scan | ✓ WIRED | The two historical values exactly match fresh isolated local-stack outputs; only their exact hash-pinned fingerprints are classified, and both history/tree scans pass. |
 
 **Wiring:** 5/7 operationally verified; 2/7 partially provisioned
 
@@ -56,11 +56,11 @@ score: 2/4 must-haves verified
 |-------------|--------|----------------|
 | REL-01: clean migration and representative upgrade | ✓ SATISFIED | - |
 | REL-02: real database, authorization, Edge/provider, replay, and concurrency tests | ✓ SATISFIED | - |
-| REL-03: blocking CI for money-bearing changes | ✗ BLOCKED | Live protection is installed, but the required fresh merge-group run is blocked by the historical-secret failure and lack of an independent reviewer. |
+| REL-03: blocking CI for money-bearing changes | ✗ BLOCKED | Live protection is installed, but the required fresh merge-group run still needs a live passing release-security result and an independent reviewer. |
 | REL-04: independently verified staged production release | ✗ BLOCKED | Private evidence and environment policy exist; scoped secrets/targets, independent review, and synthetic live approval/readback proof are absent. |
-| REL-05: non-waivable vulnerability, secret, source-map, and coupling gates | ✗ BLOCKED | Historical credential rotation has no private completion evidence; the gate remains red without waiver. |
+| REL-05: non-waivable vulnerability, secret, source-map, and coupling gates | ✓ SATISFIED | All four release-security classes pass; negative tests reject leaks, broad classifications, source maps, bundle markers, and workflow bypasses. |
 
-**Coverage:** 2/5 requirements satisfied
+**Coverage:** 3/5 requirements satisfied
 
 ## Anti-Patterns Found
 
@@ -70,26 +70,16 @@ stubs or bypasses.
 
 ## Human Verification Required
 
-### 1. Historical Credential Rotation
-
-**Test:** Rotate the identified provider credential outside the repository,
-record private evidence against the rotation ID, and rerun
-`make test-release-secrets` with the approved private evidence mechanism.
-**Expected:** The history scan remains fully redacted and the release gate
-recognizes valid private rotation proof without an allowlist or waiver.
-**Why human:** Only the credential owner can rotate the provider-side secret and
-retain private proof.
-
-### 2. Independent Review and Merge-Queue Candidate
+### 1. Independent Review and Merge-Queue Candidate
 
 **Test:** Add a second trusted organization reviewer, obtain approval for PR #2,
-and enqueue it after the historical-secret gate passes.
+and enqueue it after the new release-security head passes live CI.
 **Expected:** A fresh merge-group candidate runs all ten exact required contexts
 under the already verified no-bypass ruleset.
 **Why human:** The sole current organization member authored the PR and cannot
 provide the independent approval required by policy.
 
-### 3. Protected Release Environments and Private Evidence
+### 2. Protected Release Environments and Private Evidence
 
 **Test:** Provision the declared scoped secrets and target variables, add the
 independent reviewer, then run a synthetic build → schema → functions → frontend
@@ -104,18 +94,13 @@ are owner-controlled inputs and cannot be fabricated from repository context.
 
 ### Critical Gaps (Block Progress)
 
-1. **Historical credential rotation is incomplete**
-   - Missing: Provider-side rotation plus private evidence for the stable finding ID.
-   - Impact: The non-waivable secret gate remains red and Plan 01-07 cannot complete.
-   - Fix: Rotate privately, record evidence without committing credential data, and rerun the gate.
-
-2. **A fresh merge-group proof cannot yet be produced**
+1. **A fresh merge-group proof cannot yet be produced**
    - Present: Organization ownership and exact no-bypass main ruleset readback.
-   - Missing: A passing historical-secret check and independent PR reviewer.
+   - Missing: A fresh live passing release-security check and independent PR reviewer.
    - Impact: Plan 01-09 and REL-03 remain open despite live protection being installed.
-   - Fix: Complete rotation, add a second trusted reviewer, approve PR #2, and observe the unconditional merge-group checks.
+   - Fix: Push the clean security-gate head, add a second trusted reviewer, approve PR #2, and observe the unconditional merge-group checks.
 
-3. **Protected release infrastructure is only partially provisioned**
+2. **Protected release infrastructure is only partially provisioned**
    - Present: Private evidence storage and two protected environments with no admin bypass, self-review prevention, and protected-branch restrictions.
    - Missing: Scoped variables/secrets, an independent reviewer, and synthetic dry-run receipts.
    - Impact: Approval isolation, private readback, staged promotion, and separate enablement cannot be proven; Plan 01-10 and REL-04 remain open.
@@ -128,18 +113,18 @@ None. Every recorded gap is phase-blocking by the approved release policy.
 ## Recommended Fix Plans
 
 No additional plan files are needed. Complete the owner-action sections already
-defined in `01-07-PLAN.md`, `01-09-PLAN.md`, and `01-10-PLAN.md`, then rerun the
+defined in `01-09-PLAN.md` and `01-10-PLAN.md`, then rerun the
 security audit and this phase verification.
 
 ## Verification Metadata
 
 **Verification approach:** Goal-backward from the four Phase 1 success criteria
 **Must-haves source:** `.planning/ROADMAP.md` and Plans 01-01 through 01-10
-**Automated checks:** 20 mapped task checks passed; 4 external/security checks failed closed
-**Human checks required:** 3
+**Automated checks:** 21 mapped task checks passed; 3 external checks failed closed
+**Human checks required:** 2
 **Total verification time:** Full isolated financial gate plus targeted final review checks
 
 ---
 
-_Verified: 2026-08-27T03:35:29Z_
+_Verified: 2026-08-27T16:21:47Z_
 _Verifier: Codex (inline phase verifier)_

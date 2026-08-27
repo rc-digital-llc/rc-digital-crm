@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: blocked
-stopped_at: Phase 01 blocked on credential rotation and remaining owner inputs
-last_updated: "2026-08-27T03:35:29.000Z"
+stopped_at: Phase 01 blocked on independent review, scoped credentials/targets, and protected dry runs
+last_updated: "2026-08-27T16:21:47.000Z"
 last_activity: 2026-08-27
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 10
-  completed_plans: 7
-  percent: 70
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -29,29 +29,29 @@ history.
 ## Current Position
 
 Phase: 01 (executable-financial-test-and-release-gate) — BLOCKED
-Plan: 7 of 10 complete; Plans 07, 09, and 10 remain blocked on exact live acceptance checks
-Status: Organization, live ruleset, private evidence repository, and protected environment shells are provisioned; owner inputs remain
+Plan: 8 of 10 complete; Plans 09 and 10 remain blocked on exact live acceptance checks
+Status: Release security is clean; live merge-queue proof and protected synthetic release proof remain
 Last activity: 2026-08-27
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 7
-- Average duration: 13 min
-- Total execution time: 1.5 hours
+- Total plans completed: 8
+- Average duration: 14 min
+- Total execution time: 1.9 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 01 | 7 | 91 min | 13 min |
+| Phase 01 | 8 | 111 min | 14 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 13 min, 19 min, 14 min, 6 min, 7 min
+- Last 5 plans: 20 min, 13 min, 19 min, 14 min, 6 min
 - Trend: Establishing baseline
 
 *Updated after each plan completion*
@@ -62,6 +62,7 @@ Progress: [███████░░░] 70%
 | Phase 01 P04 | 14min | 2 tasks | 9 files |
 | Phase 01 P05 | 6min | 2 tasks | 6 files |
 | Phase 01 P06 | 7min | 2 tasks | 3 files |
+| Phase 01 P07 | 20min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Authorization policy is proven twice: representative claims inside live PostgreSQL and real local Auth JWTs across PostgREST/RPC. — Source inspection and status-only checks cannot prove row isolation or failure atomicity.
 - [Phase 01]: A provider acknowledgement is successful only after exact database effects succeed; every financial provider must register executable auth, body, failure, replay, concurrency, and success cases. — Provider HTTP status alone cannot establish financial safety.
 - [Phase 01]: Replay and concurrency authority comes from unique claims, row locks, explicit stream ordering, and exact effects under real parallel PostgreSQL sessions. — Sequential mocks cannot prove simultaneous duplicate suppression.
+- [Phase 01]: Historical secret findings may be classified as local-only only after value-blind reproduction, and only exact hash-pinned fingerprints may be ignored. — Reproducible development fixtures should not force fictional provider rotation, while any broader exception must still fail closed.
 
 ### Pending Todos
 
@@ -87,20 +89,17 @@ None yet.
 
 ### Blockers/Concerns
 
-- Plan 01-07 remains blocked until the historical credential identified by
-  rotation ID `16fb4d8f3aa647db0bb47df5690ee5eb8507c48ed7da4c5b981a9e8de959dcf0`
-  is rotated and private evidence is recorded. The public gate cannot waive it.
 - Plan 01-09 now has an organization-owned source repository and an exact live
   no-bypass `main-financial-release` ruleset. PR #2 proves all fast checks and
-  five non-secret financial lanes on the live repository, but the required
-  merge-group candidate cannot run until the historical-secret check passes and
-  a second organization reviewer can approve the author-owned PR.
+  five database/provider financial lanes on the live repository. The local
+  release-security gate now passes, but its new PR head still needs live CI and
+  a second organization reviewer before the required merge-group candidate.
 - Plan 01-10 now has a private organization-owned evidence repository plus
   `production-release` and `production-financial-enable` environments with
   protected-branch restrictions, no admin bypass, and self-review prevention.
   Scoped production/evidence secrets, provider/frontend target variables, an
   independent reviewer, and the synthetic protected dry run remain absent.
-- Phase 02 remains dependency-locked until Plans 01-07, 01-09, and 01-10 pass;
+- Phase 02 remains dependency-locked until Plans 01-09 and 01-10 pass;
   it was not started or marked complete.
 - The repository has unrelated pre-existing uncommitted scan artifacts and
   source changes; they were preserved and excluded from Phase 1 commits.
@@ -115,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-27T03:35:29.000Z
-Stopped at: Phase 01 live controls partially provisioned; credential rotation, independent reviewer, scoped secrets/targets, and protected dry runs remain
+Last session: 2026-08-27T16:21:47.000Z
+Stopped at: Plan 01-07 complete; independent reviewer, scoped secrets/targets, and protected dry runs remain for Plans 01-09 and 01-10
 Resume file: None

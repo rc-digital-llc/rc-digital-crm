@@ -38,7 +38,7 @@ history.
 - [ ] **REL-04**: A release owner can deploy schema, functions, frontend, and
   dormant financial features as independently verified expand-contract stages
   with feature flags, rollback instructions, and immutable release receipts.
-- [ ] **REL-05**: A release owner can see and block unresolved critical or high
+- [x] **REL-05**: A release owner can see and block unresolved critical or high
   production dependency vulnerabilities, public source maps, secret exposure,
   and unsafe deployment coupling before a financial feature is enabled.
 
@@ -431,7 +431,7 @@ A v1 requirement is complete only when:
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 1 | Pending |
 | REL-04 | Phase 1 | Pending |
-| REL-05 | Phase 1 | Pending |
+| REL-05 | Phase 1 | Complete |
 | WORK-01 | Phase 2 | Pending |
 | WORK-02 | Phase 9 | Pending |
 | WORK-03 | Phase 9 | Pending |
