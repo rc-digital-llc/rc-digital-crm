@@ -4,7 +4,6 @@ import {
   useDataProvider,
   useGetIdentity,
   useNotify,
-  useRecordContext,
   useRefresh,
   useShowContext,
   useUpdate,

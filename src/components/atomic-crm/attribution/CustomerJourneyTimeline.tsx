@@ -21,7 +21,7 @@ import {
 import { analytics } from "@/providers/posthog";
 import { CrmErrorBoundary } from "../misc/CrmErrorBoundary";
 import { leadSources } from "../leads/leadStatuses";
-import { channelColors, channelLabel } from "./channelColors";
+import { channelColors } from "./channelColors";
 import { TouchpointTimeline, type Touchpoint } from "./TouchpointTimeline";
 
 interface JourneyRow {

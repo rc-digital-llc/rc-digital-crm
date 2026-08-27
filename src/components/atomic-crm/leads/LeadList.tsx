@@ -1,14 +1,9 @@
 import { useState } from "react";
-import {
-  useGetIdentity,
-  useListContext,
-  type Identifier,
-} from "ra-core";
+import { useGetIdentity, useListContext } from "ra-core";
 import { List } from "@/components/admin/list";
 import { SearchInput } from "@/components/admin/search-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { FilterButton } from "@/components/admin/filter-form";
-import { CreateButton } from "@/components/admin/create-button";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Link } from "react-router";
