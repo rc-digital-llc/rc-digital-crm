@@ -70,6 +70,12 @@ function actionReferences(workflow: string): string[] {
   );
 }
 
+function readPackageManifest(): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"),
+  ) as Record<string, unknown>;
+}
+
 function policyErrors(policy: Record<string, unknown>): string[] {
   const errors: string[] = [];
   const checks = policy.required_checks as Record<string, unknown> | undefined;
@@ -534,6 +540,28 @@ describe("release promotion workflow contracts", () => {
     expect(runbook).toMatch(/schema.*functions.*frontend.*dormant/is);
     expect(runbook).toMatch(/stop conditions/i);
     expect(runbook).toMatch(/private.*receipt.*readback/is);
+  });
+});
+
+describe("CI package portability", () => {
+  it("does not directly pin a platform-specific Rollup binary", () => {
+    const manifest = readPackageManifest();
+    const directDependencies = {
+      ...((manifest.dependencies as Record<string, string> | undefined) ?? {}),
+      ...((manifest.devDependencies as Record<string, string> | undefined) ??
+        {}),
+      ...((manifest.optionalDependencies as
+        | Record<string, string>
+        | undefined) ?? {}),
+    };
+
+    expect(
+      Object.keys(directDependencies).filter((name) =>
+        /^@rollup\/rollup-(?:aix|android|darwin|freebsd|linux|openbsd|sunos|win32)-/.test(
+          name,
+        ),
+      ),
+    ).toEqual([]);
   });
 });
 
