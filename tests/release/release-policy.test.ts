@@ -519,6 +519,17 @@ describe("release build workflow contracts", () => {
     expect(workflow).not.toMatch(/npm run build\s*$/m);
   });
 
+  it("authenticates the isolated documentation publisher with the scoped workflow token", () => {
+    const workflow = readWorkflow("deploy.yml");
+    expect(workflow).toMatch(/permissions:\s*\n\s+contents:\s*write/m);
+    expect(workflow).toContain(
+      "DOCUMENTATION_PUBLISH_TOKEN: ${{ secrets.GITHUB_TOKEN }}",
+    );
+    expect(workflow).toContain(
+      'git remote set-url origin "https://x-access-token:${DOCUMENTATION_PUBLISH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"',
+    );
+  });
+
   it("build and remaining deploy actions use immutable action SHAs", () => {
     for (const workflow of [
       readWorkflow("release-build.yml"),

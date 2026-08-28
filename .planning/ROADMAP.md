@@ -68,7 +68,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-09-PLAN.md — Install six independent merge-queue checks and verify the protected main ruleset.
+- [x] 01-09-PLAN.md — Install six independent merge-queue checks and verify the protected main ruleset.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -225,7 +225,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Executable Financial Test and Release Gate | 8/10 | Blocked |  |
+| 1. Executable Financial Test and Release Gate | 9/10 | Blocked |  |
 | 2. Tenant, Role, and Evidence Security | 0/TBD | Not started | - |
 | 3. Exact Money and Rounding Contract | 0/TBD | Not started | - |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
