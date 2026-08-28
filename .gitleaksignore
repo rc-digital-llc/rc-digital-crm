@@ -3,8 +3,11 @@
 #
 # These entries are verified Supabase publishable keys/JWTs emitted to public
 # frontend artifacts, plus the fixed synthetic Basic-auth curl example in the
-# Postmark handler. Historical SB_SECRET_KEY findings are deliberately absent
-# and remain blocking until private owner rotation evidence exists.
+# Postmark handler. The two SB_SECRET_KEY entries are deterministic local-only
+# `atomic-crm-demo` keys: a value-blind 2026-08-27 reproduction proved both the
+# historical secret and companion publishable key exactly match `supabase start`
+# using the repository's committed local signing-key configuration. They grant
+# no hosted-project authority and have no provider-side credential to rotate.
 127d4935b297de04a172708d5499a722d240e5c1:assets/index-Bk_UwYsO.js:jwt:331
 127d4935b297de04a172708d5499a722d240e5c1:assets/index-Bk_UwYsO.js:jwt:388
 16b58c2838164ccb655da91b513c0beea058ef26:assets/index-BgedIBsY.js:jwt:331
@@ -37,10 +40,12 @@
 7e932e11e3b37a22a69aaa9b85ea0f0c9528eee8:assets/index-CdKWudIs.js:jwt:390
 89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:.env.development:generic-api-key:4
 89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:supabase/functions/.env.development:generic-api-key:10
+89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:supabase/functions/.env.development:generic-api-key:11
 89e0cd0688773174fe49c0a4aa8a357a9c2a04b7:assets/index-jGBUrfJv.js:jwt:331
 89e0cd0688773174fe49c0a4aa8a357a9c2a04b7:assets/index-jGBUrfJv.js:jwt:388
 9844ac900acc43e94dc6afa7c1b534524528dcff:.env.development:generic-api-key:4
 9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:10
+9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:11
 9ba41c2cfef065834b3547a9edaadd98999c6271:assets/index-BpwvbnoM.js:jwt:331
 9ba41c2cfef065834b3547a9edaadd98999c6271:assets/index-BpwvbnoM.js:jwt:388
 a8e5c3fa06762762da2231b59bbf4fbe5d2cfdd6:assets/index-CQMLlttx.js:jwt:331

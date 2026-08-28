@@ -61,6 +61,30 @@ describe("clean migration verifier", () => {
     ).toThrow(/differ/i);
   });
 
+  it("parses current rendered CLI history and rejects missing remote versions", () => {
+    const renderedHistory = `
+┌────────────────┬────────────────┬─────────────────────┐
+│ Local          │ Remote         │ Time (UTC)          │
+├────────────────┼────────────────┼─────────────────────┤
+│ \`20240101000000\` │ \`20240101000000\` │ \`2024-01-01 00:00:00\` │
+│ \`20240202000000\` │ \`20240202000000\` │ \`2024-02-02 00:00:00\` │
+└────────────────┴────────────────┴─────────────────────┘
+`;
+
+    expect(parseMigrationListOutput(renderedHistory)).toEqual([
+      "20240101000000",
+      "20240202000000",
+    ]);
+    expect(() =>
+      parseMigrationListOutput(
+        renderedHistory.replace(
+          "│ `20240202000000` │ `20240202000000` │",
+          "│ `20240202000000` │ ` `              │",
+        ),
+      ),
+    ).toThrow(/differ/i);
+  });
+
   it("stops after one reset failure without retrying assertions", async () => {
     const calls: string[][] = [];
     const execute = async (command: string, args: string[]) => {

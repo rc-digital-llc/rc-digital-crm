@@ -3,7 +3,7 @@
 @import "./styles/twenty-design-system.css";
 
 /* Inter font via Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 
 @custom-variant dark (&:is(.dark *));
 
@@ -65,16 +65,16 @@
   --border: #ebebeb;
   --input: #ebebeb;
   --ring: #0f3460;
-  --chart-1: #7C5EE9;
-  --chart-2: #00BCD4;
-  --chart-3: #FF9800;
-  --chart-4: #4CAF50;
+  --chart-1: #7c5ee9;
+  --chart-2: #00bcd4;
+  --chart-3: #ff9800;
+  --chart-4: #4caf50;
   --chart-5: #e94560;
-  --sidebar: #1C1C1E;
+  --sidebar: #1c1c1e;
   --sidebar-foreground: rgba(255, 255, 255, 0.87);
   --sidebar-primary: #e94560;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2C2C2E;
+  --sidebar-accent: #2c2c2e;
   --sidebar-accent-foreground: rgba(255, 255, 255, 0.87);
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #0f3460;
@@ -93,32 +93,32 @@
 .dark {
   --background: #111113;
   --foreground: #f0f0f0;
-  --card: #1C1C1E;
+  --card: #1c1c1e;
   --card-foreground: #f0f0f0;
-  --popover: #1C1C1E;
+  --popover: #1c1c1e;
   --popover-foreground: #f0f0f0;
   --primary: #f0f0f0;
   --primary-foreground: #1a1a2e;
-  --secondary: #2C2C2E;
+  --secondary: #2c2c2e;
   --secondary-foreground: #f0f0f0;
-  --muted: #2C2C2E;
+  --muted: #2c2c2e;
   --muted-foreground: #a0a0a0;
-  --accent: #2C2C2E;
+  --accent: #2c2c2e;
   --accent-foreground: #f0f0f0;
   --destructive: #e94560;
   --border: rgba(255, 255, 255, 0.12);
   --input: rgba(255, 255, 255, 0.12);
   --ring: #0f3460;
-  --chart-1: #7C5EE9;
-  --chart-2: #00BCD4;
-  --chart-3: #FF9800;
-  --chart-4: #4CAF50;
+  --chart-1: #7c5ee9;
+  --chart-2: #00bcd4;
+  --chart-3: #ff9800;
+  --chart-4: #4caf50;
   --chart-5: #e94560;
   --sidebar: #111113;
   --sidebar-foreground: #f0f0f0;
   --sidebar-primary: #e94560;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2C2C2E;
+  --sidebar-accent: #2c2c2e;
   --sidebar-accent-foreground: #f0f0f0;
   --sidebar-border: rgba(255, 255, 255, 0.08);
   --sidebar-ring: #0f3460;
@@ -182,7 +182,12 @@ input[type="time"] {
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family:
+      "Inter",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

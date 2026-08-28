@@ -21,15 +21,16 @@ export const leadSources = [
   { value: "partner", label: "Partner" },
 ];
 
-export const leadStatusColorMap: Record<string, { bg: string; text: string }> = {
-  new: { bg: "rgba(33, 150, 243, 0.12)", text: "#2196F3" },
-  contacted: { bg: "rgba(124, 94, 233, 0.12)", text: "#7C5EE9" },
-  qualifying: { bg: "rgba(255, 152, 0, 0.12)", text: "#FF9800" },
-  qualified: { bg: "rgba(76, 175, 80, 0.12)", text: "#4CAF50" },
-  unqualified: { bg: "rgba(156, 163, 175, 0.12)", text: "#9CA3AF" },
-  converted: { bg: "rgba(0, 188, 212, 0.12)", text: "#00BCD4" },
-  lost: { bg: "rgba(233, 69, 96, 0.12)", text: "#e94560" },
-};
+export const leadStatusColorMap: Record<string, { bg: string; text: string }> =
+  {
+    new: { bg: "rgba(33, 150, 243, 0.12)", text: "#2196F3" },
+    contacted: { bg: "rgba(124, 94, 233, 0.12)", text: "#7C5EE9" },
+    qualifying: { bg: "rgba(255, 152, 0, 0.12)", text: "#FF9800" },
+    qualified: { bg: "rgba(76, 175, 80, 0.12)", text: "#4CAF50" },
+    unqualified: { bg: "rgba(156, 163, 175, 0.12)", text: "#9CA3AF" },
+    converted: { bg: "rgba(0, 188, 212, 0.12)", text: "#00BCD4" },
+    lost: { bg: "rgba(233, 69, 96, 0.12)", text: "#e94560" },
+  };
 
 export const activityTypeIcons: Record<string, string> = {
   page_view: "FileText",

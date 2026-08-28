@@ -108,10 +108,36 @@ export function parseMigrationListOutput(output) {
       throw error;
     }
   }
+
+  const cleanCell = (cell) =>
+    cell
+      .replace(/\x1b\[[0-?]*[ -\/]*[@-~]/g, "")
+      .replace(/`/g, "")
+      .trim();
+  let localIndex = -1;
+  let remoteIndex = -1;
   const versions = [];
   for (const line of text.split(/\r?\n/)) {
-    const match = /^\s*(\d{14})\s*\|/.exec(line);
-    if (match) versions.push(match[1]);
+    const cells = line.split(/[|│]/).map(cleanCell);
+    const normalized = cells.map((cell) => cell.toLowerCase());
+    const headerLocalIndex = normalized.indexOf("local");
+    const headerRemoteIndex = normalized.indexOf("remote");
+    if (headerLocalIndex !== -1 && headerRemoteIndex !== -1) {
+      localIndex = headerLocalIndex;
+      remoteIndex = headerRemoteIndex;
+      continue;
+    }
+    if (localIndex === -1 || remoteIndex === -1) continue;
+
+    const local = cells[localIndex] ?? "";
+    const remote = cells[remoteIndex] ?? "";
+    const hasMigrationVersion =
+      /^\d{14}$/.test(local) || /^\d{14}$/.test(remote);
+    if (!hasMigrationVersion) continue;
+    if (!/^\d{14}$/.test(local) || local !== remote) {
+      throw new Error("local and database migration versions differ");
+    }
+    versions.push(remote);
   }
   return versions;
 }

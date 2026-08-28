@@ -11,7 +11,14 @@ import {
   scanBundleTree,
   summarizeFindings,
   validateGitleaksConfig,
+  validateGitleaksIgnore,
 } from "../../scripts/release/security-gate.mjs";
+
+const repositoryRoot = path.resolve(import.meta.dirname, "../..");
+const provenLocalSecretFingerprints = [
+  "89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:supabase/functions/.env.development:generic-api-key:11",
+  "9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:11",
+];
 
 const syntheticFinding = {
   RuleID: "generic-api-key",
@@ -99,6 +106,23 @@ describe("release security secret gate", () => {
         'title = "RC Digital release scan"\n[extend]\nuseDefault = true',
       ),
     ).not.toThrow();
+  });
+
+  it("pins only the two value-blind proven local Supabase secret fingerprints", () => {
+    const ignoreText = fs.readFileSync(
+      path.join(repositoryRoot, ".gitleaksignore"),
+      "utf8",
+    );
+    const entries = validateGitleaksIgnore(ignoreText);
+
+    expect(entries).toEqual(
+      expect.arrayContaining(provenLocalSecretFingerprints),
+    );
+    expect(() =>
+      validateGitleaksIgnore(
+        `${ignoreText}\n0123456789abcdef0123456789abcdef01234567:unsafe.env:generic-api-key:1\n`,
+      ),
+    ).toThrow(/differs from reviewed policy/i);
   });
 
   it("keeps a synthetic committed secret blocking with a redacted rotation id", () => {

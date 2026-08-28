@@ -9,7 +9,10 @@ export const TasksList = () => {
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
         <div className="mr-3 flex">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(124, 94, 233, 0.12)" }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "rgba(124, 94, 233, 0.12)" }}
+          >
             <CheckSquare className="w-4 h-4 text-[#7C5EE9]" />
           </div>
         </div>

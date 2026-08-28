@@ -155,14 +155,16 @@ const Header = () => {
           className="flex items-center gap-2.5 flex-1 min-w-0 no-underline"
         >
           <div className="w-8 h-8 rounded-full bg-[var(--rc-highlight)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-            {identity?.fullName
-              ? identity.fullName
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2)
-              : <User className="w-4 h-4" />}
+            {identity?.fullName ? (
+              identity.fullName
+                .split(" ")
+                .map((n: string) => n[0])
+                .join("")
+                .toUpperCase()
+                .slice(0, 2)
+            ) : (
+              <User className="w-4 h-4" />
+            )}
           </div>
           <span className="text-sm text-[var(--sidebar-text)] truncate">
             {identity?.fullName ?? "Profile"}

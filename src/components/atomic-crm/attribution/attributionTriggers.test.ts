@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const migrationsDir = path.resolve(__dirname, "../../../../supabase/migrations");
+const migrationsDir = path.resolve(
+  __dirname,
+  "../../../../supabase/migrations",
+);
 
 function readMigration(filename: string): string {
   return fs.readFileSync(path.join(migrationsDir, filename), "utf-8");

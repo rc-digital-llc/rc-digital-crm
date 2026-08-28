@@ -34,7 +34,10 @@ export const HotContacts = () => {
     <div className="flex flex-col gap-2">
       <div className="flex items-center">
         <div className="mr-3 flex">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(233, 69, 96, 0.12)" }}>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: "rgba(233, 69, 96, 0.12)" }}
+          >
             <Users className="w-4 h-4 text-[#e94560]" />
           </div>
         </div>

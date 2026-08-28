@@ -3,7 +3,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 // Read migration files for SQL verification
-const migrationsDir = path.resolve(__dirname, "../../../../supabase/migrations");
+const migrationsDir = path.resolve(
+  __dirname,
+  "../../../../supabase/migrations",
+);
 
 function readMigration(filename: string): string {
   return fs.readFileSync(path.join(migrationsDir, filename), "utf-8");
@@ -44,7 +47,9 @@ describe("Lead Conversion Function (SQL)", () => {
   });
 
   it("finds or creates company from company_name", () => {
-    expect(sql).toContain("SELECT id INTO v_company_id FROM companies WHERE name = v_lead.company_name");
+    expect(sql).toContain(
+      "SELECT id INTO v_company_id FROM companies WHERE name = v_lead.company_name",
+    );
     expect(sql).toContain("INSERT INTO companies (name");
   });
 

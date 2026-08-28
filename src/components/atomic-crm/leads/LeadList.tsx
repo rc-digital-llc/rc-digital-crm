@@ -1,14 +1,9 @@
 import { useState } from "react";
-import {
-  useGetIdentity,
-  useListContext,
-  type Identifier,
-} from "ra-core";
+import { useGetIdentity, useListContext } from "ra-core";
 import { List } from "@/components/admin/list";
 import { SearchInput } from "@/components/admin/search-input";
 import { SelectInput } from "@/components/admin/select-input";
 import { FilterButton } from "@/components/admin/filter-form";
-import { CreateButton } from "@/components/admin/create-button";
 import { Button } from "@/components/ui/button";
 import { LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Link } from "react-router";
@@ -19,11 +14,7 @@ import { TopToolbar } from "../layout/TopToolbar";
 import type { Lead } from "../types";
 import { LeadScoreBadge } from "./LeadScoreBadge";
 import { LeadCreate } from "./LeadCreate";
-import {
-  leadStatuses,
-  leadSources,
-  leadStatusColorMap,
-} from "./leadStatuses";
+import { leadStatuses, leadSources, leadStatusColorMap } from "./leadStatuses";
 
 const LeadList = () => {
   const { identity } = useGetIdentity();
@@ -58,9 +49,7 @@ const LeadList = () => {
         title={false}
         sort={{ field: "lead_score", order: "DESC" }}
         filters={leadFilters}
-        actions={
-          <LeadActions onCreateClick={() => setCreateOpen(true)} />
-        }
+        actions={<LeadActions onCreateClick={() => setCreateOpen(true)} />}
         pagination={null}
       >
         <CrmErrorBoundary fallbackTitle="Lead pipeline failed to load">
@@ -72,11 +61,7 @@ const LeadList = () => {
   );
 };
 
-const LeadActions = ({
-  onCreateClick,
-}: {
-  onCreateClick: () => void;
-}) => (
+const LeadActions = ({ onCreateClick }: { onCreateClick: () => void }) => (
   <TopToolbar>
     <FilterButton />
     <Button size="sm" onClick={onCreateClick}>
@@ -180,10 +165,7 @@ const LeadKanban = ({ leads }: { leads: Lead[] }) => {
 };
 
 const LeadCard = ({ lead }: { lead: Lead }) => (
-  <Link
-    to={`/leads/${lead.id}/show`}
-    className="no-underline"
-  >
+  <Link to={`/leads/${lead.id}/show`} className="no-underline">
     <div className="bg-card rounded-lg border border-border p-3.5 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer">
       <div className="flex items-start justify-between mb-2">
         <div className="min-w-0">
@@ -216,12 +198,24 @@ const LeadTable = ({ leads }: { leads: Lead[] }) => (
     <table className="w-full">
       <thead>
         <tr className="bg-muted/50 text-left">
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Name</th>
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Company</th>
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Source</th>
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Score</th>
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Status</th>
-          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">Created</th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Name
+          </th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Company
+          </th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Source
+          </th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Score
+          </th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Status
+          </th>
+          <th className="px-4 py-3 text-xs font-medium text-muted-foreground">
+            Created
+          </th>
         </tr>
       </thead>
       <tbody>

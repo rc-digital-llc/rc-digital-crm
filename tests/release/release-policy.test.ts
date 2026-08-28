@@ -70,6 +70,12 @@ function actionReferences(workflow: string): string[] {
   );
 }
 
+function readPackageManifest(): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, "package.json"), "utf8"),
+  ) as Record<string, unknown>;
+}
+
 function policyErrors(policy: Record<string, unknown>): string[] {
   const errors: string[] = [];
   const checks = policy.required_checks as Record<string, unknown> | undefined;
@@ -389,12 +395,48 @@ describe("GitHub workflow release contracts", () => {
       /contents:\s*write|checks:\s*write|secrets\./,
     );
   });
+
+  it("installs the release secret scanner from a checksum-pinned archive", () => {
+    const workflow = readWorkflow("financial-release-gate.yml");
+    expect(workflow).toContain("GITLEAKS_VERSION: 8.30.1");
+    expect(workflow).toContain(
+      "GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+    );
+    expect(workflow).toContain("sha256sum --check --strict");
+    expect(workflow).toContain('"$binary_dir/gitleaks" version');
+  });
 });
 
 describe("GitHub ruleset release contracts", () => {
   it("ruleset targets main with exact checks, merge queue, and no bypass", () => {
     const document = readJson("main-ruleset.json");
     expect(rulesetErrors(document)).toEqual([]);
+  });
+
+  it("requires owner approval on release-bot pull requests without a second human", () => {
+    const document = readJson("main-ruleset.json");
+    expect(document.governance).toEqual({
+      mode: "single_owner",
+      required_pull_request_approvals: 1,
+      accepted_risk: "no_independent_human_reviewer",
+    });
+    const rules = (document.ruleset as Record<string, unknown>).rules as Record<
+      string,
+      unknown
+    >[];
+    const pullRequest = rules.find((rule) => rule.type === "pull_request")!;
+    expect(pullRequest.parameters).toMatchObject({
+      require_last_push_approval: false,
+      required_approving_review_count: 1,
+      required_review_thread_resolution: true,
+    });
+    expect(rules.some((rule) => rule.type === "merge_queue")).toBe(true);
+    expect(rules.some((rule) => rule.type === "required_status_checks")).toBe(
+      true,
+    );
+    expect((document.ruleset as Record<string, unknown>).bypass_actors).toEqual(
+      [],
+    );
   });
 
   it("ruleset rejects a missing queue, renamed check, or bypass actor", () => {
@@ -534,6 +576,42 @@ describe("release promotion workflow contracts", () => {
     expect(runbook).toMatch(/schema.*functions.*frontend.*dormant/is);
     expect(runbook).toMatch(/stop conditions/i);
     expect(runbook).toMatch(/private.*receipt.*readback/is);
+    expect(runbook).toMatch(/single-owner/i);
+    expect(runbook).toMatch(/self-review is allowed/i);
+  });
+});
+
+describe("protected release environment contracts", () => {
+  it("requires explicit owner approval in single-owner mode", () => {
+    const intent = readJson("protected-environments.json");
+    expect(intent).toMatchObject({
+      review_mode: "single_owner",
+      required_reviewer_login: "Rconman99",
+      prevent_self_review: false,
+      accepted_risk: "no_independent_reviewer",
+    });
+  });
+});
+
+describe("CI package portability", () => {
+  it("does not directly pin a platform-specific Rollup binary", () => {
+    const manifest = readPackageManifest();
+    const directDependencies = {
+      ...((manifest.dependencies as Record<string, string> | undefined) ?? {}),
+      ...((manifest.devDependencies as Record<string, string> | undefined) ??
+        {}),
+      ...((manifest.optionalDependencies as
+        | Record<string, string>
+        | undefined) ?? {}),
+    };
+
+    expect(
+      Object.keys(directDependencies).filter((name) =>
+        /^@rollup\/rollup-(?:aix|android|darwin|freebsd|linux|openbsd|sunos|win32)-/.test(
+          name,
+        ),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -548,6 +626,10 @@ describe("financial enablement contracts", () => {
     );
     expect(workflow).not.toContain("environment: production-release");
     expect(workflow).toMatch(/group:\s*production-financial-enable-/);
+    expect(workflow).toContain(
+      "name: separately approve one financial feature",
+    );
+    expect(workflow).not.toMatch(/independent(?:ly)? approve/i);
   });
 
   it("verifies a dormant full chain and invariants immediately before enablement", () => {

@@ -73,6 +73,15 @@ but production financial capabilities remain dormant.
 - **D-11:** A protected production environment requires authenticated
   release-owner approval before promotion. Enabling a financial feature is a
   separate explicit approval after all stage receipts pass.
+- **D-11A (owner override, 2026-08-28):** The project operates without an
+  independent human reviewer. Pull requests are opened by the scoped release
+  bot and require one authenticated `Rconman99` approval while the no-bypass
+  ten-check merge queue remains mandatory. A new push dismisses stale reviews;
+  last-push approval is disabled because the sole owner is also the commit
+  pusher. Protected promotion and enablement each retain a separate owner
+  approval, with environment self-review allowed. The separation-of-duties
+  reduction is an accepted, versioned single-owner risk and does not relax
+  receipts, stage order, or non-overridable financial checks.
 - **D-12:** Frontend and functions roll back to pinned known-good artifacts.
   Database failure normally produces a forward-safe repair while the feature
   remains disabled. Destructive migration reversal or database restoration is
@@ -229,4 +238,3 @@ None — discussion stayed within Phase 1 scope.
 
 *Phase: 1-executable-financial-test-and-release-gate*
 *Context gathered: 2026-08-25*
-
