@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: blocked
 stopped_at: Phase 01 blocked on independent review, scoped credentials/targets, and protected dry runs
-last_updated: "2026-08-27T16:21:47.000Z"
-last_activity: 2026-08-27
+last_updated: "2026-08-28T16:12:18.000Z"
+last_activity: 2026-08-28
 progress:
   total_phases: 10
   completed_phases: 0
@@ -31,7 +31,7 @@ history.
 Phase: 01 (executable-financial-test-and-release-gate) — BLOCKED
 Plan: 8 of 10 complete; Plans 09 and 10 remain blocked on exact live acceptance checks
 Status: Release security is clean; live merge-queue proof and protected synthetic release proof remain
-Last activity: 2026-08-27
+Last activity: 2026-08-28
 
 Progress: [████████░░] 80%
 
@@ -90,10 +90,11 @@ None yet.
 ### Blockers/Concerns
 
 - Plan 01-09 now has an organization-owned source repository and an exact live
-  no-bypass `main-financial-release` ruleset. PR #2 proves all fast checks and
-  five database/provider financial lanes on the live repository. The local
-  release-security gate now passes, but its new PR head still needs live CI and
-  a second organization reviewer before the required merge-group candidate.
+  no-bypass `main-financial-release` ruleset. Replacement PR #3 at `04c2926`
+  passes all four fast checks and all six financial checks, including release
+  security. A second trusted reviewer is the remaining prerequisite for the
+  required merge-group candidate; the organization currently has only the PR
+  author as a member/collaborator.
 - Plan 01-10 now has a private organization-owned evidence repository plus
   `production-release` and `production-financial-enable` environments with
   protected-branch restrictions, no admin bypass, and self-review prevention.

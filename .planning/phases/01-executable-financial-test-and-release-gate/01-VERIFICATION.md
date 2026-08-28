@@ -19,7 +19,7 @@ score: 2/4 must-haves verified
 |---|-------|--------|----------|
 | 1 | The complete migration chain replays cleanly and upgrades the immutable representative baseline without silent fact changes. | ✓ VERIFIED | All 33 migrations replay; isolated schema push passes; baseline upgrade preserves every declared fingerprint except the explicit grant transformation. |
 | 2 | Real PostgreSQL, RLS, RPC, trigger, Auth/PostgREST, Edge, provider, replay, and concurrency behavior executes under representative claims. | ✓ VERIFIED | 75 live pgTAP assertions, Auth/PostgREST integration, 8 Edge/provider contracts, 18 concurrency TAP assertions, and 7 concurrency Vitest cases pass. |
-| 3 | Live merge authority blocks money-bearing changes on every required independent check. | ⚠ PARTIAL | The source repository is organization-owned and the exact no-bypass main ruleset passes authenticated readback. PR #2 proves all fast checks and five database/provider financial lanes; the new release-security head needs live CI and an independent reviewer before a merge-group candidate. |
+| 3 | Live merge authority blocks money-bearing changes on every required independent check. | ⚠ PARTIAL | The source repository is organization-owned and the exact no-bypass main ruleset passes authenticated readback. Replacement PR #3 at `04c2926` passes all four fast checks and all six financial checks, including release security; an independent reviewer is still required before a merge-group candidate can be observed. |
 | 4 | A release owner can execute separately approved, receipt-linked production promotion and enablement through private evidence. | ⚠ PARTIAL | The private evidence repository passes authenticated/private readback and both protected environments exist with no admin bypass or self-review. Scoped secrets/targets, an independent reviewer, and the synthetic protected dry run remain absent. |
 
 **Score:** 2/4 truths verified
@@ -56,7 +56,7 @@ score: 2/4 must-haves verified
 |-------------|--------|----------------|
 | REL-01: clean migration and representative upgrade | ✓ SATISFIED | - |
 | REL-02: real database, authorization, Edge/provider, replay, and concurrency tests | ✓ SATISFIED | - |
-| REL-03: blocking CI for money-bearing changes | ✗ BLOCKED | Live protection is installed, but the required fresh merge-group run still needs a live passing release-security result and an independent reviewer. |
+| REL-03: blocking CI for money-bearing changes | ✗ BLOCKED | Live protection is installed and all ten exact PR contexts pass, but the required fresh merge-group run still needs an independent reviewer. |
 | REL-04: independently verified staged production release | ✗ BLOCKED | Private evidence and environment policy exist; scoped secrets/targets, independent review, and synthetic live approval/readback proof are absent. |
 | REL-05: non-waivable vulnerability, secret, source-map, and coupling gates | ✓ SATISFIED | All four release-security classes pass; negative tests reject leaks, broad classifications, source maps, bundle markers, and workflow bypasses. |
 
@@ -72,8 +72,8 @@ stubs or bypasses.
 
 ### 1. Independent Review and Merge-Queue Candidate
 
-**Test:** Add a second trusted organization reviewer, obtain approval for PR #2,
-and enqueue it after the new release-security head passes live CI.
+**Test:** Add a second trusted organization reviewer, obtain approval for PR #3,
+and enqueue it now that all ten exact required contexts pass live CI.
 **Expected:** A fresh merge-group candidate runs all ten exact required contexts
 under the already verified no-bypass ruleset.
 **Why human:** The sole current organization member authored the PR and cannot
@@ -96,9 +96,9 @@ are owner-controlled inputs and cannot be fabricated from repository context.
 
 1. **A fresh merge-group proof cannot yet be produced**
    - Present: Organization ownership and exact no-bypass main ruleset readback.
-   - Missing: A fresh live passing release-security check and independent PR reviewer.
+   - Missing: An independent PR reviewer; the live release-security check now passes.
    - Impact: Plan 01-09 and REL-03 remain open despite live protection being installed.
-   - Fix: Push the clean security-gate head, add a second trusted reviewer, approve PR #2, and observe the unconditional merge-group checks.
+   - Fix: Add a second trusted reviewer, approve PR #3, enqueue it, and observe the unconditional merge-group checks.
 
 2. **Protected release infrastructure is only partially provisioned**
    - Present: Private evidence storage and two protected environments with no admin bypass, self-review prevention, and protected-branch restrictions.
