@@ -117,8 +117,8 @@ function loadIntent() {
     document.version !== "1.0.0" ||
     typeof document.repository !== "string" ||
     document.governance?.mode !== "single_owner" ||
-    document.governance?.required_pull_request_approvals !== 0 ||
-    document.governance?.accepted_risk !== "no_independent_reviewer" ||
+    document.governance?.required_pull_request_approvals !== 1 ||
+    document.governance?.accepted_risk !== "no_independent_human_reviewer" ||
     !document.ruleset
   ) {
     throw new Error("main ruleset intent is invalid");
@@ -151,7 +151,7 @@ function loadIntent() {
     (rule) => rule.type === "pull_request",
   );
   if (
-    pullRequestRule?.parameters?.required_approving_review_count !== 0 ||
+    pullRequestRule?.parameters?.required_approving_review_count !== 1 ||
     pullRequestRule?.parameters?.require_last_push_approval !== false
   ) {
     throw new Error("main ruleset differs from single-owner review policy");

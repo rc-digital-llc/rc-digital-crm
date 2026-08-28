@@ -413,12 +413,12 @@ describe("GitHub ruleset release contracts", () => {
     expect(rulesetErrors(document)).toEqual([]);
   });
 
-  it("declares single-owner governance without weakening automated merge authority", () => {
+  it("requires owner approval on release-bot pull requests without a second human", () => {
     const document = readJson("main-ruleset.json");
     expect(document.governance).toEqual({
       mode: "single_owner",
-      required_pull_request_approvals: 0,
-      accepted_risk: "no_independent_reviewer",
+      required_pull_request_approvals: 1,
+      accepted_risk: "no_independent_human_reviewer",
     });
     const rules = (document.ruleset as Record<string, unknown>).rules as Record<
       string,
@@ -427,7 +427,7 @@ describe("GitHub ruleset release contracts", () => {
     const pullRequest = rules.find((rule) => rule.type === "pull_request")!;
     expect(pullRequest.parameters).toMatchObject({
       require_last_push_approval: false,
-      required_approving_review_count: 0,
+      required_approving_review_count: 1,
       required_review_thread_resolution: true,
     });
     expect(rules.some((rule) => rule.type === "merge_queue")).toBe(true);

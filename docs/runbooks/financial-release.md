@@ -9,8 +9,10 @@ production mutation authority.
 - The private evidence repository, `RELEASE_PROVIDER_TARGET`, and
   `RELEASE_OWNER_LOGIN` repository variables are configured.
 - This repository operates in explicit single-owner mode because no independent
-  reviewer is available. The accepted risk is recorded in the versioned GitHub
-  control intent; it does not waive required checks, receipts, or stage order.
+  human reviewer is available. Pull requests are opened by the scoped release
+  bot and require one authenticated owner approval. New pushes dismiss stale
+  approvals; the accepted risk is recorded in the versioned GitHub control
+  intent and does not waive required checks, receipts, or stage order.
 - The `production-release` environment permits protected `main` only, requires
   the named release owner, allows that owner's self-review, and contains the
   private evidence, Supabase, and customer frontend secrets.
