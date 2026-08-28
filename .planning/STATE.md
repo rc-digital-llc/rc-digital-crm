@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: blocked
-stopped_at: Phase 01 blocked on merge-group proof, scoped credentials/targets, and protected dry runs
-last_updated: "2026-08-28T17:24:33.000Z"
+stopped_at: Phase 01 Plan 09 complete; Plan 10 blocked on scoped credentials/targets and protected dry runs
+last_updated: "2026-08-28T18:01:27.000Z"
 last_activity: 2026-08-28
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -29,30 +29,30 @@ history.
 ## Current Position
 
 Phase: 01 (executable-financial-test-and-release-gate) — BLOCKED
-Plan: 8 of 10 complete; Plans 09 and 10 remain blocked on exact live acceptance checks
-Status: Release security is clean; live merge-queue proof and protected synthetic release proof remain
+Plan: 9 of 10 complete; Plan 10 remains blocked on exact live acceptance checks
+Status: Merge authority is proven live; protected synthetic release proof remains
 Last activity: 2026-08-28
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 8
-- Average duration: 14 min
-- Total execution time: 1.9 hours
+- Total plans completed: 9
+- Average duration: 24 min
+- Total execution time: 3.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 01 | 8 | 111 min | 14 min |
+| Phase 01 | 9 | 216 min | 24 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 20 min, 13 min, 19 min, 14 min, 6 min
-- Trend: Establishing baseline
+- Last 5 plans: 19 min, 14 min, 6 min, 20 min, 105 min
+- Trend: Live-control rollout completed; protected release provisioning remains
 
 *Updated after each plan completion*
 | Phase 01 P01 | 8min | 3 tasks | 7 files |
@@ -63,6 +63,7 @@ Progress: [████████░░] 80%
 | Phase 01 P05 | 6min | 2 tasks | 6 files |
 | Phase 01 P06 | 7min | 2 tasks | 3 files |
 | Phase 01 P07 | 20min | 3 tasks | 13 files |
+| Phase 01 P09 | 105min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Replay and concurrency authority comes from unique claims, row locks, explicit stream ordering, and exact effects under real parallel PostgreSQL sessions. — Sequential mocks cannot prove simultaneous duplicate suppression.
 - [Phase 01]: Historical secret findings may be classified as local-only only after value-blind reproduction, and only exact hash-pinned fingerprints may be ignored. — Reproducible development fixtures should not force fictional provider rotation, while any broader exception must still fail closed.
 - [Phase 01]: A scoped release bot authors protected pull requests so the sole owner can provide the one required human approval; the same owner may separately approve both protected release stages. — The absence of an independent human reviewer is explicit and accepted; all automated checks, merge queue, signed/linear history, protected environments, and no-bypass controls remain mandatory.
+- [Phase 01]: Merge-queue fast checks must subscribe to `merge_group` and run unconditionally just like the financial lanes. — Required contexts that exist only on pull requests deadlock the queue instead of protecting `main`.
+- [Phase 01]: GitHub-signed GraphQL commits preserve required-signature enforcement when local signing identity is unavailable. — The signed squash tree was proven byte-for-byte identical before the PR branch was repointed, and the unsigned history remains on a recovery branch.
 
 ### Pending Todos
 
@@ -90,19 +93,17 @@ None yet.
 
 ### Blockers/Concerns
 
-- Plan 01-09 now has an organization-owned source repository and an exact live
-  no-bypass `main-financial-release` ruleset configured for explicit
-  single-owner governance: the release bot authors the PR and `Rconman99`
-  supplies the one required human approval. PR #3 is approved at `6c3e47d` and
-  passes all four fast checks plus all six financial checks, including release
-  security. A fresh merge-group candidate is the remaining live proof.
+- Plan 01-09 is complete. Release-bot-authored PR #3 used one authenticated
+  `Rconman99` approval, verified-signed commits, the no-bypass merge queue, and
+  all ten required contexts. Merge-group candidate `03c59d4` passed both the
+  fast and financial workflows before becoming the protected `main` commit.
 - Plan 01-10 now has a private organization-owned evidence repository plus
   `production-release` and `production-financial-enable` environments with
   protected-branch restrictions, no admin bypass, and explicit single-owner
   approval. The same owner may separately approve both stages. Scoped
   production/evidence secrets, provider/frontend target variables, and the
   synthetic protected dry run remain absent.
-- Phase 02 remains dependency-locked until Plans 01-09 and 01-10 pass;
+- Phase 02 remains dependency-locked until Plan 01-10 passes;
   it was not started or marked complete.
 - The repository has unrelated pre-existing uncommitted scan artifacts and
   source changes; they were preserved and excluded from Phase 1 commits.
@@ -117,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T17:24:33.000Z
-Stopped at: Plans 01-09 and 01-10 have live single-owner controls; merge-group proof, scoped secrets/targets, and protected dry runs remain
+Last session: 2026-08-28T18:01:27.000Z
+Stopped at: Plan 01-09 complete; Plan 01-10 awaits scoped secrets/targets and protected synthetic release proof
 Resume file: None

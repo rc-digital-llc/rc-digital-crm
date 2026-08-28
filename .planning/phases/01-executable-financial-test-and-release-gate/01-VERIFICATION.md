@@ -1,14 +1,14 @@
 ---
 phase: 01-executable-financial-test-and-release-gate
-verified: 2026-08-28T17:24:33Z
+verified: 2026-08-28T18:01:27Z
 status: gaps_found
-score: 2/4 must-haves verified
+score: 3/4 must-haves verified
 ---
 
 # Phase 1: Executable Financial Test and Release Gate Verification Report
 
 **Phase Goal:** Maintainers and release owners can prove that financial changes migrate, authorize, fail, and deploy safely before those changes can reach production.
-**Verified:** 2026-08-28T17:24:33Z
+**Verified:** 2026-08-28T18:01:27Z
 **Status:** gaps_found
 
 ## Goal Achievement
@@ -19,10 +19,10 @@ score: 2/4 must-haves verified
 |---|-------|--------|----------|
 | 1 | The complete migration chain replays cleanly and upgrades the immutable representative baseline without silent fact changes. | ✓ VERIFIED | All 33 migrations replay; isolated schema push passes; baseline upgrade preserves every declared fingerprint except the explicit grant transformation. |
 | 2 | Real PostgreSQL, RLS, RPC, trigger, Auth/PostgREST, Edge, provider, replay, and concurrency behavior executes under representative claims. | ✓ VERIFIED | 75 live pgTAP assertions, Auth/PostgREST integration, 8 Edge/provider contracts, 18 concurrency TAP assertions, and 7 concurrency Vitest cases pass. |
-| 3 | Live merge authority blocks money-bearing changes on every required check. | ⚠ PARTIAL | The source repository is organization-owned and the exact no-bypass main ruleset passes authenticated readback with explicit single-owner governance. Release-bot-authored PR #3 has the one required `Rconman99` approval at `6c3e47d` and passes all four fast plus all six financial checks; a fresh merge-group candidate still must be observed. |
+| 3 | Live merge authority blocks money-bearing changes on every required check. | ✓ VERIFIED | Release-bot-authored PR #3 used the one required `Rconman99` approval and verified-signed commits. Merge-group candidate `03c59d4` ran all four fast checks and all six financial checks successfully in Actions runs `33196583122` and `33196583084`, then became the protected `main` commit. |
 | 4 | A release owner can execute separately approved, receipt-linked production promotion and enablement through private evidence. | ⚠ PARTIAL | The private evidence repository passes authenticated/private readback and both protected environments exist with no admin bypass, protected-branch restrictions, and explicit single-owner approval. The same owner may separately approve both stages. Scoped secrets/targets and the synthetic protected dry run remain absent. |
 
-**Score:** 2/4 truths verified
+**Score:** 3/4 truths verified
 
 ### Required Artifacts
 
@@ -31,10 +31,10 @@ score: 2/4 must-haves verified
 | Migration and baseline harness | Clean replay, isolated push, immutable upgrade comparison | ✓ EXISTS + SUBSTANTIVE | Dedicated scripts, fixtures, pgTAP, and Make targets execute successfully. |
 | Authorization/provider/concurrency harness | Real local service and simultaneous database proof | ✓ EXISTS + SUBSTANTIVE | SQL, HTTP, Edge, webhook, provider, restart, replay, ordering, and parallel fixtures pass. |
 | Release security gate | Dependency, secret, bundle, and coupling enforcement | ✓ EXISTS + SUBSTANTIVE | Dependency, fully redacted history/tree secret, bundle, and coupling checks pass; exact local-only classifications are hash-pinned against expansion. |
-| Merge control | Exact workflow checks plus live no-bypass ruleset | ⚠ LIVE CONTROL PARTIAL | Organization ownership, release-bot authorship, explicit one-owner-approval policy, authenticated approval, exact ruleset readback, and all current-head checks pass; merge-group proof remains. |
+| Merge control | Exact workflow checks plus live no-bypass ruleset | ✓ OPERATIONALLY VERIFIED | Organization ownership, release-bot authorship, one-owner approval, signed commits, exact ruleset readback, ten PR contexts, and ten fresh merge-group contexts all pass with no bypass. |
 | Staged release control | Immutable build, private receipts, promotion, enablement, rollback | ⚠ LIVE CONTROL PARTIAL | Private storage and protected single-owner environment policy exist; credentials, target variables, and synthetic approvals remain. |
 
-**Artifacts:** 3/5 operationally verified; 2/5 source-complete but unavailable live
+**Artifacts:** 4/5 operationally verified; 1/5 source-complete but unavailable live
 
 ### Key Link Verification
 
@@ -56,11 +56,11 @@ score: 2/4 must-haves verified
 |-------------|--------|----------------|
 | REL-01: clean migration and representative upgrade | ✓ SATISFIED | - |
 | REL-02: real database, authorization, Edge/provider, replay, and concurrency tests | ✓ SATISFIED | - |
-| REL-03: blocking CI for money-bearing changes | ✗ BLOCKED | Live protection, sole-owner approval, and all ten exact PR contexts pass under the accepted release-bot policy, but the required fresh merge-group run has not been observed. |
+| REL-03: blocking CI for money-bearing changes | ✓ SATISFIED | PR #3 and merge-group `03c59d4` each passed all ten exact required contexts under the live no-bypass ruleset before merge. |
 | REL-04: independently verified staged production release | ✗ BLOCKED | Private evidence and protected single-owner environment policy exist; scoped secrets/targets and synthetic live approval/readback proof are absent. |
 | REL-05: non-waivable vulnerability, secret, source-map, and coupling gates | ✓ SATISFIED | All four release-security classes pass; negative tests reject leaks, broad classifications, source maps, bundle markers, and workflow bypasses. |
 
-**Coverage:** 3/5 requirements satisfied
+**Coverage:** 4/5 requirements satisfied
 
 ## Anti-Patterns Found
 
@@ -70,15 +70,7 @@ stubs or bypasses.
 
 ## Human Verification Required
 
-### 1. Merge-Queue Candidate
-
-**Test:** Enqueue approved PR #3 now that all ten exact required contexts pass.
-**Expected:** A fresh merge-group candidate runs all ten exact required contexts
-under the already verified no-bypass ruleset.
-**Why human:** Enqueueing authorizes a repository merge action; it is intentionally
-not performed as part of readback verification.
-
-### 2. Protected Release Environments and Private Evidence
+### 1. Protected Release Environments and Private Evidence
 
 **Test:** Provision the declared scoped secrets and target variables, then run a
 synthetic build → schema → functions → frontend → dormant chain and a separate
@@ -93,13 +85,7 @@ approval are owner-controlled inputs and cannot be fabricated from repository co
 
 ### Critical Gaps (Block Progress)
 
-1. **A fresh merge-group proof cannot yet be produced**
-   - Present: Organization ownership, release-bot authorship, explicit single-owner policy, exact no-bypass main ruleset readback, authenticated `Rconman99` approval, and all required PR checks at `6c3e47d`.
-   - Missing: Enqueue authorization and the resulting merge-group observation.
-   - Impact: Plan 01-09 and REL-03 remain open despite live protection being installed.
-   - Fix: Enqueue PR #3 and observe the unconditional merge-group checks.
-
-2. **Protected release infrastructure is only partially provisioned**
+1. **Protected release infrastructure is only partially provisioned**
    - Present: Private evidence storage and two protected environments with no admin bypass, explicit single-owner approval, and protected-branch restrictions.
    - Missing: Scoped variables/secrets and synthetic dry-run receipts.
    - Impact: Approval isolation, private readback, staged promotion, and separate enablement cannot be proven; Plan 01-10 and REL-04 remain open.
@@ -119,11 +105,11 @@ security audit and this phase verification.
 
 **Verification approach:** Goal-backward from the four Phase 1 success criteria
 **Must-haves source:** `.planning/ROADMAP.md` and Plans 01-01 through 01-10
-**Automated checks:** 21 mapped task checks passed; 3 external checks failed closed
-**Human checks required:** 2
+**Automated checks:** 22 mapped task checks passed; the protected-environment verifier fails closed only on nine declared missing secrets
+**Human checks required:** 1
 **Total verification time:** Full isolated financial gate plus targeted final review checks
 
 ---
 
-_Verified: 2026-08-28T17:24:33Z_
+_Verified: 2026-08-28T18:01:27Z_
 _Verifier: Codex (inline phase verifier)_

@@ -2,7 +2,7 @@
 phase: 01
 slug: executable-financial-test-and-release-gate
 status: blocked
-threats_open: 3
+threats_open: 2
 asvs_level: 1
 created: 2026-08-26
 ---
@@ -31,7 +31,7 @@ created: 2026-08-26
 
 | Threat ID | Category | Component | Disposition | Mitigation and Evidence | Status |
 |-----------|----------|-----------|-------------|-------------------------|--------|
-| T-01-01 | Elevation of Privilege | Required checks and live main ruleset | mitigate | Organization ownership and authenticated exact no-bypass ruleset readback pass with explicit single-owner governance. Release-bot-authored PR #3 has the one required `Rconman99` approval at `6c3e47d` and all four fast plus all six financial contexts pass; only the required merge-group observation remains. | open |
+| T-01-01 | Elevation of Privilege | Required checks and live main ruleset | mitigate | Organization ownership, release-bot authorship, one authenticated owner approval, verified-signed commits, exact no-bypass ruleset readback, and all ten required PR contexts pass. Merge-group `03c59d4` then ran all four fast and all six financial contexts successfully before becoming `main`. | closed |
 | T-01-02 | Repudiation / Spoofing | Receipts, approvals, skipped checks | accept | Canonical receipts still require authenticated-owner approval and exact successful checks; merge-group paths are unconditional. A scoped bot authors the PR so the sole owner supplies the required approval, and the same owner may separately approve both release stages. The loss of independent human corroboration is explicitly accepted; audit receipts, protected environments, and no-bypass automation remain mandatory. | closed |
 | T-01-03 | Tampering / Information Disclosure | Supabase lane, container selection, PR jobs | mitigate | Local-only target validation, exact container selection, bounded bootstrap retry, redaction, cleanup, read-only workflow permissions, and no production secrets are implemented and tested. | closed |
 | T-01-04 | Tampering | Migration chain and representative upgrade | mitigate | Clean replay, exact migration history, frozen baseline fingerprints, declared transformations, and no assertion retry pass against live PostgreSQL. | closed |
@@ -70,12 +70,14 @@ created: 2026-08-26
 | 2026-08-27 | 17 | 12 | 5 | Codex live-control follow-up |
 | 2026-08-27 | 17 | 13 | 4 | Codex release-security close-out |
 | 2026-08-28 | 17 | 14 | 3 | Codex single-owner control readback |
+| 2026-08-28 | 17 | 15 | 2 | Codex merge-queue completion audit |
 
 ### Live Gate Evidence
 
 - `node scripts/release/verify-github-controls.mjs --self-test`: pass.
 - `node scripts/release/verify-github-controls.mjs --check`: pass against `rc-digital-llc/rc-digital-crm`; report SHA-256 `a44f0db82c5eb7175da15804a68d45e33d3b09ea4fa9c67f46e40e4a4dcee93f`.
-- PR #3 is authored by `rc-digital-release-bot`; `Rconman99` supplied the required approval at `6c3e47d8e963647501f03c148b701f76b712ff7c`, and all four fast plus all six financial checks pass.
+- PR #3 is authored by `rc-digital-release-bot`; `Rconman99` supplied the required approval, signed head `255c1f20ada4847a934dec2bd61b88dce5281f68` passed all ten required PR contexts, and merge-group `03c59d4e0983b91f723929eff3b230bc337ea67f` passed the same ten contexts in Actions runs `33196583122` and `33196583084` before merging to `main`.
+- The first merge-group attempt exposed missing `merge_group` handling in the fast workflow. Regression coverage now requires all four fast jobs on queue candidates; the corrected candidate passed them before merge.
 - The organization-owned evidence repository is private; authenticated README readback SHA-256 is `ad7f3859b7143dc751987c040905e32365cd484316ecbd435cd480204aacbb0f`, while unauthenticated API access returns 404.
 - `node scripts/release/verify-github-controls.mjs --check-environments`: nonzero only for nine declared missing scoped secrets; both environment protection shells match the single-owner intent with protected branches, required owner approval, self-review allowed, and no admin bypass.
 - `make test-release-secrets`: pass with zero history and current-tree findings; report SHA-256 `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`.
@@ -90,4 +92,4 @@ created: 2026-08-26
 - [ ] `threats_open: 0` confirmed
 - [ ] `status: verified` set in frontmatter
 
-**Approval:** blocked pending live merge-queue and protected release controls
+**Approval:** blocked only on protected release credentials, targets, and synthetic receipts
