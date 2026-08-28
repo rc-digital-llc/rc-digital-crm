@@ -1,18 +1,21 @@
 <title>RC Digital Systems</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" />
 <style>
   :root {
-    --ink: #0a0a14;
-    --panel: #1a1a2e;
-    --deep: #0f3460;
-    --signal: #e94560;
-    --ember: #ff8296;
-    --mist: #b9c2dc;
-    --mist-dim: #6f7894;
-    --line: rgba(185, 194, 220, 0.14);
-    --glass: rgba(26, 26, 46, 0.42);
+    --ink: #14161a;         /* charcoal ground */
+    --panel: #1f242b;       /* gunmetal panel */
+    --steel: #3d4855;       /* steel blue-grey */
+    --orange: #f26a1b;      /* safety orange */
+    --orange-hi: #ff8a3d;   /* lit orange */
+    --hazard: #f5b323;      /* hazard yellow */
+    --blueprint: #4a7fb5;   /* blueprint blue */
+    --mist: #c3cad4;        /* steel-biased text */
+    --mist-dim: #828d9b;
+    --line: rgba(195, 202, 212, 0.14);
+    --glass: rgba(31, 36, 43, 0.55);
+    --font-display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
     --font-ui: "Inter", "Helvetica Neue", Arial, sans-serif;
     --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
   }
@@ -44,8 +47,8 @@
   .no-webgl body,
   .no-webgl .page {
     background:
-      radial-gradient(900px 600px at 80% 10%, rgba(233, 69, 96, 0.14), transparent 60%),
-      radial-gradient(1200px 800px at 15% 80%, rgba(15, 52, 96, 0.5), transparent 65%),
+      radial-gradient(900px 600px at 80% 10%, rgba(242, 106, 27, 0.12), transparent 60%),
+      radial-gradient(1200px 800px at 15% 80%, rgba(61, 72, 85, 0.5), transparent 65%),
       var(--ink);
   }
 
@@ -63,7 +66,7 @@
     z-index: 10;
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    background: linear-gradient(to bottom, rgba(10, 10, 20, 0.72), rgba(10, 10, 20, 0.28));
+    background: linear-gradient(to bottom, rgba(20, 22, 26, 0.82), rgba(20, 22, 26, 0.35));
     border-bottom: 1px solid var(--line);
   }
   .nav-row {
@@ -77,21 +80,21 @@
     align-items: center;
     gap: 12px;
     color: #fff;
-    font-weight: 700;
-    letter-spacing: 0.04em;
+    font-weight: 800;
+    letter-spacing: 0.05em;
     text-decoration: none;
     font-size: 15px;
   }
   .brand-mark {
     width: 30px; height: 30px;
-    border-radius: 8px;
+    border-radius: 6px;
     display: grid;
     place-items: center;
-    font-weight: 900;
+    font-weight: 800;
     font-size: 12px;
-    color: #fff;
-    background: linear-gradient(135deg, var(--signal), #c73651);
-    box-shadow: 0 0 18px rgba(233, 69, 96, 0.45);
+    color: #16181c;
+    background: linear-gradient(135deg, var(--orange-hi), var(--orange));
+    box-shadow: 0 0 18px rgba(242, 106, 27, 0.4);
   }
   .nav-links { display: flex; align-items: center; gap: 28px; }
   .nav-links a {
@@ -102,38 +105,38 @@
     transition: color 0.2s ease;
   }
   .nav-links a:hover, .nav-links a:focus-visible { color: #fff; }
-  .nav-links a:focus-visible { outline: 2px solid var(--signal); outline-offset: 4px; border-radius: 2px; }
+  .nav-links a:focus-visible { outline: 2px solid var(--orange); outline-offset: 4px; border-radius: 2px; }
 
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 10px;
     font-family: var(--font-ui);
-    font-weight: 600;
+    font-weight: 700;
     font-size: 15px;
     text-decoration: none;
-    border-radius: 10px;
-    padding: 13px 24px;
+    border-radius: 8px;
+    padding: 13px 26px;
     cursor: pointer;
     border: 1px solid transparent;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
-  .btn:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
+  .btn:focus-visible { outline: 2px solid var(--hazard); outline-offset: 3px; }
   .btn-primary {
-    color: #fff;
-    background: linear-gradient(135deg, var(--signal), #c73651);
-    box-shadow: 0 4px 28px rgba(233, 69, 96, 0.38);
+    color: #16181c;
+    background: linear-gradient(135deg, var(--orange-hi), #e05e12);
+    box-shadow: 0 4px 28px rgba(242, 106, 27, 0.35);
   }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(233, 69, 96, 0.55); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(242, 106, 27, 0.5); }
   .btn-ghost {
     color: var(--mist);
     border-color: var(--line);
-    background: rgba(26, 26, 46, 0.35);
+    background: rgba(31, 36, 43, 0.4);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
-  .btn-ghost:hover { color: #fff; border-color: rgba(185, 194, 220, 0.35); }
-  .btn-sm { padding: 9px 18px; font-size: 13px; border-radius: 8px; }
+  .btn-ghost:hover { color: #fff; border-color: rgba(195, 202, 212, 0.35); }
+  .btn-sm { padding: 9px 18px; font-size: 13px; border-radius: 6px; }
 
   /* ---------- Hero ---------- */
   .hero {
@@ -150,7 +153,7 @@
     font-weight: 600;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: var(--ember);
+    color: var(--hazard);
     display: flex;
     align-items: center;
     gap: 12px;
@@ -158,18 +161,20 @@
   .eyebrow::before {
     content: "";
     width: 34px; height: 1px;
-    background: linear-gradient(to right, var(--signal), transparent);
+    background: linear-gradient(to right, var(--orange), transparent);
   }
 
   .headline {
-    margin-top: 22px;
-    font-weight: 900;
-    font-size: clamp(42px, 7.4vw, 104px);
-    line-height: 1.0;
-    letter-spacing: -0.035em;
+    margin-top: 20px;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(54px, 9vw, 132px);
+    line-height: 0.92;
+    letter-spacing: 0.012em;
     color: #fff;
+    text-transform: uppercase;
   }
-  .headline .accent { color: var(--signal); text-shadow: 0 0 42px rgba(233, 69, 96, 0.55); }
+  .headline .accent { color: var(--orange); text-shadow: 0 0 42px rgba(242, 106, 27, 0.5); }
   .headline .word { display: inline-block; white-space: nowrap; }
   .headline .ch {
     display: inline-block;
@@ -179,23 +184,24 @@
 
   .hero-sub {
     margin-top: 28px;
-    max-width: 54ch;
+    max-width: 56ch;
     font-size: clamp(16px, 1.6vw, 19px);
     color: var(--mist);
   }
-  .hero-cta { margin-top: 40px; display: flex; flex-wrap: wrap; gap: 16px; }
+  .hero-cta { margin-top: 38px; display: flex; flex-wrap: wrap; gap: 16px; }
 
   .hero-meta {
-    margin-top: 72px;
+    margin-top: 64px;
     display: flex;
     flex-wrap: wrap;
-    gap: 14px 34px;
+    gap: 12px 30px;
     font-family: var(--font-mono);
     font-size: 12px;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
     color: var(--mist-dim);
   }
-  .hero-meta span::before { content: "▸ "; color: var(--signal); }
+  .hero-meta span::before { content: "▸ "; color: var(--orange); }
 
   .scroll-hint {
     position: absolute;
@@ -214,19 +220,21 @@
 
   /* ---------- Sections ---------- */
   section { position: relative; padding: 130px 0; }
-  .sec-head { max-width: 640px; margin-bottom: 56px; }
+  .sec-head { max-width: 680px; margin-bottom: 56px; }
   .sec-title {
-    margin-top: 18px;
-    font-size: clamp(30px, 4.2vw, 48px);
-    font-weight: 900;
-    letter-spacing: -0.025em;
-    line-height: 1.06;
+    margin-top: 16px;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(38px, 5.4vw, 68px);
+    letter-spacing: 0.014em;
+    line-height: 0.95;
     color: #fff;
+    text-transform: uppercase;
     text-wrap: balance;
   }
-  .sec-sub { margin-top: 16px; color: var(--mist); max-width: 52ch; }
+  .sec-sub { margin-top: 16px; color: var(--mist); max-width: 54ch; }
 
-  /* ---------- Bento grid / glass tilt cards ---------- */
+  /* ---------- Bento grid / steel tilt cards ---------- */
   .bento {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -237,7 +245,7 @@
     --my: 50%;
     grid-column: span 2;
     position: relative;
-    border-radius: 18px;
+    border-radius: 12px;
     padding: 30px 28px;
     min-height: 230px;
     display: flex;
@@ -246,6 +254,7 @@
     gap: 10px;
     background: var(--glass);
     border: 1px solid var(--line);
+    border-top: 2px solid rgba(195, 202, 212, 0.22);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     overflow: hidden;
@@ -258,7 +267,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(420px circle at var(--mx) var(--my), rgba(255, 130, 150, 0.14), transparent 55%);
+    background: radial-gradient(420px circle at var(--mx) var(--my), rgba(245, 179, 35, 0.13), transparent 55%);
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
@@ -269,18 +278,19 @@
     position: absolute;
     width: 220px; height: 220px;
     right: -70px; top: -70px;
-    background: radial-gradient(circle, rgba(15, 52, 96, 0.55), transparent 68%);
+    background: radial-gradient(circle, rgba(74, 127, 181, 0.4), transparent 68%);
     pointer-events: none;
   }
-  .card:hover { border-color: rgba(233, 69, 96, 0.4); }
+  .card:hover { border-color: rgba(242, 106, 27, 0.5); border-top-color: var(--orange); }
   .card:hover::before { opacity: 1; }
   .card.wide { grid-column: span 3; }
   .card.feature {
     grid-column: span 3;
-    background: linear-gradient(150deg, rgba(233, 69, 96, 0.16), rgba(26, 26, 46, 0.5) 55%);
+    background: linear-gradient(150deg, rgba(242, 106, 27, 0.16), rgba(31, 36, 43, 0.6) 55%);
+    border-top-color: var(--orange);
   }
   .card.feature::after {
-    background: radial-gradient(circle, rgba(233, 69, 96, 0.4), transparent 68%);
+    background: radial-gradient(circle, rgba(242, 106, 27, 0.35), transparent 68%);
   }
   .card-tag {
     font-family: var(--font-mono);
@@ -288,20 +298,27 @@
     font-weight: 600;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--ember);
+    color: var(--hazard);
   }
-  .card h3 { color: #fff; font-size: 21px; font-weight: 700; letter-spacing: -0.01em; }
-  .card p { font-size: 14.5px; color: var(--mist); max-width: 40ch; }
+  .card h3 {
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 28px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .card p { font-size: 14.5px; color: var(--mist); max-width: 42ch; }
   .card-icon {
     position: absolute;
     top: 26px; left: 28px;
     width: 40px; height: 40px;
-    border-radius: 10px;
+    border-radius: 8px;
     display: grid;
     place-items: center;
-    background: rgba(15, 52, 96, 0.55);
+    background: rgba(61, 72, 85, 0.5);
     border: 1px solid var(--line);
-    color: var(--ember);
+    color: var(--hazard);
   }
   .card-icon svg { width: 20px; height: 20px; }
 
@@ -314,58 +331,101 @@
   }
   .stage {
     position: relative;
-    border-radius: 14px;
+    border-radius: 10px;
     border: 1px solid var(--line);
-    background: rgba(26, 26, 46, 0.38);
+    background: rgba(31, 36, 43, 0.45);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     padding: 22px 20px 20px;
     counter-increment: stage;
     transition: border-color 0.3s ease, background 0.3s ease;
   }
-  .stage:hover { border-color: rgba(233, 69, 96, 0.45); background: rgba(26, 26, 46, 0.6); }
+  .stage:hover { border-color: rgba(242, 106, 27, 0.5); background: rgba(31, 36, 43, 0.7); }
   .stage::before {
     content: "0" counter(stage);
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 600;
-    color: var(--signal);
+    color: var(--orange);
     letter-spacing: 0.1em;
   }
-  .stage h4 { color: #fff; font-size: 16px; font-weight: 700; margin-top: 8px; }
+  .stage h4 {
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 22px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
   .stage p { font-size: 13px; color: var(--mist-dim); margin-top: 6px; line-height: 1.5; }
+
+  /* ---------- Trades strip ---------- */
+  .trades-strip {
+    margin-top: 64px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .trade-chip {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--mist);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 8px 16px;
+    background: rgba(31, 36, 43, 0.4);
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+  .trade-chip:hover { border-color: var(--hazard); color: #fff; }
 
   /* ---------- CTA ---------- */
   .cta-panel {
     position: relative;
-    border-radius: 24px;
-    border: 1px solid rgba(233, 69, 96, 0.3);
+    border-radius: 16px;
+    border: 1px solid rgba(242, 106, 27, 0.35);
     background:
-      radial-gradient(600px 300px at 85% 0%, rgba(233, 69, 96, 0.22), transparent 60%),
-      radial-gradient(500px 300px at 10% 100%, rgba(15, 52, 96, 0.6), transparent 65%),
-      rgba(26, 26, 46, 0.55);
+      radial-gradient(600px 300px at 85% 0%, rgba(242, 106, 27, 0.2), transparent 60%),
+      radial-gradient(500px 300px at 10% 100%, rgba(61, 72, 85, 0.55), transparent 65%),
+      rgba(31, 36, 43, 0.6);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    padding: clamp(44px, 7vw, 90px) clamp(28px, 6vw, 80px);
+    padding: clamp(48px, 7vw, 92px) clamp(28px, 6vw, 80px);
     text-align: center;
     overflow: hidden;
   }
+  .cta-panel::before {
+    /* hazard stripe */
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--orange) 0, var(--orange) 14px,
+      #16181c 14px, #16181c 28px
+    );
+  }
   .cta-panel h2 {
-    font-size: clamp(32px, 5vw, 60px);
-    font-weight: 900;
-    letter-spacing: -0.03em;
-    line-height: 1.04;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(42px, 6.4vw, 84px);
+    letter-spacing: 0.014em;
+    line-height: 0.94;
     color: #fff;
+    text-transform: uppercase;
     text-wrap: balance;
   }
-  .cta-panel p { margin: 20px auto 0; max-width: 46ch; color: var(--mist); }
+  .cta-panel p { margin: 20px auto 0; max-width: 48ch; color: var(--mist); }
   .cta-panel .btn { margin-top: 36px; }
 
   /* ---------- Footer ---------- */
   footer {
     border-top: 1px solid var(--line);
     padding: 34px 0 44px;
-    background: rgba(10, 10, 20, 0.6);
+    background: rgba(20, 22, 26, 0.65);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
   }
@@ -415,32 +475,32 @@
       </a>
       <div class="nav-links">
         <a href="#services">Services</a>
-        <a href="#process">Process</a>
+        <a href="#process">How it works</a>
         <a href="#start">Contact</a>
-        <a class="btn btn-primary btn-sm" href="#start">Start a project</a>
+        <a class="btn btn-primary btn-sm" href="#start">Get a free quote</a>
       </div>
     </div>
   </nav>
 
   <header class="hero shell" id="top">
-    <p class="eyebrow">RC Digital LLC — Web &amp; App Studio</p>
+    <p class="eyebrow">Websites for trades &amp; small business</p>
     <h1 class="headline" id="headline">
-      <span class="line">We build digital</span><br />
-      <span class="line accent">systems that ship.</span>
+      <span class="line">Built for the ones</span><br />
+      <span class="line accent">who do the work.</span>
     </h1>
     <p class="hero-sub reveal">
-      Websites, apps, and the pipeline behind them. RC Digital designs,
-      builds, and maintains the digital systems that grow your business —
-      from first call to final invoice.
+      RC Digital builds websites and simple business tools for contractors,
+      trades, and local companies — sites that show up on Google, look sharp
+      on a phone, and turn searches into phone calls.
     </p>
     <div class="hero-cta reveal">
-      <a class="btn btn-primary" href="#start">Start a project</a>
+      <a class="btn btn-primary" href="#start">Get a free quote</a>
       <a class="btn btn-ghost" href="#services">See what we build</a>
     </div>
     <div class="hero-meta reveal">
-      <span>React + Supabase</span>
-      <span>8-stage delivery pipeline</span>
-      <span>Design → Build → Maintain</span>
+      <span>Fixed prices, in writing</span>
+      <span>Built to make the phone ring</span>
+      <span>We handle the tech. You run the job.</span>
     </div>
     <div class="scroll-hint">SCROLL</div>
   </header>
@@ -449,41 +509,52 @@
     <div class="shell">
       <div class="sec-head reveal">
         <p class="eyebrow">Services</p>
-        <h2 class="sec-title">One studio, every layer of your stack.</h2>
+        <h2 class="sec-title">One crew for everything online.</h2>
         <p class="sec-sub">
-          Every engagement runs through the same system: scoped in writing,
-          tracked in our pipeline, delivered with the receipts to prove it.
+          No agencies passing you around, no jargon, no surprise bills. Every
+          job is scoped in writing, priced up front, and tracked from first
+          call to final invoice.
         </p>
       </div>
       <div class="bento">
         <div class="card feature tilt reveal">
-          <span class="card-tag">Flagship</span>
-          <h3>Website Build</h3>
-          <p>Marketing sites and storefronts engineered for speed, search, and conversion — designed and built end to end.</p>
+          <span class="card-tag">Most popular</span>
+          <h3>A job-winning website</h3>
+          <p>Fast, findable, and built to make the phone ring. Your work, your reviews, your service area — done right.</p>
         </div>
         <div class="card wide tilt reveal">
           <div class="card-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M11 18h2"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4.5 4.5 0 0 0-6.1 5.6L3 17.5V21h3.5l5.6-5.6a4.5 4.5 0 0 0 5.6-6.1l-2.9 2.9-2.1-2.1 2-2.8z"/></svg>
           </div>
-          <span class="card-tag">Product</span>
-          <h3>App Development</h3>
-          <p>Web apps, portals, and internal tools on React and Supabase — shipped fast, built to last.</p>
+          <span class="card-tag">Tools</span>
+          <h3>Tools for the crew</h3>
+          <p>Quoting, scheduling, and job tracking — simple apps that save your evenings for something better than paperwork.</p>
         </div>
         <div class="card tilt reveal">
-          <span class="card-tag">Refresh</span>
-          <h3>Redesign</h3>
-          <p>Modernize an aging site without losing what already works — or ranks.</p>
+          <span class="card-tag">Rebuild</span>
+          <h3>Fix an old site</h3>
+          <p>Modernize an outdated site without losing the customers who already find you.</p>
         </div>
         <div class="card tilt reveal">
-          <span class="card-tag">Retainer</span>
-          <h3>Maintenance</h3>
-          <p>Monitoring, updates, and monthly support so your site never goes stale.</p>
+          <span class="card-tag">Upkeep</span>
+          <h3>We keep it running</h3>
+          <p>Updates, backups, and monitoring handled — while you're out on the job.</p>
         </div>
         <div class="card tilt reveal">
-          <span class="card-tag">Strategy</span>
-          <h3>Consulting</h3>
-          <p>Architecture, analytics, and roadmap guidance before you commit a build budget.</p>
+          <span class="card-tag">Advice</span>
+          <h3>Straight answers</h3>
+          <p>What to build, what it costs, and what to skip — before you spend a dime.</p>
         </div>
+      </div>
+      <div class="trades-strip reveal">
+        <span class="trade-chip">Plumbing</span>
+        <span class="trade-chip">Electrical</span>
+        <span class="trade-chip">HVAC</span>
+        <span class="trade-chip">Roofing</span>
+        <span class="trade-chip">Construction</span>
+        <span class="trade-chip">Landscaping</span>
+        <span class="trade-chip">Auto &amp; Repair</span>
+        <span class="trade-chip">Local Retail</span>
       </div>
     </div>
   </section>
@@ -491,22 +562,22 @@
   <section id="process">
     <div class="shell">
       <div class="sec-head reveal">
-        <p class="eyebrow">Process</p>
-        <h2 class="sec-title">Eight stages. Zero guesswork.</h2>
+        <p class="eyebrow">How it works</p>
+        <h2 class="sec-title">Eight steps. No runaround.</h2>
         <p class="sec-sub">
-          Every project moves through the same tracked pipeline, so you always
-          know exactly where your build stands — and what happens next.
+          Every job moves through the same tracked pipeline, so you always know
+          where your build stands — the same way you'd run a job site.
         </p>
       </div>
       <div class="pipeline">
-        <div class="stage reveal"><h4>Lead</h4><p>You reach out. We respond within one business day.</p></div>
-        <div class="stage reveal"><h4>Discovery Call</h4><p>We map your goals, constraints, and what done looks like.</p></div>
-        <div class="stage reveal"><h4>Proposal Sent</h4><p>Fixed scope, timeline, and price — in writing.</p></div>
-        <div class="stage reveal"><h4>Signed</h4><p>Agreement in place. Kickoff scheduled.</p></div>
-        <div class="stage reveal"><h4>In Build</h4><p>Design and development, with progress you can see.</p></div>
-        <div class="stage reveal"><h4>Review</h4><p>You test the real thing. We refine until it's right.</p></div>
-        <div class="stage reveal"><h4>Delivered</h4><p>Launched, handed off, and documented.</p></div>
-        <div class="stage reveal"><h4>Paid</h4><p>Clean invoicing, traceable to the work delivered.</p></div>
+        <div class="stage reveal"><h4>Reach out</h4><p>Call, text, or email. We answer within one business day.</p></div>
+        <div class="stage reveal"><h4>Quick call</h4><p>Fifteen minutes on what you need. Plain talk, no jargon.</p></div>
+        <div class="stage reveal"><h4>The quote</h4><p>One page. Fixed price. No surprises later.</p></div>
+        <div class="stage reveal"><h4>Signed</h4><p>Shake on it and we get to work.</p></div>
+        <div class="stage reveal"><h4>In build</h4><p>We build it. Check in any time you want.</p></div>
+        <div class="stage reveal"><h4>Walkthrough</h4><p>You kick the tires. We fix anything that's off.</p></div>
+        <div class="stage reveal"><h4>Launched</h4><p>Live, handed over, and it's yours. Keys included.</p></div>
+        <div class="stage reveal"><h4>Squared up</h4><p>One clean invoice, traceable to the work delivered.</p></div>
       </div>
     </div>
   </section>
@@ -515,9 +586,9 @@
     <div class="shell">
       <div class="cta-panel reveal">
         <p class="eyebrow" style="justify-content: center;">Ready when you are</p>
-        <h2>Manage your clients.<br /><span style="color: var(--signal);">Grow your agency.</span></h2>
-        <p>Tell us what you're building. We'll come back with a plan, a price, and a pipeline slot.</p>
-        <a class="btn btn-primary" href="mailto:hello@rcdigitalsystems.com">Start a project</a>
+        <h2>Enough talk.<br /><span style="color: var(--orange);">Let's get you more jobs.</span></h2>
+        <p>Tell us about your business. We'll come back with a plan, a fixed price, and a start date.</p>
+        <a class="btn btn-primary" href="mailto:hello@rcdigitalsystems.com">Get a free quote</a>
       </div>
     </div>
   </section>
@@ -527,7 +598,7 @@
       <span>© 2026 RC Digital LLC · rcdigitalsystems.com</span>
       <div class="foot-links">
         <a href="#services">Services</a>
-        <a href="#process">Process</a>
+        <a href="#process">How it works</a>
         <a href="mailto:hello@rcdigitalsystems.com">hello@rcdigitalsystems.com</a>
       </div>
     </div>
@@ -597,12 +668,12 @@
         if (dist < radius) target = (1 - dist / radius);
         d.cur += (target - d.cur) * 0.14;
         if (d.cur > 0.001) {
-          var push = d.cur * 22;
+          var push = d.cur * 20;
           var len = dist || 1;
           d.el.style.transform =
             "translate(" + (dx / len) * push + "px," + (dy / len) * push + "px)" +
-            " rotate(" + (dx / len) * d.cur * 7 + "deg)" +
-            " scale(" + (1 + d.cur * 0.12) + ")";
+            " rotate(" + (dx / len) * d.cur * 6 + "deg)" +
+            " scale(" + (1 + d.cur * 0.1) + ")";
         } else if (d.el.style.transform) {
           d.el.style.transform = "";
         }
@@ -611,9 +682,34 @@
 
     /* ================= Three.js scene ================= */
     var canvas = document.getElementById("gl");
-    var renderer = null, scene, camera, knot, knotGroup, particles, bgScene, bgCamera, bgUniforms;
+    var renderer = null, scene, camera, nut, nutGroup, particles, bgScene, bgCamera, bgUniforms;
     var clock = null;
     var scrollProgress = 0;
+
+    /* Machined hex nut: extruded hexagon with a threaded-bore hole */
+    function buildHexNut() {
+      var shape = new THREE.Shape();
+      var R = 1.45;
+      for (var i = 0; i < 6; i++) {
+        var a = (Math.PI / 3) * i + Math.PI / 6;
+        var px = Math.cos(a) * R, py = Math.sin(a) * R;
+        if (i === 0) shape.moveTo(px, py); else shape.lineTo(px, py);
+      }
+      shape.closePath();
+      var hole = new THREE.Path();
+      hole.absarc(0, 0, 0.72, 0, Math.PI * 2, true);
+      shape.holes.push(hole);
+      var geo = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.62,
+        bevelEnabled: true,
+        bevelThickness: 0.09,
+        bevelSize: 0.07,
+        bevelSegments: isMobile ? 2 : 4,
+        curveSegments: isMobile ? 20 : 40
+      });
+      geo.center();
+      return geo;
+    }
 
     function initGL() {
       try {
@@ -627,7 +723,7 @@
       renderer.autoClear = false;
       clock = new THREE.Clock();
 
-      /* ----- Liquid noise shader background (fullscreen quad) ----- */
+      /* ----- Molten-steel noise shader background (fullscreen quad) ----- */
       bgScene = new THREE.Scene();
       bgCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
       bgUniforms = {
@@ -693,20 +789,24 @@
           "  vec2 uv = vUv;",
           "  vec2 asp = vec2(uRes.x / uRes.y, 1.0);",
           "  vec2 p = (uv - 0.5) * asp;",
-          "  float t = uTime * 0.06;",
+          "  float t = uTime * 0.05;",
           "  vec2 m = uMouse * 0.35;",
-          "  float warp = fbm(p * 1.6 + vec2(t, -t * 0.7) + m);",
-          "  float flow = fbm(p * 2.2 - vec2(t * 0.8, t * 0.5) + warp * 0.9 - uScroll * 0.6);",
-          "  vec3 ink   = vec3(0.039, 0.039, 0.078);",
-          "  vec3 deep  = vec3(0.059, 0.204, 0.376);",
-          "  vec3 panel = vec3(0.102, 0.102, 0.180);",
-          "  vec3 sig   = vec3(0.914, 0.271, 0.376);",
+          "  float warp = fbm(p * 1.5 + vec2(t, -t * 0.7) + m);",
+          "  float flow = fbm(p * 2.1 - vec2(t * 0.8, t * 0.5) + warp * 0.9 - uScroll * 0.6);",
+          "  vec3 ink    = vec3(0.078, 0.086, 0.102);",   /* charcoal */
+          "  vec3 panel  = vec3(0.122, 0.141, 0.169);",   /* gunmetal */
+          "  vec3 steel  = vec3(0.239, 0.282, 0.333);",   /* steel grey-blue */
+          "  vec3 bp     = vec3(0.169, 0.298, 0.427);",   /* blueprint blue */
+          "  vec3 ember  = vec3(0.949, 0.416, 0.106);",   /* safety orange */
+          "  vec3 spark  = vec3(0.961, 0.702, 0.137);",   /* hazard yellow */
           "  vec3 col = mix(ink, panel, smoothstep(-0.6, 0.7, warp));",
-          "  col = mix(col, deep, smoothstep(0.05, 0.85, flow) * 0.55);",
+          "  col = mix(col, steel, smoothstep(0.05, 0.9, flow) * 0.5);",
+          "  col = mix(col, bp, smoothstep(-0.7, -0.1, warp) * 0.25);",
           "  float ribbon = smoothstep(0.42, 0.5, flow) * smoothstep(0.62, 0.5, flow);",
           "  float mdist = length(p - m * asp * 0.5);",
           "  float glow = exp(-mdist * 2.4) * 0.5;",
-          "  col += sig * (ribbon * 0.4 + glow * 0.35);",
+          "  vec3 heat = mix(ember, spark, glow * 1.4);",  /* torch: yellow-hot at center */
+          "  col += ember * ribbon * 0.34 + heat * glow * 0.4;",
           "  float vig = smoothstep(1.35, 0.35, length(p));",
           "  col *= 0.55 + 0.45 * vig;",
           "  gl_FragColor = vec4(col, 1.0);",
@@ -715,44 +815,44 @@
       });
       bgScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat));
 
-      /* ----- Main scene: floating knot + particles ----- */
+      /* ----- Main scene: machined hex nut + weld sparks ----- */
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 0.1, 100);
       camera.position.set(0, 0, 7);
 
-      knotGroup = new THREE.Group();
-      var seg = isMobile ? 120 : 220;
-      var knotGeo = new THREE.TorusKnotGeometry(1.15, 0.34, seg, isMobile ? 20 : 36);
-      var knotMat = new THREE.MeshStandardMaterial({
-        color: 0x2a2a4a,
-        metalness: 0.92,
-        roughness: 0.22,
-        emissive: 0xe94560,
-        emissiveIntensity: 0.06,
+      nutGroup = new THREE.Group();
+      var nutMat = new THREE.MeshStandardMaterial({
+        color: 0x9aa3ad,        /* brushed steel */
+        metalness: 0.88,
+        roughness: 0.34,
+        emissive: 0xf26a1b,
+        emissiveIntensity: 0.03,
         flatShading: false
       });
-      knot = new THREE.Mesh(knotGeo, knotMat);
-      knotGroup.add(knot);
-      knotGroup.position.set(isMobile ? 0 : 2.4, isMobile ? 1.6 : 0.1, 0);
-      scene.add(knotGroup);
+      nut = new THREE.Mesh(buildHexNut(), nutMat);
+      nutGroup.add(nut);
+      nutGroup.position.set(isMobile ? 0 : 2.4, isMobile ? 1.6 : 0.1, 0);
+      nutGroup.rotation.x = 0.4;
+      scene.add(nutGroup);
 
-      scene.add(new THREE.AmbientLight(0x1a1a2e, 1.4));
-      var lightA = new THREE.PointLight(0xe94560, 2.4, 30);
+      scene.add(new THREE.AmbientLight(0x2a3038, 1.6));
+      var lightA = new THREE.PointLight(0xf26a1b, 2.6, 30);   /* safety orange */
       lightA.position.set(4, 3, 4);
       scene.add(lightA);
-      var lightB = new THREE.PointLight(0x2e6ad1, 2.0, 30);
+      var lightB = new THREE.PointLight(0x4a7fb5, 2.0, 30);   /* blueprint blue */
       lightB.position.set(-4, -2, 3);
       scene.add(lightB);
-      var lightC = new THREE.PointLight(0xffffff, 0.6, 40);
+      var lightC = new THREE.PointLight(0xfff3d6, 0.9, 40);   /* warm shop light */
       lightC.position.set(0, 6, -4);
       scene.add(lightC);
 
-      /* particle field */
+      /* weld-spark particle field: orange/yellow sparks + steel dust */
       var count = isMobile ? 350 : 900;
       var pos = new Float32Array(count * 3);
       var colors = new Float32Array(count * 3);
-      var cA = new THREE.Color(0xe94560);
-      var cB = new THREE.Color(0x0f3460);
+      var cSpark = new THREE.Color(0xff8a3d);
+      var cHot = new THREE.Color(0xf5b323);
+      var cDust = new THREE.Color(0x5a6673);
       for (var i = 0; i < count; i++) {
         var r = 6 + Math.random() * 10;
         var theta = Math.random() * Math.PI * 2;
@@ -760,7 +860,8 @@
         pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
         pos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.6;
         pos[i * 3 + 2] = r * Math.cos(phi) * 0.5 - 4;
-        var c = Math.random() < 0.25 ? cA : cB;
+        var roll = Math.random();
+        var c = roll < 0.16 ? cSpark : (roll < 0.26 ? cHot : cDust);
         colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
       }
       var pGeo = new THREE.BufferGeometry();
@@ -806,12 +907,12 @@
       bgUniforms.uMouse.value.set(mouse.nx, mouse.ny);
       bgUniforms.uScroll.value = scrollProgress;
 
-      /* cursor-follow physics on the knot */
-      var idleY = Math.sin(t * 0.8) * 0.18;
-      knot.rotation.x += ((mouse.ny * 0.7 + t * 0.12) - knot.rotation.x) * 0.05;
-      knot.rotation.y += ((mouse.nx * 1.1 + t * 0.18) - knot.rotation.y) * 0.05;
-      knotGroup.position.y += ((knotGroup.userData.baseY || 0) + idleY + mouse.ny * 0.35 - knotGroup.position.y) * 0.06;
-      knotGroup.rotation.z += ((mouse.nx * 0.15) - knotGroup.rotation.z) * 0.04;
+      /* cursor-follow physics on the nut — a slow, heavy machine part */
+      var idleY = Math.sin(t * 0.7) * 0.16;
+      nut.rotation.x += ((0.4 + mouse.ny * 0.55 + t * 0.1) - nut.rotation.x) * 0.045;
+      nut.rotation.y += ((mouse.nx * 0.9 + t * 0.16) - nut.rotation.y) * 0.045;
+      nutGroup.position.y += (((nutGroup.userData.baseY || 0) + idleY + mouse.ny * 0.3) - nutGroup.position.y) * 0.055;
+      nutGroup.rotation.z += ((mouse.nx * 0.12) - nutGroup.rotation.z) * 0.04;
 
       particles.rotation.y = t * 0.02 + scrollProgress * 0.9;
       particles.rotation.x = scrollProgress * 0.35;
@@ -835,7 +936,7 @@
           rotateX: -60,
           duration: 0.9,
           ease: "power4.out",
-          stagger: 0.022,
+          stagger: 0.02,
           delay: 0.15,
           onComplete: measureChars
         });
@@ -863,19 +964,19 @@
       });
 
       if (renderer && !reducedMotion) {
-        knotGroup.userData.baseY = knotGroup.position.y;
+        nutGroup.userData.baseY = nutGroup.position.y;
         var tl = gsap.timeline({
           scrollTrigger: { trigger: document.body, start: "top top", end: "bottom bottom", scrub: 1.2 }
         });
-        tl.to(knotGroup.position, { x: isMobile ? 0 : -2.6, ease: "none" }, 0)
-          .to(knotGroup.userData, { baseY: isMobile ? 2.2 : 0.6, ease: "none" }, 0)
-          .to(knotGroup.scale, { x: 0.55, y: 0.55, z: 0.55, ease: "none" }, 0)
-          .to(knot.material, { emissiveIntensity: 0.55, roughness: 0.4, ease: "none" }, 0)
+        tl.to(nutGroup.position, { x: isMobile ? 0 : -2.6, ease: "none" }, 0)
+          .to(nutGroup.userData, { baseY: isMobile ? 2.2 : 0.6, ease: "none" }, 0)
+          .to(nutGroup.scale, { x: 0.55, y: 0.55, z: 0.55, ease: "none" }, 0)
+          .to(nut.material, { emissiveIntensity: 0.4, roughness: 0.45, ease: "none" }, 0)
           .to(camera.position, { z: 9.5, ease: "none" }, 0);
       }
     }
 
-    /* ================= Glass card 3D tilt ================= */
+    /* ================= Steel card 3D tilt ================= */
     function initTilt() {
       if (reducedMotion || isMobile) return;
       document.querySelectorAll(".tilt").forEach(function (card) {
