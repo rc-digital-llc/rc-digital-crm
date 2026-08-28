@@ -420,8 +420,10 @@ describe("GitHub ruleset release contracts", () => {
       required_pull_request_approvals: 0,
       accepted_risk: "no_independent_reviewer",
     });
-    const rules = (document.ruleset as Record<string, unknown>)
-      .rules as Record<string, unknown>[];
+    const rules = (document.ruleset as Record<string, unknown>).rules as Record<
+      string,
+      unknown
+    >[];
     const pullRequest = rules.find((rule) => rule.type === "pull_request")!;
     expect(pullRequest.parameters).toMatchObject({
       require_last_push_approval: false,
@@ -429,12 +431,12 @@ describe("GitHub ruleset release contracts", () => {
       required_review_thread_resolution: true,
     });
     expect(rules.some((rule) => rule.type === "merge_queue")).toBe(true);
-    expect(
-      rules.some((rule) => rule.type === "required_status_checks"),
-    ).toBe(true);
-    expect(
-      (document.ruleset as Record<string, unknown>).bypass_actors,
-    ).toEqual([]);
+    expect(rules.some((rule) => rule.type === "required_status_checks")).toBe(
+      true,
+    );
+    expect((document.ruleset as Record<string, unknown>).bypass_actors).toEqual(
+      [],
+    );
   });
 
   it("ruleset rejects a missing queue, renamed check, or bypass actor", () => {
