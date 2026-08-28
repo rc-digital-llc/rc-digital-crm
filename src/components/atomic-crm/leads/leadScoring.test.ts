@@ -34,7 +34,7 @@ describe("Lead Scoring — activityScoreDefaults", () => {
     const activities = ["form_submit", "email_click", "page_view", "meeting"];
     const totalScore = activities.reduce(
       (sum, type) => sum + (activityScoreDefaults[type] ?? 0),
-      0
+      0,
     );
     // 5 + 3 + 1 + 10 = 19
     expect(totalScore).toBe(19);

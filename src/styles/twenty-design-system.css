@@ -41,9 +41,9 @@
   --border-dark: var(--gray-30);
 
   /* Sidebar (Twenty-inspired dark sidebar) */
-  --sidebar-bg: #1C1C1E;
-  --sidebar-bg-hover: #2C2C2E;
-  --sidebar-bg-active: #3A3A3C;
+  --sidebar-bg: #1c1c1e;
+  --sidebar-bg-hover: #2c2c2e;
+  --sidebar-bg-active: #3a3a3c;
   --sidebar-text: rgba(255, 255, 255, 0.87);
   --sidebar-text-muted: rgba(255, 255, 255, 0.55);
   --sidebar-active-border: var(--rc-highlight);
@@ -51,25 +51,26 @@
   --sidebar-collapsed-width: 64px;
 
   /* Typography (Twenty uses Inter) */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-size-xs: 0.75rem;     /* 12px */
-  --font-size-sm: 0.8125rem;   /* 13px */
-  --font-size-md: 0.875rem;    /* 14px — base size */
-  --font-size-lg: 1rem;        /* 16px */
-  --font-size-xl: 1.25rem;     /* 20px */
-  --font-size-2xl: 1.5rem;     /* 24px */
-  --font-size-3xl: 1.875rem;   /* 30px */
+  --font-family:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-xs: 0.75rem; /* 12px */
+  --font-size-sm: 0.8125rem; /* 13px */
+  --font-size-md: 0.875rem; /* 14px — base size */
+  --font-size-lg: 1rem; /* 16px */
+  --font-size-xl: 1.25rem; /* 20px */
+  --font-size-2xl: 1.5rem; /* 24px */
+  --font-size-3xl: 1.875rem; /* 30px */
 
   /* Spacing Scale */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
+  --space-1: 0.25rem; /* 4px */
+  --space-2: 0.5rem; /* 8px */
+  --space-3: 0.75rem; /* 12px */
+  --space-4: 1rem; /* 16px */
+  --space-5: 1.25rem; /* 20px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem; /* 32px */
+  --space-10: 2.5rem; /* 40px */
+  --space-12: 3rem; /* 48px */
 
   /* Border Radius */
   --radius-sm: 4px;
@@ -90,14 +91,14 @@
   --transition-slow: 350ms ease;
 
   /* Pipeline Stage Colors (Twenty-inspired) */
-  --stage-lead: #7C5EE9;
-  --stage-discovery: #7C5EE9;
-  --stage-proposal: #00BCD4;
-  --stage-signed: #00BCD4;
-  --stage-in-build: #FF9800;
-  --stage-review: #FF9800;
-  --stage-delivered: #4CAF50;
-  --stage-paid: #4CAF50;
+  --stage-lead: #7c5ee9;
+  --stage-discovery: #7c5ee9;
+  --stage-proposal: #00bcd4;
+  --stage-signed: #00bcd4;
+  --stage-in-build: #ff9800;
+  --stage-review: #ff9800;
+  --stage-delivered: #4caf50;
+  --stage-paid: #4caf50;
 }
 
 /* Dark Mode Variables */
@@ -116,8 +117,8 @@
   --border-dark: #4a4a5e;
 
   --sidebar-bg: #111113;
-  --sidebar-bg-hover: #1C1C1E;
-  --sidebar-bg-active: #2C2C2E;
+  --sidebar-bg-hover: #1c1c1e;
+  --sidebar-bg-active: #2c2c2e;
 }
 
 /* Twenty-inspired global styles */
@@ -174,25 +175,25 @@ body {
 .stage-pill--lead,
 .stage-pill--discovery {
   background-color: rgba(124, 94, 233, 0.12);
-  color: #7C5EE9;
+  color: #7c5ee9;
 }
 
 .stage-pill--proposal,
 .stage-pill--signed {
   background-color: rgba(0, 188, 212, 0.12);
-  color: #00BCD4;
+  color: #00bcd4;
 }
 
 .stage-pill--in-build,
 .stage-pill--review {
   background-color: rgba(255, 152, 0, 0.12);
-  color: #FF9800;
+  color: #ff9800;
 }
 
 .stage-pill--delivered,
 .stage-pill--paid {
   background-color: rgba(76, 175, 80, 0.12);
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 /* Twenty-inspired sidebar layout */
@@ -293,7 +294,7 @@ body {
 }
 
 .twenty-sidebar__nav-item--active::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -8px;
   top: 6px;

@@ -6,7 +6,7 @@ import { Link } from "react-router";
 import type { Lead } from "../types";
 
 const sevenDaysAgo = new Date(
-  Date.now() - 7 * 24 * 60 * 60 * 1000
+  Date.now() - 7 * 24 * 60 * 60 * 1000,
 ).toISOString();
 
 export const LeadPipelineCard = () => {
@@ -35,14 +35,31 @@ export const LeadPipelineCard = () => {
             <Filter className="w-4 h-4 text-[#2196F3]" />
           </div>
           <h3 className="text-base font-semibold">Lead Pipeline</h3>
-          <span className="text-xs text-muted-foreground ml-auto">This week</span>
+          <span className="text-xs text-muted-foreground ml-auto">
+            This week
+          </span>
         </div>
 
         {/* Mini funnel */}
         <div className="space-y-2">
-          <FunnelBar label="New" value={newLeads} total={total} color="#2196F3" />
-          <FunnelBar label="Qualified" value={qualified} total={total} color="#FF9800" />
-          <FunnelBar label="Converted" value={converted} total={total} color="#4CAF50" />
+          <FunnelBar
+            label="New"
+            value={newLeads}
+            total={total}
+            color="#2196F3"
+          />
+          <FunnelBar
+            label="Qualified"
+            value={qualified}
+            total={total}
+            color="#FF9800"
+          />
+          <FunnelBar
+            label="Converted"
+            value={converted}
+            total={total}
+            color="#4CAF50"
+          />
         </div>
 
         <Link

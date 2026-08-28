@@ -86,16 +86,23 @@ export const LoginPage = (props: { redirectTo?: string }) => {
         <div className="relative hidden h-full flex-col p-10 text-white lg:flex overflow-hidden">
           <div
             className="absolute inset-0"
-            style={{ background: "linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #1a1a2e 100%)" }}
+            style={{
+              background:
+                "linear-gradient(135deg, #1a1a2e 0%, #0f3460 50%, #1a1a2e 100%)",
+            }}
           />
           {/* Decorative elements */}
           <div
             className="absolute top-1/4 right-[-100px] w-[300px] h-[300px] rounded-full opacity-10"
-            style={{ background: "radial-gradient(circle, #e94560, transparent)" }}
+            style={{
+              background: "radial-gradient(circle, #e94560, transparent)",
+            }}
           />
           <div
             className="absolute bottom-1/4 left-[-50px] w-[200px] h-[200px] rounded-full opacity-8"
-            style={{ background: "radial-gradient(circle, #0f3460, transparent)" }}
+            style={{
+              background: "radial-gradient(circle, #0f3460, transparent)",
+            }}
           />
 
           <div className="relative z-20 flex items-center text-lg font-bold tracking-tight">

@@ -34,7 +34,10 @@ const MetricCard = ({
   trendUp?: boolean;
 }) => (
   <div className="twenty-metric-card">
-    <div className="twenty-metric-card__icon" style={{ backgroundColor: iconBg }}>
+    <div
+      className="twenty-metric-card__icon"
+      style={{ backgroundColor: iconBg }}
+    >
       {icon}
     </div>
     <div className="twenty-metric-card__content">

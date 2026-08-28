@@ -20,7 +20,7 @@ permissions: {}
 
 jobs:
   enable:
-    name: independently approve one financial feature
+    name: separately approve one financial feature
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -39,7 +39,7 @@ jobs:
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
     steps:
-      - name: Independent protected inputs must exist
+      - name: Protected owner inputs must exist
         env:
           RELEASE_EVIDENCE_TOKEN: ${{ secrets.RELEASE_EVIDENCE_TOKEN }}
         run: |

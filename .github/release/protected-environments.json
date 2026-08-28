@@ -1,7 +1,10 @@
 {
   "version": "1.0.0",
   "repository": "rc-digital-llc/rc-digital-crm",
+  "review_mode": "single_owner",
   "required_reviewer_login": "Rconman99",
+  "prevent_self_review": false,
+  "accepted_risk": "no_independent_reviewer",
   "environments": [
     {
       "name": "production-release",

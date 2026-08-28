@@ -3,9 +3,11 @@ name: check
 on:
   pull_request:
     types: [opened, reopened, synchronize, ready_for_review]
+  merge_group:
+    types: [checks_requested]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -14,7 +16,7 @@ permissions:
 jobs:
   lint:
     name: check / lint
-    if: ${{ github.event.pull_request.draft == false }}
+    if: ${{ github.event_name == 'merge_group' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,7 +33,7 @@ jobs:
 
   typecheck:
     name: check / typecheck
-    if: ${{ github.event.pull_request.draft == false }}
+    if: ${{ github.event_name == 'merge_group' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -47,7 +49,7 @@ jobs:
 
   unit:
     name: check / unit
-    if: ${{ github.event.pull_request.draft == false }}
+    if: ${{ github.event_name == 'merge_group' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -63,7 +65,7 @@ jobs:
 
   build:
     name: check / build
-    if: ${{ github.event.pull_request.draft == false }}
+    if: ${{ github.event_name == 'merge_group' || github.event.pull_request.draft == false }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

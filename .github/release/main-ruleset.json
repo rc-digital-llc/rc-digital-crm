@@ -1,6 +1,11 @@
 {
   "version": "1.0.0",
   "repository": "rc-digital-llc/rc-digital-crm",
+  "governance": {
+    "mode": "single_owner",
+    "required_pull_request_approvals": 1,
+    "accepted_risk": "no_independent_human_reviewer"
+  },
   "ruleset": {
     "name": "main-financial-release",
     "target": "branch",
@@ -32,7 +37,7 @@
           "automatic_copilot_code_review_enabled": false,
           "dismiss_stale_reviews_on_push": true,
           "require_code_owner_review": false,
-          "require_last_push_approval": true,
+          "require_last_push_approval": false,
           "required_approving_review_count": 1,
           "required_review_thread_resolution": true
         }

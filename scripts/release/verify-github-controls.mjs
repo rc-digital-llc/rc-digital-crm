@@ -58,7 +58,7 @@ function selectedParameters(type, parameters = {}) {
         ...(parameters.allowed_merge_methods ?? []),
       ].sort(),
       automatic_copilot_code_review_enabled:
-        parameters.automatic_copilot_code_review_enabled,
+        parameters.automatic_copilot_code_review_enabled ?? false,
       dismiss_stale_reviews_on_push: parameters.dismiss_stale_reviews_on_push,
       require_code_owner_review: parameters.require_code_owner_review,
       require_last_push_approval: parameters.require_last_push_approval,
@@ -116,6 +116,9 @@ function loadIntent() {
   if (
     document.version !== "1.0.0" ||
     typeof document.repository !== "string" ||
+    document.governance?.mode !== "single_owner" ||
+    document.governance?.required_pull_request_approvals !== 1 ||
+    document.governance?.accepted_risk !== "no_independent_human_reviewer" ||
     !document.ruleset
   ) {
     throw new Error("main ruleset intent is invalid");
@@ -144,6 +147,15 @@ function loadIntent() {
   if (normalized.bypass_actors.length !== 0) {
     throw new Error("main ruleset financial bypass actors are forbidden");
   }
+  const pullRequestRule = normalized.rules.find(
+    (rule) => rule.type === "pull_request",
+  );
+  if (
+    pullRequestRule?.parameters?.required_approving_review_count !== 1 ||
+    pullRequestRule?.parameters?.require_last_push_approval !== false
+  ) {
+    throw new Error("main ruleset differs from single-owner review policy");
+  }
   return document;
 }
 
@@ -152,7 +164,10 @@ function loadEnvironmentIntent() {
   if (
     intent.version !== "1.0.0" ||
     typeof intent.repository !== "string" ||
+    intent.review_mode !== "single_owner" ||
     typeof intent.required_reviewer_login !== "string" ||
+    intent.prevent_self_review !== false ||
+    intent.accepted_risk !== "no_independent_reviewer" ||
     !Array.isArray(intent.environments) ||
     intent.environments.length !== 2
   ) {
@@ -168,7 +183,13 @@ function loadEnvironmentIntent() {
   return intent;
 }
 
-function environmentErrors(environment, secrets, intent, reviewerLogin) {
+function environmentErrors(
+  environment,
+  secrets,
+  intent,
+  reviewerLogin,
+  preventSelfReview,
+) {
   const errors = [];
   const requiredReviewers = environment?.protection_rules?.find(
     ({ type }) => type === "required_reviewers",
@@ -180,8 +201,8 @@ function environmentErrors(environment, secrets, intent, reviewerLogin) {
   );
   if (!reviewerPresent)
     errors.push("required release-owner reviewer is missing");
-  if (requiredReviewers?.prevent_self_review !== true) {
-    errors.push("self-review prevention is not enabled");
+  if (requiredReviewers?.prevent_self_review !== preventSelfReview) {
+    errors.push("self-review setting differs from environment intent");
   }
   if (environment?.can_admins_bypass !== false) {
     errors.push("administrator protection-rule bypass is enabled");
@@ -228,6 +249,7 @@ export async function checkEnvironmentControls({ api, intent }) {
       secrets,
       expected,
       intent.required_reviewer_login,
+      intent.prevent_self_review,
     );
     errors.push(...currentErrors.map((error) => `${expected.name}: ${error}`));
     reports.push({
@@ -463,6 +485,13 @@ async function selfTest() {
     /differs/,
   );
 
+  const serverElidedDefaults = structuredClone(intent.ruleset);
+  delete serverElidedDefaults.rules.find((rule) => rule.type === "pull_request")
+    .parameters.automatic_copilot_code_review_enabled;
+  if (compareLiveRuleset(intent.ruleset, serverElidedDefaults).length > 0) {
+    throw new Error("server-elided false defaults caused ruleset drift");
+  }
+
   const unauthorized = new FakeApi({ admin: false });
   await expectFailure(
     applyControls({ api: unauthorized, intent }),
@@ -494,7 +523,7 @@ async function selfTest() {
         protection_rules: [
           {
             type: "required_reviewers",
-            prevent_self_review: true,
+            prevent_self_review: environmentIntent.prevent_self_review,
             reviewers: [
               {
                 type: "User",

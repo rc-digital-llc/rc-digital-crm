@@ -139,7 +139,10 @@ export const TouchpointTimeline = ({
                         {truncateUrl(tp.page_url)}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-md break-all">
+                    <TooltipContent
+                      side="bottom"
+                      className="max-w-md break-all"
+                    >
                       {tp.page_url}
                     </TooltipContent>
                   </Tooltip>

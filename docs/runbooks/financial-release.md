@@ -8,8 +8,13 @@ production mutation authority.
 
 - The private evidence repository, `RELEASE_PROVIDER_TARGET`, and
   `RELEASE_OWNER_LOGIN` repository variables are configured.
+- This repository operates in explicit single-owner mode because no independent
+  human reviewer is available. Pull requests are opened by the scoped release
+  bot and require one authenticated owner approval. New pushes dismiss stale
+  approvals; the accepted risk is recorded in the versioned GitHub control
+  intent and does not waive required checks, receipts, or stage order.
 - The `production-release` environment permits protected `main` only, requires
-  the release-owner reviewer with self-review prevention, and contains the
+  the named release owner, allows that owner's self-review, and contains the
   private evidence, Supabase, and customer frontend secrets.
 - The predecessor receipt and all detailed reports have authenticated private
   readback. Public workflow logs or Actions artifacts are diagnostic only.
@@ -26,8 +31,9 @@ Open the `release-promote` workflow and provide:
 
 The expected chain is `build → schema → functions → frontend → dormant`.
 Each run remains pending at `production-release` until a required reviewer
-approves it. Approval releases protected secrets only to that one job; it does
-not approve the next stage or financial enablement.
+approves it. In single-owner mode self-review is allowed. Approval releases
+protected secrets only to that one job; it does not approve the next stage or
+financial enablement, which still requires a separate protected approval.
 
 ## Stage procedure
 

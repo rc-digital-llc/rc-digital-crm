@@ -12,7 +12,12 @@ import { SaveButton } from "@/components/admin/form";
 import { FormToolbar } from "@/components/admin/simple-form";
 import { TextInput } from "@/components/admin/text-input";
 import { SelectInput } from "@/components/admin/select-input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -73,18 +78,43 @@ export const LeadCreate = ({
             <div className="flex flex-col gap-4">
               {/* Identity */}
               <div className="grid grid-cols-2 gap-4">
-                <TextInput source="first_name" label="First Name" helperText={false} />
-                <TextInput source="last_name" label="Last Name" helperText={false} />
+                <TextInput
+                  source="first_name"
+                  label="First Name"
+                  helperText={false}
+                />
+                <TextInput
+                  source="last_name"
+                  label="Last Name"
+                  helperText={false}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <TextInput source="email" label="Email" type="email" helperText={false} />
+                <TextInput
+                  source="email"
+                  label="Email"
+                  type="email"
+                  helperText={false}
+                />
                 <TextInput source="phone" label="Phone" helperText={false} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <TextInput source="company_name" label="Company" helperText={false} />
-                <TextInput source="job_title" label="Job Title" helperText={false} />
+                <TextInput
+                  source="company_name"
+                  label="Company"
+                  helperText={false}
+                />
+                <TextInput
+                  source="job_title"
+                  label="Job Title"
+                  helperText={false}
+                />
               </div>
-              <TextInput source="linkedin_url" label="LinkedIn URL" helperText={false} />
+              <TextInput
+                source="linkedin_url"
+                label="LinkedIn URL"
+                helperText={false}
+              />
 
               {/* Source */}
               <SelectInput
@@ -96,10 +126,20 @@ export const LeadCreate = ({
                 validate={required()}
                 helperText={false}
               />
-              <TextInput source="source_detail" label="Source Detail" helperText={false} />
+              <TextInput
+                source="source_detail"
+                label="Source Detail"
+                helperText={false}
+              />
 
               {/* Notes */}
-              <TextInput source="notes" label="Notes" multiline rows={3} helperText={false} />
+              <TextInput
+                source="notes"
+                label="Notes"
+                multiline
+                rows={3}
+                helperText={false}
+              />
 
               {/* Advanced UTM fields */}
               <Button
@@ -109,23 +149,55 @@ export const LeadCreate = ({
                 className="self-start"
                 onClick={() => setShowAdvanced(!showAdvanced)}
               >
-                {showAdvanced ? <ChevronUp className="w-4 h-4 mr-1" /> : <ChevronDown className="w-4 h-4 mr-1" />}
+                {showAdvanced ? (
+                  <ChevronUp className="w-4 h-4 mr-1" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 mr-1" />
+                )}
                 Advanced (UTM Tracking)
               </Button>
 
               {showAdvanced && (
                 <div className="flex flex-col gap-4 pl-4 border-l-2 border-muted">
                   <div className="grid grid-cols-2 gap-4">
-                    <TextInput source="utm_source" label="UTM Source" helperText={false} />
-                    <TextInput source="utm_medium" label="UTM Medium" helperText={false} />
+                    <TextInput
+                      source="utm_source"
+                      label="UTM Source"
+                      helperText={false}
+                    />
+                    <TextInput
+                      source="utm_medium"
+                      label="UTM Medium"
+                      helperText={false}
+                    />
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <TextInput source="utm_campaign" label="UTM Campaign" helperText={false} />
-                    <TextInput source="utm_term" label="UTM Term" helperText={false} />
-                    <TextInput source="utm_content" label="UTM Content" helperText={false} />
+                    <TextInput
+                      source="utm_campaign"
+                      label="UTM Campaign"
+                      helperText={false}
+                    />
+                    <TextInput
+                      source="utm_term"
+                      label="UTM Term"
+                      helperText={false}
+                    />
+                    <TextInput
+                      source="utm_content"
+                      label="UTM Content"
+                      helperText={false}
+                    />
                   </div>
-                  <TextInput source="landing_page_url" label="Landing Page URL" helperText={false} />
-                  <TextInput source="referrer_url" label="Referrer URL" helperText={false} />
+                  <TextInput
+                    source="landing_page_url"
+                    label="Landing Page URL"
+                    helperText={false}
+                  />
+                  <TextInput
+                    source="referrer_url"
+                    label="Referrer URL"
+                    helperText={false}
+                  />
                 </div>
               )}
             </div>
