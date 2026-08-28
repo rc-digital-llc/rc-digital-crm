@@ -333,6 +333,22 @@ describe("GitHub workflow release contracts", () => {
     );
   });
 
+  it("workflow runs every required fast check on merge-queue candidates", () => {
+    const workflow = readWorkflow("check.yml");
+    expect(workflow).toMatch(
+      /merge_group:\s*\n\s+types:\s*\[checks_requested\]/m,
+    );
+    const fastJobBlocks = workflow.split(/^ {2}(?=[a-z][a-z-]+:)/m);
+    const jobs = fastJobBlocks.filter((block) =>
+      /name:\s*check \/ (?:lint|typecheck|unit|build)\s*$/m.test(block),
+    );
+    expect(jobs).toHaveLength(4);
+    for (const job of jobs) {
+      expect(job).toContain("github.event_name == 'merge_group'");
+      expect(job).not.toMatch(/continue-on-error|retry/i);
+    }
+  });
+
   it("workflow exposes six independent financial jobs and exact Make commands", () => {
     const workflow = readWorkflow("financial-release-gate.yml");
     expect(workflow).toMatch(/^name:\s*financial\s*$/m);
