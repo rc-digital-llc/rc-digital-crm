@@ -413,6 +413,30 @@ describe("GitHub ruleset release contracts", () => {
     expect(rulesetErrors(document)).toEqual([]);
   });
 
+  it("declares single-owner governance without weakening automated merge authority", () => {
+    const document = readJson("main-ruleset.json");
+    expect(document.governance).toEqual({
+      mode: "single_owner",
+      required_pull_request_approvals: 0,
+      accepted_risk: "no_independent_reviewer",
+    });
+    const rules = (document.ruleset as Record<string, unknown>)
+      .rules as Record<string, unknown>[];
+    const pullRequest = rules.find((rule) => rule.type === "pull_request")!;
+    expect(pullRequest.parameters).toMatchObject({
+      require_last_push_approval: false,
+      required_approving_review_count: 0,
+      required_review_thread_resolution: true,
+    });
+    expect(rules.some((rule) => rule.type === "merge_queue")).toBe(true);
+    expect(
+      rules.some((rule) => rule.type === "required_status_checks"),
+    ).toBe(true);
+    expect(
+      (document.ruleset as Record<string, unknown>).bypass_actors,
+    ).toEqual([]);
+  });
+
   it("ruleset rejects a missing queue, renamed check, or bypass actor", () => {
     const document = readJson("main-ruleset.json");
     const missingQueue = structuredClone(document);
@@ -550,6 +574,20 @@ describe("release promotion workflow contracts", () => {
     expect(runbook).toMatch(/schema.*functions.*frontend.*dormant/is);
     expect(runbook).toMatch(/stop conditions/i);
     expect(runbook).toMatch(/private.*receipt.*readback/is);
+    expect(runbook).toMatch(/single-owner/i);
+    expect(runbook).toMatch(/self-review is allowed/i);
+  });
+});
+
+describe("protected release environment contracts", () => {
+  it("requires explicit owner approval in single-owner mode", () => {
+    const intent = readJson("protected-environments.json");
+    expect(intent).toMatchObject({
+      review_mode: "single_owner",
+      required_reviewer_login: "Rconman99",
+      prevent_self_review: false,
+      accepted_risk: "no_independent_reviewer",
+    });
   });
 });
 
@@ -586,6 +624,10 @@ describe("financial enablement contracts", () => {
     );
     expect(workflow).not.toContain("environment: production-release");
     expect(workflow).toMatch(/group:\s*production-financial-enable-/);
+    expect(workflow).toContain(
+      "name: separately approve one financial feature",
+    );
+    expect(workflow).not.toMatch(/independent(?:ly)? approve/i);
   });
 
   it("verifies a dormant full chain and invariants immediately before enablement", () => {
