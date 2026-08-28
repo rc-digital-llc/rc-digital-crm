@@ -1,0 +1,457 @@
+<title>RC Digital Conversion Audit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" />
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --ink: #1b2129;
+    --body: #3c4552;
+    --dim: #6c7686;
+    --line: #dde1e7;
+    --orange: #e05e12;
+    --orange-soft: #fdeee2;
+    --steel: #3d4855;
+    --crit: #c0362c;
+    --crit-soft: #fbeae8;
+    --high: #b8730a;
+    --high-soft: #fdf3e0;
+    --med: #2c6cb0;
+    --med-soft: #e8f0fa;
+    --good: #2e7d4f;
+    --good-soft: #e7f3ec;
+    --font-display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+    --font-ui: "Inter", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14161a;
+      --surface: #1f242b;
+      --ink: #f0f2f5;
+      --body: #c3cad4;
+      --dim: #828d9b;
+      --line: #333b46;
+      --orange: #ff8a3d;
+      --orange-soft: #33261b;
+      --steel: #9aa5b3;
+      --crit: #ef6a5f;
+      --crit-soft: #33201e;
+      --high: #e8a33b;
+      --high-soft: #322a1a;
+      --med: #6ba3e0;
+      --med-soft: #1c2836;
+      --good: #5cb884;
+      --good-soft: #1c2f24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161a;
+    --surface: #1f242b;
+    --ink: #f0f2f5;
+    --body: #c3cad4;
+    --dim: #828d9b;
+    --line: #333b46;
+    --orange: #ff8a3d;
+    --orange-soft: #33261b;
+    --steel: #9aa5b3;
+    --crit: #ef6a5f;
+    --crit-soft: #33201e;
+    --high: #e8a33b;
+    --high-soft: #322a1a;
+    --med: #6ba3e0;
+    --med-soft: #1c2836;
+    --good: #5cb884;
+    --good-soft: #1c2f24;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--body);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { width: min(880px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0 80px; }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--orange);
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(44px, 7vw, 72px);
+    line-height: 0.95;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+  .meta-line {
+    margin-top: 14px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--dim);
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 34px;
+    letter-spacing: 0.015em;
+    color: var(--ink);
+    text-transform: uppercase;
+    margin: 56px 0 6px;
+  }
+  h2 + p.lede { margin-bottom: 20px; }
+  p + p { margin-top: 12px; }
+  .lede { color: var(--body); max-width: 62ch; }
+  strong { color: var(--ink); font-weight: 700; }
+
+  .verdict {
+    margin-top: 34px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--orange);
+    border-radius: 10px;
+    padding: 26px 28px;
+  }
+  .verdict p { max-width: none; }
+
+  .scoreboard {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .score {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .score b {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 34px;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+  }
+  .score span { font-size: 12.5px; color: var(--dim); }
+  .score.s-crit b { color: var(--crit); }
+  .score.s-high b { color: var(--high); }
+  .score.s-med b { color: var(--med); }
+  .score.s-good b { color: var(--good); }
+
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-top: 14px;
+  }
+  .finding h3 {
+    color: var(--ink);
+    font-size: 17px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .finding p { font-size: 15px; margin-top: 8px; max-width: 68ch; }
+  .fix {
+    margin-top: 10px;
+    font-size: 14.5px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--good-soft);
+    color: var(--body);
+  }
+  .fix::before { content: "Fix → "; font-weight: 700; color: var(--good); }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .tag-crit { background: var(--crit-soft); color: var(--crit); }
+  .tag-high { background: var(--high-soft); color: var(--high); }
+  .tag-med  { background: var(--med-soft);  color: var(--med); }
+  .tag-good { background: var(--good-soft); color: var(--good); }
+
+  .works { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .works .finding { margin-top: 0; }
+
+  ol.roadmap { margin: 20px 0 0; padding-left: 0; list-style: none; counter-reset: step; }
+  ol.roadmap li {
+    counter-increment: step;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px 20px 18px 64px;
+    margin-top: 12px;
+    position: relative;
+  }
+  ol.roadmap li::before {
+    content: "0" counter(step);
+    position: absolute;
+    left: 20px; top: 18px;
+    font-family: var(--font-display);
+    font-size: 26px;
+    color: var(--orange);
+    letter-spacing: 0.03em;
+  }
+  ol.roadmap h3 { color: var(--ink); font-size: 16px; font-weight: 700; }
+  ol.roadmap p { font-size: 14.5px; margin-top: 6px; max-width: 66ch; }
+  .effort {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .funnel {
+    margin-top: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 22px 24px;
+    overflow-x: auto;
+  }
+  .funnel-row { display: flex; align-items: stretch; gap: 0; min-width: 620px; }
+  .fstep {
+    flex: 1;
+    text-align: center;
+    padding: 14px 10px;
+    position: relative;
+  }
+  .fstep + .fstep::before {
+    content: "→";
+    position: absolute;
+    left: -7px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--dim);
+  }
+  .fstep b { display: block; color: var(--ink); font-size: 14px; font-weight: 700; }
+  .fstep span { font-size: 12px; color: var(--dim); }
+  .fstep.broken b { color: var(--crit); }
+  .fstep.broken span { color: var(--crit); }
+  .funnel-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 8px;
+  }
+  .funnel + .funnel { margin-top: 12px; }
+  .funnel.fixed { border-left: 4px solid var(--good); }
+  .funnel.current { border-left: 4px solid var(--crit); }
+
+  footer.note {
+    margin-top: 56px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--dim);
+  }
+
+  @media (max-width: 720px) {
+    .scoreboard { grid-template-columns: repeat(2, 1fr); }
+    .works { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="shell">
+  <p class="eyebrow">rcdigitalsystems.com / field inspection</p>
+  <h1>Conversion audit:<br />viewers to buyers.</h1>
+  <p class="meta-line">Audited 2026-08-28 · Live production deploy (Vercel · Next.js) · Homepage, /work, route map, form, metadata</p>
+
+  <div class="verdict">
+    <p><strong>Verdict: the site sells the brand well, but it hides the ways to buy.</strong>
+    The positioning is distinctive and the build quality is high. What's missing is everything a
+    service-business owner needs to say yes: a phone number, proof with numbers, a human, a price
+    signal, and a fast low-commitment way to start. Right now there is exactly one conversion path —
+    a four-step assessment form — and no way to measure who falls out of it.</p>
+  </div>
+
+  <div class="scoreboard">
+    <div class="score s-crit"><b>3</b><span>Critical findings</span></div>
+    <div class="score s-high"><b>4</b><span>High findings</span></div>
+    <div class="score s-med"><b>5</b><span>Medium findings</span></div>
+    <div class="score s-good"><b>6</b><span>Things working well</span></div>
+  </div>
+
+  <h2>The funnel today vs. fixed</h2>
+  <div class="funnel current">
+    <div class="funnel-label">Current path — one lane, high friction</div>
+    <div class="funnel-row">
+      <div class="fstep"><b>Visitor lands</b><span>strong brand</span></div>
+      <div class="fstep"><b>Looks for proof</b><span>1 case study, no numbers</span></div>
+      <div class="fstep broken"><b>Looks for a phone</b><span>none exists</span></div>
+      <div class="fstep broken"><b>Hits 7-field form</b><span>step 1 of 4</span></div>
+      <div class="fstep broken"><b>Leaves</b><span>unmeasured</span></div>
+    </div>
+  </div>
+  <div class="funnel fixed">
+    <div class="funnel-label">Fixed path — three lanes, each measured</div>
+    <div class="funnel-row">
+      <div class="fstep"><b>Visitor lands</b><span>same brand</span></div>
+      <div class="fstep"><b>Sees proof + faces</b><span>numbers, reviews</span></div>
+      <div class="fstep"><b>Picks a lane</b><span>call · book · 60-sec form</span></div>
+      <div class="fstep"><b>Lead hits CRM</b><span>with attribution</span></div>
+      <div class="fstep"><b>5-min follow-up</b><span>text + email</span></div>
+    </div>
+  </div>
+
+  <h2>What's working</h2>
+  <div class="works">
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> Distinct positioning</h3>
+      <p>"Build once. Grow everywhere." and the command-center concept separate you from every template agency site.</p></div>
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> 54 industry pages</h3>
+      <p>The industry field-plan structure is a real SEO and relevance asset — each trade gets its own pitch.</p></div>
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> Design discipline</h3>
+      <p>One consistent visual system across every page. It reads like a firm that has its act together.</p></div>
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> Form captures source</h3>
+      <p>The brief form is versioned and structured for a lead pipeline — the right skeleton to build on.</p></div>
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> Fast, prerendered pages</h3>
+      <p>Next.js prerendering, preloaded fonts, security headers — the technical hygiene is solid.</p></div>
+    <div class="finding"><h3><span class="tag tag-good">Keep</span> Social metadata</h3>
+      <p>OG and Twitter cards are present with a branded share image.</p></div>
+  </div>
+
+  <h2>Critical — blocking sales</h2>
+  <div class="finding">
+    <h3><span class="tag tag-crit">Critical</span> There is no way to contact you</h3>
+    <p>No phone number, no email address, no tel: or mailto: link anywhere on the site — not in the
+    header, footer, or contact section. The site literally says <strong>"Direct contact. Zero bloat."</strong>
+    and offers zero direct contact. Trades owners buy by talking to a person; many will not fill out
+    a form at all.</p>
+    <div class="fix">Put a real phone number (tap-to-call) and email in the header and footer of every
+    page, and a "prefer to talk? call/text us" line beside the form.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-crit">Critical</span> One conversion path, and it's heavy</h3>
+    <p>The only way to become a lead is the 4-step "Trade growth assessment." Step 1 alone asks for
+    industry (54-option dropdown), business name, your name, email, phone, follow-up preference, and
+    website — 7 fields before the first Continue. Every extra field costs real completion rate; four
+    gated steps compounds it.</p>
+    <div class="fix">Offer three lanes: call/text now · book a 15-minute call · a 60-second short form
+    (industry, name, phone — enrich the rest on the follow-up call). Keep the full assessment as an
+    optional deep path, not the toll gate.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-crit">Critical</span> Proof without numbers isn't proof</h3>
+    <p>The Results library contains one field report — Frame Restoration, your own venture — plus a
+    "reserved for the next operator" placeholder. No client testimonials, no review scores, no metrics
+    (leads per month, ranking wins, revenue impact), no before/after. The copy promises "verified"
+    and "evidence" but shows none a buyer can check.</p>
+    <div class="fix">Publish Frame's real numbers (calls, form fills, rankings by territory, time-to-launch),
+    add 2–3 named quotes with faces, and show actual screenshots of the work instead of abstract diagrams.</div>
+  </div>
+
+  <h2>High — costing you traffic and trust</h2>
+  <div class="finding">
+    <h3><span class="tag tag-high">High</span> Canonical tag bug is nuking your SEO</h3>
+    <p>Sub-pages declare <code>rel="canonical" → https://rcdigitalsystems.com</code> (verified on /work).
+    That tells Google every page is a duplicate of the homepage — so your 54 industry pages and the
+    results library are likely being dropped from the index entirely.</p>
+    <div class="fix">Set each page's canonical to its own URL. Then verify indexing in Search Console.
+    This is a one-line-per-page fix with outsized payoff.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-high">High</span> No structured data</h3>
+    <p>No JSON-LD anywhere — no Organization, LocalBusiness, Service, or FAQ schema. For a firm selling
+    local-search systems, the site should demonstrate the craft it sells.</p>
+    <div class="fix">Add Organization + Service schema sitewide and FAQ schema on industry pages.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-high">High</span> The voice may fly over your buyer's head</h3>
+    <p>"Doctrine," "after-action loop," "deployment phases," "command layer" — the military-ops framing is
+    distinctive, but a plumber with one truck searching "get more plumbing calls" may read it as
+    consultant-speak. You told me the audience is trades and hard workers; the current copy is written
+    for multi-market empire builders. Both can't lead.</p>
+    <div class="fix">Decide the primary buyer. If it's working owner-operators: plain-talk headline and CTAs
+    up top (the sandbox redesign's voice), keep the systems/command depth one level down for the ambitious
+    minority. If it's genuinely multi-market operators, keep the voice — but then the proof bar is even higher.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-high">High</span> Nobody home</h3>
+    <p>No founder name, no face, no story, no photos of real people or real job sites. Small-business
+    owners hire people they trust, and trust is personal. An anonymous "system" asks them to buy from
+    a logo.</p>
+    <div class="fix">Add a short "who you're working with" section: your name, your photo, one paragraph
+    on why an operator built this for operators. It reinforces the positioning instead of fighting it.</div>
+  </div>
+
+  <h2>Medium — friction and blind spots</h2>
+  <div class="finding">
+    <h3><span class="tag tag-med">Medium</span> No price signal</h3>
+    <p>Zero indication of cost or engagement model. Owners self-disqualify silently when they can't
+    tell if this is $500 or $50,000.</p>
+    <div class="fix">Publish a starting-at range or the engagement shapes (project build / monthly system).
+    "Fixed price, in writing, before we start" is itself a selling point.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-med">Medium</span> No response-time promise or risk reversal</h3>
+    <p>Nothing tells a submitter what happens next or when. Speed-to-lead is the #1 close-rate lever
+    in the trades — sell it by practicing it.</p>
+    <div class="fix">"You'll hear from us within one business day" next to every CTA, and an instant
+    confirmation text/email on submit.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-med">Medium</span> You can't measure the funnel</h3>
+    <p>Vercel Web Analytics is not enabled on the project (API returns not-found). There's a custom
+    analytics beacon in the code, but wherever it reports, there's no visible step-level funnel for the
+    4-step form — so you can't see where people quit.</p>
+    <div class="fix">Enable analytics (Vercel WA or PostHog — your CRM already uses PostHog), fire events
+    per form step, and review drop-off weekly.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-med">Medium</span> Leads should land in your CRM with attribution</h3>
+    <p>You built lead management and a multi-touch attribution engine into the RC Digital CRM. The site
+    form should feed it directly — source, industry, and UTM intact — instead of living as a separate pipeline.</p>
+    <div class="fix">Point the form at a Supabase edge function that inserts into the CRM leads table with
+    attribution fields. Every follow-up then runs through the pipeline you already track.</div>
+  </div>
+  <div class="finding">
+    <h3><span class="tag tag-med">Medium</span> Texting consent</h3>
+    <p>The form offers "Text" as a follow-up preference with no SMS consent language. If you text leads,
+    you want express consent on record (TCPA).</p>
+    <div class="fix">One checkbox line: "OK to text me about my request." Cheap now, expensive later.</div>
+  </div>
+
+  <h2>The order to fix it in</h2>
+  <p class="lede">Sequenced by conversion impact per hour of work.</p>
+  <ol class="roadmap">
+    <li><h3>Phone + email sitewide</h3><p>Header, footer, contact section, tap-to-call on mobile.</p><span class="effort">~1 hour · biggest single unlock</span></li>
+    <li><h3>Fix canonicals, add schema, submit sitemap</h3><p>Recover indexing for 54 industry pages and the results library.</p><span class="effort">~half day · compounding traffic</span></li>
+    <li><h3>Three-lane contact section</h3><p>Call/text · book a call · 60-second form. Full assessment becomes optional.</p><span class="effort">~1 day</span></li>
+    <li><h3>Proof with numbers</h3><p>Frame metrics by territory, 2–3 testimonials with names and faces, real screenshots.</p><span class="effort">~1 day + gathering assets</span></li>
+    <li><h3>Form → CRM leads with attribution</h3><p>Edge function insert; instant confirmation text/email; speed-to-lead alert to your phone.</p><span class="effort">~1–2 days</span></li>
+    <li><h3>Founder section + price signal</h3><p>Who they're hiring and roughly what it costs.</p><span class="effort">~half day</span></li>
+    <li><h3>Analytics + step-level funnel events</h3><p>Enable PostHog or Vercel WA; measure each lane and each form step.</p><span class="effort">~half day · makes everything else provable</span></li>
+  </ol>
+
+  <footer class="note">
+    Audit performed against the live production deployment via Vercel (homepage and /work fetched in full;
+    route map extracted from rendered HTML). Not inspected: client-side JS bundles (form submit target),
+    /industries/* and /systems/* page bodies, /command, /privacy, and the og.png asset — flagged where relevant.
+  </footer>
+</div>
