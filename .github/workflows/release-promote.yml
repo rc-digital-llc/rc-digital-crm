@@ -116,6 +116,10 @@ jobs:
         env:
           CUSTOMER_FRONTEND_REPOSITORY: ${{ vars.CUSTOMER_FRONTEND_REPOSITORY }}
           CUSTOMER_FRONTEND_TOKEN: ${{ secrets.CUSTOMER_FRONTEND_TOKEN }}
+          GIT_AUTHOR_NAME: "rc-digital-release-bot[bot]"
+          GIT_AUTHOR_EMAIL: "rc-digital-release-bot[bot]@users.noreply.github.com"
+          GIT_COMMITTER_NAME: "rc-digital-release-bot[bot]"
+          GIT_COMMITTER_EMAIL: "rc-digital-release-bot[bot]@users.noreply.github.com"
         run: |
           test -n "$CUSTOMER_FRONTEND_REPOSITORY"
           test -n "$CUSTOMER_FRONTEND_TOKEN"

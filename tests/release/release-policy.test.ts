@@ -566,6 +566,14 @@ describe("release promotion workflow contracts", () => {
     expect(workflow).toMatch(
       /gh-pages[^\n]*--dotfiles[^\n]*\.release\/promotion\/frontend/,
     );
+    for (const identityVariable of [
+      "GIT_AUTHOR_NAME",
+      "GIT_AUTHOR_EMAIL",
+      "GIT_COMMITTER_NAME",
+      "GIT_COMMITTER_EMAIL",
+    ]) {
+      expect(workflow).toMatch(new RegExp(`${identityVariable}:\\s*\\S+`));
+    }
     expect(workflow).toContain("gh repo clone");
     expect(workflow).toContain("verify-frontend-readback.mjs");
     expect(workflow).toContain("feature-transition.mjs dormant");
