@@ -10,6 +10,21 @@ import { gzipSync } from "node:zlib";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 
+const SUPABASE_CONFIG_SUPPORT_PATHS = [
+  "supabase/config.toml",
+  "supabase/templates",
+];
+
+export const FUNCTION_ARTIFACT_SOURCES = Object.freeze([
+  ...SUPABASE_CONFIG_SUPPORT_PATHS,
+  "supabase/functions",
+]);
+
+export const MIGRATION_ARTIFACT_SOURCES = Object.freeze([
+  ...SUPABASE_CONFIG_SUPPORT_PATHS,
+  "supabase/migrations",
+]);
+
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -55,22 +70,61 @@ function trackedManifest(commitSha, prefix) {
   }));
 }
 
-function gzipTar(tarPath) {
-  run("gzip", ["-n", "-9", "-f", tarPath]);
-  return `${tarPath}.gz`;
+function trackedFiles(commitSha, prefixes) {
+  const records = run("git", [
+    "ls-tree",
+    "-r",
+    "-z",
+    commitSha,
+    "--",
+    ...prefixes,
+  ])
+    .split("\0")
+    .filter(Boolean);
+  if (records.length === 0) {
+    throw new Error(`release source set is empty: ${prefixes.join(", ")}`);
+  }
+  return records
+    .map((record) => {
+      const match = /^([0-9]{6}) blob [0-9a-f]+\t(.+)$/.exec(record);
+      if (!match) throw new Error("release source set contains a non-file");
+      if (match[1] === "120000") {
+        throw new Error(`release source contains a symbolic link: ${match[2]}`);
+      }
+      return match[2];
+    })
+    .sort((left, right) => left.localeCompare(right));
 }
 
-function archiveTracked(commitSha, prefixes, outputPath) {
-  const tarPath = outputPath.replace(/\.gz$/, "");
-  run("git", [
-    "archive",
-    "--format=tar",
-    "--output",
-    tarPath,
-    commitSha,
-    ...prefixes,
-  ]);
-  return gzipTar(tarPath);
+export function releaseSafeSupabaseConfig(source) {
+  const signingKeyDeclarations =
+    source.match(/^[\t ]*signing_keys_path[\t ]*=.*(?:\r?\n|$)/gm) ?? [];
+  if (signingKeyDeclarations.length > 1) {
+    throw new Error("Supabase config contains multiple signing key paths");
+  }
+  const sanitized = source.replace(
+    /^[\t ]*signing_keys_path[\t ]*=.*(?:\r?\n|$)/gm,
+    "",
+  );
+  if (/^[\t ]*signing_keys_path[\t ]*=/m.test(sanitized)) {
+    throw new Error("release Supabase config still references signing keys");
+  }
+  return sanitized;
+}
+
+function releaseFileContent(commitSha, name) {
+  const content = run("git", ["show", `${commitSha}:${name}`], {
+    encoding: null,
+  });
+  if (name !== "supabase/config.toml") return content;
+  return Buffer.from(releaseSafeSupabaseConfig(content.toString("utf8")));
+}
+
+export function archiveReleaseSources(commitSha, prefixes, outputPath) {
+  const entries = trackedFiles(commitSha, prefixes)
+    .filter((name) => name !== "supabase/signing_keys.json")
+    .map((name) => ({ name, content: releaseFileContent(commitSha, name) }));
+  return writeDeterministicTarGzip(entries, outputPath);
 }
 
 function archiveFrontend(outputPath) {
@@ -99,25 +153,13 @@ function archiveFrontend(outputPath) {
   );
   if (files.length === 0) throw new Error("production frontend build is empty");
 
-  const records = [];
-  for (const filename of files) {
-    const relativeName = path
-      .relative(distPath, filename)
-      .split(path.sep)
-      .join("/");
-    const content = fs.readFileSync(filename);
-    const header = ustarHeader(relativeName, content.length);
-    records.push(header, content);
-    const padding = (512 - (content.length % 512)) % 512;
-    if (padding) records.push(Buffer.alloc(padding));
-  }
-  records.push(Buffer.alloc(1024));
-  fs.writeFileSync(
+  return writeDeterministicTarGzip(
+    files.map((filename) => ({
+      name: path.relative(distPath, filename).split(path.sep).join("/"),
+      content: fs.readFileSync(filename),
+    })),
     outputPath,
-    gzipSync(Buffer.concat(records), { level: 9, mtime: 0 }),
-    { mode: 0o600 },
   );
-  return outputPath;
 }
 
 function writeAscii(buffer, offset, length, value) {
@@ -168,6 +210,30 @@ function ustarHeader(relativeName, size) {
   return header;
 }
 
+function writeDeterministicTarGzip(entries, outputPath) {
+  const ordered = [...entries].sort((left, right) =>
+    left.name.localeCompare(right.name),
+  );
+  if (ordered.length === 0) throw new Error("release archive is empty");
+  if (new Set(ordered.map(({ name }) => name)).size !== ordered.length) {
+    throw new Error("release archive contains duplicate paths");
+  }
+  const records = [];
+  for (const { name, content } of ordered) {
+    const header = ustarHeader(name, content.length);
+    records.push(header, content);
+    const padding = (512 - (content.length % 512)) % 512;
+    if (padding) records.push(Buffer.alloc(padding));
+  }
+  records.push(Buffer.alloc(1024));
+  fs.writeFileSync(
+    outputPath,
+    gzipSync(Buffer.concat(records), { level: 9, mtime: 0 }),
+    { mode: 0o600 },
+  );
+  return outputPath;
+}
+
 export function prepareBuildEvidence(commitSha, outputDirectory) {
   if (!/^[0-9a-f]{40}$/.test(commitSha)) {
     throw new Error("release commit must be a full SHA");
@@ -205,14 +271,14 @@ export function prepareBuildEvidence(commitSha, outputDirectory) {
 
   const artifactPaths = [
     archiveFrontend(path.join(outputRoot, "frontend.tar.gz")),
-    archiveTracked(
+    archiveReleaseSources(
       commitSha,
-      ["supabase/config.toml", "supabase/functions"],
+      FUNCTION_ARTIFACT_SOURCES,
       path.join(outputRoot, "functions.tar.gz"),
     ),
-    archiveTracked(
+    archiveReleaseSources(
       commitSha,
-      ["supabase/config.toml", "supabase/migrations"],
+      MIGRATION_ARTIFACT_SOURCES,
       path.join(outputRoot, "migrations.tar.gz"),
     ),
     functionsManifestPath,
