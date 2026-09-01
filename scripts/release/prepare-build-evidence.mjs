@@ -10,6 +10,22 @@ import { gzipSync } from "node:zlib";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 
+const SUPABASE_CONFIG_SUPPORT_PATHS = [
+  "supabase/config.toml",
+  "supabase/signing_keys.json",
+  "supabase/templates",
+];
+
+export const FUNCTION_ARTIFACT_SOURCES = Object.freeze([
+  ...SUPABASE_CONFIG_SUPPORT_PATHS,
+  "supabase/functions",
+]);
+
+export const MIGRATION_ARTIFACT_SOURCES = Object.freeze([
+  ...SUPABASE_CONFIG_SUPPORT_PATHS,
+  "supabase/migrations",
+]);
+
 function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
@@ -207,12 +223,12 @@ export function prepareBuildEvidence(commitSha, outputDirectory) {
     archiveFrontend(path.join(outputRoot, "frontend.tar.gz")),
     archiveTracked(
       commitSha,
-      ["supabase/config.toml", "supabase/functions"],
+      FUNCTION_ARTIFACT_SOURCES,
       path.join(outputRoot, "functions.tar.gz"),
     ),
     archiveTracked(
       commitSha,
-      ["supabase/config.toml", "supabase/migrations"],
+      MIGRATION_ARTIFACT_SOURCES,
       path.join(outputRoot, "migrations.tar.gz"),
     ),
     functionsManifestPath,
