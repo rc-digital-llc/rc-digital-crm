@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: blocked
-stopped_at: Phase 01 Plan 09 complete; Plan 10 blocked on scoped credentials/targets and protected dry runs
-last_updated: "2026-08-28T18:01:27.000Z"
-last_activity: 2026-08-28
+status: in_progress
+stopped_at: Phase 01 complete; ready to plan Phase 02
+last_updated: "2026-09-01T18:58:53.000Z"
+last_activity: 2026-09-01
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -24,35 +24,35 @@ See: .planning/PROJECT.md (updated 2026-08-20)
 to the applicable agreement version, verified revenue evidence, deterministic
 calculation, invoice, payment-provider event, settlement, and collections
 history.
-**Current focus:** Phase 01 — executable-financial-test-and-release-gate
+**Current focus:** Phase 02 — tenant-role-and-evidence-security planning
 
 ## Current Position
 
-Phase: 01 (executable-financial-test-and-release-gate) — BLOCKED
-Plan: 9 of 10 complete; Plan 10 remains blocked on exact live acceptance checks
-Status: Merge authority is proven live; protected synthetic release proof remains
-Last activity: 2026-08-28
+Phase: 01 (executable-financial-test-and-release-gate) — COMPLETE
+Plan: 10 of 10 complete
+Status: Protected build and staged release proof passed; ready to plan Phase 02
+Last activity: 2026-09-01
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100% of currently planned work
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
-- Average duration: 24 min
-- Total execution time: 3.6 hours
+- Total plans completed: 10
+- Average duration: 37 min
+- Total execution time: 6.2 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| Phase 01 | 9 | 216 min | 24 min |
+| Phase 01 | 10 | 371 min | 37 min |
 
 **Recent Trend:**
 
-- Last 5 plans: 19 min, 14 min, 6 min, 20 min, 105 min
-- Trend: Live-control rollout completed; protected release provisioning remains
+- Last 5 plans: 14 min, 6 min, 20 min, 105 min, 155 min
+- Trend: Phase 1 closed after protected merge and live staged-release rollout
 
 *Updated after each plan completion*
 | Phase 01 P01 | 8min | 3 tasks | 7 files |
@@ -64,6 +64,7 @@ Progress: [█████████░] 90%
 | Phase 01 P06 | 7min | 2 tasks | 3 files |
 | Phase 01 P07 | 20min | 3 tasks | 13 files |
 | Phase 01 P09 | 105min | 2 tasks | 6 files |
+| Phase 01 P10 | 155min | 3 tasks | 26 core files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 01]: A scoped release bot authors protected pull requests so the sole owner can provide the one required human approval; the same owner may separately approve both protected release stages. — The absence of an independent human reviewer is explicit and accepted; all automated checks, merge queue, signed/linear history, protected environments, and no-bypass controls remain mandatory.
 - [Phase 01]: Merge-queue fast checks must subscribe to `merge_group` and run unconditionally just like the financial lanes. — Required contexts that exist only on pull requests deadlock the queue instead of protecting `main`.
 - [Phase 01]: GitHub-signed GraphQL commits preserve required-signature enforcement when local signing identity is unavailable. — The signed squash tree was proven byte-for-byte identical before the PR branch was repointed, and the unsigned history remains on a recovery branch.
+- [Phase 01]: Protected main builds immutable artifacts without production authority; schema, functions, and frontend promote only from verified private predecessor receipts. — A successful merge/build is never treated as production proof.
+- [Phase 01]: Phase 1 keeps the live financial-feature registry empty; protected dormant and enablement attempts must fail before provider access. — Source-level synthetic transition tests prove the positive path without enabling customer behavior.
+- [Phase 01]: The tracked Supabase signing JWK is the identical public Marmelab localhost development fixture, but authoritative release archives exclude it and strip its config reference. — Development bootstrap material does not belong in production evidence bundles.
 
 ### Pending Todos
 
@@ -93,18 +97,13 @@ None yet.
 
 ### Blockers/Concerns
 
-- Plan 01-09 is complete. Release-bot-authored PR #3 used one authenticated
-  `Rconman99` approval, verified-signed commits, the no-bypass merge queue, and
-  all ten required contexts. Merge-group candidate `03c59d4` passed both the
-  fast and financial workflows before becoming the protected `main` commit.
-- Plan 01-10 now has a private organization-owned evidence repository plus
-  `production-release` and `production-financial-enable` environments with
-  protected-branch restrictions, no admin bypass, and explicit single-owner
-  approval. The same owner may separately approve both stages. Scoped
-  production/evidence secrets, provider/frontend target variables, and the
-  synthetic protected dry run remain absent.
-- Phase 02 remains dependency-locked until Plan 01-10 passes;
-  it was not started or marked complete.
+- No Phase 1 blocker remains. Current-main build `33545281071` and schema,
+  functions, and frontend promotion runs `33545424206`, `33545638363`, and
+  `33545865904` passed with private receipt/readback evidence.
+- Protected dormant and enablement runs `33546107386` and `33546294270` failed
+  at the intended policy boundary before provider access because Phase 1
+  registers no live financial feature.
+- Phase 02 is dependency-unlocked but has not yet been discussed or planned.
 - The repository has unrelated pre-existing uncommitted scan artifacts and
   source changes; they were preserved and excluded from Phase 1 commits.
 
@@ -118,6 +117,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-28T18:01:27.000Z
-Stopped at: Plan 01-09 complete; Plan 01-10 awaits scoped secrets/targets and protected synthetic release proof
+Last session: 2026-09-01T18:58:53.000Z
+Stopped at: Phase 01 complete; ready to discuss and plan Phase 02
 Resume file: None
