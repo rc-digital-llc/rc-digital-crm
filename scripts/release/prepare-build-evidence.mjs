@@ -18,6 +18,7 @@ const SUPABASE_CONFIG_SUPPORT_PATHS = [
 export const FUNCTION_ARTIFACT_SOURCES = Object.freeze([
   ...SUPABASE_CONFIG_SUPPORT_PATHS,
   "supabase/functions",
+  "src/components/atomic-crm/providers/commons/attachments.ts",
 ]);
 
 export const MIGRATION_ARTIFACT_SOURCES = Object.freeze([

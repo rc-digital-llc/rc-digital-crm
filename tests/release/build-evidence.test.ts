@@ -15,6 +15,9 @@ const supabaseConfigSupportPaths = [
   "supabase/config.toml",
   "supabase/templates",
 ];
+const functionRuntimeSupportPaths = [
+  "src/components/atomic-crm/providers/commons/attachments.ts",
+];
 
 describe("release build evidence", () => {
   it.each([
@@ -63,6 +66,11 @@ describe("release build evidence", () => {
       expect(archiveEntries).not.toContain("supabase/signing_keys.json");
       expect(releaseConfig).toContain("[auth]");
       expect(releaseConfig).not.toContain("signing_keys_path");
+      if (name === "functions") {
+        expect(archiveEntries).toEqual(
+          expect.arrayContaining(functionRuntimeSupportPaths),
+        );
+      }
     } finally {
       fs.rmSync(temporaryDirectory, { recursive: true, force: true });
     }
