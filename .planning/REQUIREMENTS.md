@@ -32,10 +32,10 @@ history.
 - [x] **REL-02**: A maintainer can execute PostgreSQL, RLS, RPC, trigger, Edge
   Function, webhook, concurrency, and provider-contract integration tests under
   representative authenticated claims.
-- [ ] **REL-03**: CI blocks money-bearing schema, privileged endpoint, provider,
+- [x] **REL-03**: CI blocks money-bearing schema, privileged endpoint, provider,
   or automation changes unless their executable migration, authorization,
   replay, and failure-path tests pass.
-- [ ] **REL-04**: A release owner can deploy schema, functions, frontend, and
+- [x] **REL-04**: A release owner can deploy schema, functions, frontend, and
   dormant financial features as independently verified expand-contract stages
   with feature flags, rollback instructions, and immutable release receipts.
 - [x] **REL-05**: A release owner can see and block unresolved critical or high
@@ -429,8 +429,8 @@ A v1 requirement is complete only when:
 |-------------|-------|--------|
 | REL-01 | Phase 1 | Complete |
 | REL-02 | Phase 1 | Complete |
-| REL-03 | Phase 1 | Pending |
-| REL-04 | Phase 1 | Pending |
+| REL-03 | Phase 1 | Complete |
+| REL-04 | Phase 1 | Complete |
 | REL-05 | Phase 1 | Complete |
 | WORK-01 | Phase 2 | Pending |
 | WORK-02 | Phase 9 | Pending |

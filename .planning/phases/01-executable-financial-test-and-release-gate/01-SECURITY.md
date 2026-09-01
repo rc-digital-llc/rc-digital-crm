@@ -1,8 +1,8 @@
 ---
 phase: 01
 slug: executable-financial-test-and-release-gate
-status: blocked
-threats_open: 2
+status: verified
+threats_open: 0
 asvs_level: 1
 created: 2026-08-26
 ---
@@ -44,8 +44,8 @@ created: 2026-08-26
 | T-01-11 | Information Disclosure | Git history, tokens, logs | mitigate | Current-tree and full-redaction history scans pass. Value-blind equality testing reproduced the two historical values from a fresh isolated `atomic-crm-demo` local stack; only their exact fingerprints are classified, and the complete ignore set is hash-pinned so expansion fails. | closed |
 | T-01-12 | Information Disclosure | Production bundle | mitigate | Production source maps are disabled; recursive bundle scan reports no map files or secret markers. | closed |
 | T-01-13 | Tampering / Repudiation | Receipt builder and verifier | mitigate | Strict schema/policy, canonical SHA-256 identity, exact predecessor chain, artifact attestation, safe filenames, duplicate rejection, and tamper tests pass. | closed |
-| T-01-14 | Information Disclosure / Tampering | Private evidence publication | mitigate | The organization-owned private evidence repository passes authenticated content readback and unauthenticated access denial. A complete synthetic receipt chain is still absent. | open |
-| T-01-15 | Elevation of Privilege | Promotion and enablement environments | mitigate | Both environments exist with protected branches, no admin bypass, and explicit single-owner approval; self-review is allowed by accepted policy. Scoped secrets/targets and protected synthetic approvals remain absent. | open |
+| T-01-14 | Information Disclosure / Tampering | Private evidence publication | mitigate | The organization-owned private evidence repository passes authenticated publication/readback for the current-main build and successful schema/functions/frontend receipts; unauthenticated repository access returns 404. Artifact digests and exact deployed-target readback match. The upstream localhost signing-key fixture found in a superseded archive is public development material, not a production credential; authoritative current archives exclude it and strip its config reference. | closed |
+| T-01-15 | Elevation of Privilege | Promotion and enablement environments | mitigate | Both environments enforce protected branches, no admin bypass, and explicit single-owner approval. Scoped production targets and secrets executed only after approval. Current-main schema/functions/frontend promotion passed, while separately approved dormant and enablement proofs rejected an unregistered feature before provider access. | closed |
 | T-01-16 | Tampering | Promotion chain, post-state, rollback | mitigate | Exact predecessor receipts, artifact attestations, deploy-tree readback, feature fail-close, compensating receipts, pinned rollback, and forward-only database repair controls are implemented and tested. | closed |
 | T-01-SC | Tampering | Actions, CLI, and dependency supply chain | mitigate | Workflow actions use full commit SHAs, Supabase CLI is fixed at 2.115.0, artifact builds are deterministic, and no audit-force or registry substitution was introduced. | closed |
 
@@ -71,6 +71,7 @@ created: 2026-08-26
 | 2026-08-27 | 17 | 13 | 4 | Codex release-security close-out |
 | 2026-08-28 | 17 | 14 | 3 | Codex single-owner control readback |
 | 2026-08-28 | 17 | 15 | 2 | Codex merge-queue completion audit |
+| 2026-09-01 | 17 | 17 | 0 | Codex protected release and fail-closed enablement audit |
 
 ### Live Gate Evidence
 
@@ -79,7 +80,11 @@ created: 2026-08-26
 - PR #3 is authored by `rc-digital-release-bot`; `Rconman99` supplied the required approval, signed head `255c1f20ada4847a934dec2bd61b88dce5281f68` passed all ten required PR contexts, and merge-group `03c59d4e0983b91f723929eff3b230bc337ea67f` passed the same ten contexts in Actions runs `33196583122` and `33196583084` before merging to `main`.
 - The first merge-group attempt exposed missing `merge_group` handling in the fast workflow. Regression coverage now requires all four fast jobs on queue candidates; the corrected candidate passed them before merge.
 - The organization-owned evidence repository is private; authenticated README readback SHA-256 is `ad7f3859b7143dc751987c040905e32365cd484316ecbd435cd480204aacbb0f`, while unauthenticated API access returns 404.
-- `node scripts/release/verify-github-controls.mjs --check-environments`: nonzero only for nine declared missing scoped secrets; both environment protection shells match the single-owner intent with protected branches, required owner approval, self-review allowed, and no admin bypass.
+- `node scripts/release/verify-github-controls.mjs --check-environments`: pass. Both environment configurations match the versioned protection contract; protection report SHA-256 values are `3bb3f1793b50597d6cc6817b95c287a9edbdbfda5efdaf12a625d8c4420ca61c` for `production-release` and `faaf941d26da052857b0cb97df0fbc8a5dbf7be3329d0147c2c481eb9699cae3` for `production-financial-enable`.
+- Current-main release build run `33545281071` succeeded and published/read back receipt `c0ae9253cfdeca20c6ac21654403d93af1c21ac1d5d1cacaad74f644e426fbdd` without production mutation authority.
+- Protected schema, functions, and frontend runs `33545424206`, `33545638363`, and `33545865904` succeeded from exact predecessor receipts. Their receipt IDs are `e39809f71b135d23daa356b072b21be1ed3956821a3ad8b98d169952f686e47f`, `d2093a35a316064050754cfaa6ffdc2ecef770627fab1947ebefca52e2e38da9`, and `16383c889dc36eb2de3a4261a16dc6399915e90813813763cda07851bd049c7c`.
+- Protected dormant run `33546107386` and distinct enablement run `33546294270` failed at the required empty-registry boundary before provider access or mutation; downstream receipt steps were skipped.
+- The tracked `supabase/signing_keys.json` blob is identical to upstream `marmelab/atomic-crm` and was introduced by upstream commit `d348cef1` as a development JWT signing key for localhost. Current deterministic release archives exclude it and remove `signing_keys_path`; regression tests extract the archive and enforce both properties.
 - `make test-release-secrets`: pass with zero history and current-tree findings; report SHA-256 `4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945`.
 - `make test-release-security`: pass for dependencies, secrets, production bundle, and workflow coupling.
 
@@ -89,7 +94,7 @@ created: 2026-08-26
 
 - [x] All threats have a disposition (mitigate / accept / transfer)
 - [x] Accepted risk AR-01 is explicitly owner-authorized with compensating controls
-- [ ] `threats_open: 0` confirmed
-- [ ] `status: verified` set in frontmatter
+- [x] `threats_open: 0` confirmed
+- [x] `status: verified` set in frontmatter
 
-**Approval:** blocked only on protected release credentials, targets, and synthetic receipts
+**Approval:** verified 2026-09-01; all Phase 1 threats are mitigated or explicitly accepted

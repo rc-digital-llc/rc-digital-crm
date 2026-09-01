@@ -1,7 +1,7 @@
 ---
 phase: 1
 slug: executable-financial-test-and-release-gate
-status: blocked
+status: verified
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-08-25
@@ -92,6 +92,21 @@ plan.
 
 **Mapped task checks:** 20 green, 4 blocked by external/security state.
 
+The table above is the original execution snapshot. Every recorded blocker was
+subsequently closed:
+
+## Final Execution Results — 2026-09-01
+
+| Scope | Result | Evidence |
+|-------|--------|----------|
+| Plans 01-01 through 01-08 source and executable checks | ✅ green | Clean/upgrade migration, authorization, Edge/provider, replay/concurrency, receipt, dependency, secret, bundle, and coupling gates pass. |
+| Plan 01-09 live merge authority | ✅ green | Organization-owned no-bypass ruleset, one owner approval, signatures, merge queue, and ten exact PR/merge-group contexts are enforced. |
+| Plan 01-10 immutable build | ✅ green | Current-main run `33545281071` attested and privately read back deterministic artifacts without production mutation authority. |
+| Plan 01-10 protected promotion | ✅ green | Schema/functions/frontend runs `33545424206`, `33545638363`, and `33545865904` passed from pinned predecessor receipts with exact post-state readback. |
+| Plan 01-10 separate enablement boundary | ✅ green | Protected dormant and enable runs `33546107386` and `33546294270` independently rejected the unregistered synthetic feature before provider access, as required by the empty Phase 1 registry. |
+
+**Mapped task checks:** 24 green, 0 blocked.
+
 ---
 
 ## Wave 0 Requirements
@@ -107,13 +122,13 @@ plan.
 
 ---
 
-## Manual-Only Verifications
+## Owner-Controlled Verifications
 
-| Behavior | Requirement | Why Manual | Test Instructions |
-|----------|-------------|------------|-------------------|
-| Release-owner identity approves production promotion | REL-04 | GitHub environment review is intentionally outside repository-controlled workflow inputs | Dispatch a dry-run promotion to the protected environment; verify the job remains waiting until an authorized release owner approves and the deployment record names that reviewer. |
-| A different release-owner approval gates feature enablement | REL-04 | Separation of the approval boundary must be observed in GitHub's protected deployment record | After dry-run stage receipts pass, dispatch enablement; verify it creates a separate pending review and cannot reuse promotion approval. |
-| Private evidence readback remains private | REL-04, REL-05 | Repository visibility/access policy is external state | Upload a synthetic receipt, verify its digest through an authenticated API readback, and verify an unauthenticated request cannot retrieve the asset. |
+| Behavior | Requirement | Result | Evidence |
+|----------|-------------|--------|----------|
+| Release-owner identity approves production promotion | REL-04 | ✅ complete | Each production stage paused at `production-release`; secrets and mutation ran only after owner approval. |
+| A separate release-owner approval gates feature enablement | REL-04 | ✅ complete | Run `33546294270` paused at `production-financial-enable` and could not reuse promotion approval. The same owner may approve both boundaries under accepted AR-01. |
+| Private evidence readback remains private | REL-04, REL-05 | ✅ complete | Current-main build/stage receipts passed authenticated asset readback; unauthenticated repository access returns 404. |
 
 These checks validate owner-controlled external protection. All repository code,
 test behavior, receipt contents, stage order, and gate logic remain automated.
@@ -128,5 +143,6 @@ test behavior, receipt contents, stage order, and gate logic remain automated.
 - [x] No watch-mode flags appear in verification commands.
 - [x] Fast checks target under 30 seconds; live financial lanes are independently timed and capped at 15 minutes.
 - [x] `nyquist_compliant: true` is set in frontmatter.
+- [x] Every owner-controlled protected-environment and private-evidence check is complete.
 
-**Approval:** repository validation complete 2026-08-26; live release controls blocked
+**Approval:** verified 2026-09-01; all 24 mapped task checks and owner-controlled release checks are complete
