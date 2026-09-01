@@ -405,7 +405,7 @@ describe("GitHub workflow release contracts", () => {
       expect(workflow).toMatch(/node-version:\s*["']?22["']?/);
     }
     const financial = workflows[1];
-    expect(financial).toContain("version: 2.115.0");
+    expect(financial).toContain("version: 2.116.0");
     expect(financial).toMatch(/permissions:\s*\n\s+contents:\s*read/m);
     expect(financial).not.toMatch(
       /contents:\s*write|checks:\s*write|secrets\./,
@@ -553,7 +553,32 @@ describe("release promotion workflow contracts", () => {
       /stage:[\s\S]*type:\s*choice[\s\S]*- schema[\s\S]*- functions[\s\S]*- frontend[\s\S]*- dormant/,
     );
     expect(workflow).toMatch(/environment:\s*\n\s+name:\s*production-release/);
-    expect(workflow).toMatch(/group:\s*production-release-/);
+    expect(workflow).toContain(
+      "group: production-release-${{ vars.RELEASE_PROVIDER_TARGET }}",
+    );
+    expect(workflow).not.toMatch(
+      /group:[^\n]*(?:inputs\.evidence_id|inputs\.stage)/,
+    );
+  });
+
+  it("tests and promotes with the hosted PostgreSQL major and one CLI version", () => {
+    expect(
+      fs.readFileSync(
+        path.join(repositoryRoot, "supabase/config.toml"),
+        "utf8",
+      ),
+    ).toMatch(/^major_version = 17$/m);
+    for (const filename of [
+      "financial-release-gate.yml",
+      "release-promote.yml",
+      "release-enable.yml",
+    ]) {
+      const workflow = readWorkflow(filename);
+      expect(workflow).not.toContain("version: 2.115.0");
+      for (const match of workflow.matchAll(/^\s+version:\s*(\S+)$/gm)) {
+        expect(match[1]).toBe("2.116.0");
+      }
+    }
   });
 
   it("verifies predecessor evidence and pinned inputs immediately before one mutation", () => {
@@ -660,7 +685,9 @@ describe("financial enablement contracts", () => {
       /environment:\s*\n\s+name:\s*production-financial-enable/,
     );
     expect(workflow).not.toContain("environment: production-release");
-    expect(workflow).toMatch(/group:\s*production-financial-enable-/);
+    expect(workflow).toContain(
+      "group: production-release-${{ vars.RELEASE_PROVIDER_TARGET }}",
+    );
     expect(workflow).toContain(
       "name: separately approve one financial feature",
     );

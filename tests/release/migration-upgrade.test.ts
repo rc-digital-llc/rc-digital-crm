@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalFingerprint,
   compareFingerprintSets,
+  loadUpgradeExpectation,
 } from "../../scripts/release/fingerprint-upgrade.mjs";
 
 const categories = [
@@ -24,6 +25,15 @@ function fingerprintSet(hash = HASH_A) {
 }
 
 describe("representative upgrade fingerprints", () => {
+  it("uses the additive PostgreSQL 17 expectation over the immutable source baseline", () => {
+    const expectation = loadUpgradeExpectation();
+    expect(expectation).toMatchObject({
+      version: "1.0.0",
+      baseline_id: "002-pre-financial-pg17",
+    });
+    expect(expectation.categories).toHaveProperty("grant_matrix");
+  });
+
   it("accepts exact before/after preservation", () => {
     expect(
       compareFingerprintSets({

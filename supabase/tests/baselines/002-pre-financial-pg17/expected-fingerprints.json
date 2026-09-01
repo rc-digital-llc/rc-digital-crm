@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "baseline_id": "002-pre-financial-pg17",
+  "categories": {
+    "row_identity_counts": "b4b103c2fc2aa808e399ea16f005db7ab16dc3caa907d13e31b0ffe8c40c0971",
+    "ownership_foreign_keys": "f297bb9ada0aa0a969d26687c25632a8425189c1df5d530be34ab43c3f2d8782",
+    "invoice_numeric_text": "62617c1e748843367ba8db4f4e95c2f2a6c8d0697d9cd476b69f712cc517a155",
+    "row_payload_hashes": "d67ac64c71c92e9ff00b580fc57546f50663d4a26bed9df563f5e7983175ddd8",
+    "constraint_definitions": "4ffe1ecac064354096b38e4816b1127d753f514e5b09a9e01d8b89984885e410",
+    "grant_matrix": "81d35299b403194d56dbbad1c67d0d1cf46eb64814334fcd653fec12ff0bcf1e",
+    "queryability": "da02d1e5bfcecbbb7392bd216327bc27b4cf316210a96a48cb5106e398ca2a5c"
+  },
+  "categories_sha256": "e5b3435cb06e88f908c66d10f7caa60746c913226220f8e792f3bbc35b69b241",
+  "transformations": {
+    "grant_matrix": {
+      "migration": "20260825000002",
+      "before_sha256": "81d35299b403194d56dbbad1c67d0d1cf46eb64814334fcd653fec12ff0bcf1e",
+      "after_sha256": "271750a1fdc9ef453ef689654f36a9cd1995fad5df9da421be361e6b837c9a1c"
+    }
+  }
+}
