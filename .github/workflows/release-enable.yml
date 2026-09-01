@@ -13,7 +13,7 @@ on:
         type: string
 
 concurrency:
-  group: production-financial-enable-${{ inputs.feature }}
+  group: production-release-${{ vars.RELEASE_PROVIDER_TARGET }}
   cancel-in-progress: false
 
 permissions: {}
@@ -62,7 +62,7 @@ jobs:
       - name: Set up pinned Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - name: Reject every unregistered Phase 1 feature before provider access
         run: node scripts/release/verify-financial-enable.mjs --registry "$RELEASE_FEATURE"
       - name: Fetch and verify complete dormant chain

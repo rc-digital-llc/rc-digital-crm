@@ -54,7 +54,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - run: npm ci
       - run: make test-financial-migration-clean
       - name: Clean up local stack
@@ -78,7 +78,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - run: npm ci
       - run: make test-financial-migration-upgrade
       - name: Clean up local stack
@@ -102,7 +102,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - run: npm ci
       - run: make test-financial-database-contracts
       - name: Clean up local stack
@@ -126,7 +126,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - run: npm ci
       - run: make test-financial-functions
       - name: Clean up local stack
@@ -150,7 +150,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1
         with:
-          version: 2.115.0
+          version: 2.116.0
       - run: npm ci
       - run: make test-financial-replay-concurrency
       - name: Clean up local stack

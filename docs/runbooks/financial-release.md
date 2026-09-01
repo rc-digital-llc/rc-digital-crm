@@ -48,7 +48,9 @@ financial enablement, which still requires a separate protected approval.
    artifact digest and GitHub OIDC attestation, checks out the exact commit, and
    reverifies the predecessor immediately before mutation.
 5. The workflow performs only the selected operation:
-   - `schema`: dry-run and apply the pinned expand-compatible migration set.
+   - `schema`: preview the pending list and apply the pinned expand-compatible
+     migration set. The preview does not execute SQL; the blocking clean and
+     upgrade database lanes provide executable validation.
    - `functions`: deploy the pinned backward-compatible function bundle.
    - `frontend`: publish the pinned frontend archive without rebuilding.
    - `dormant`: register a policy-listed feature in dormant state. The empty
@@ -56,6 +58,10 @@ financial enablement, which still requires a separate protected approval.
 6. Confirm the provider post-state check passes and the protected deployment
    links a new private receipt whose readback is `verified`.
 7. Copy that new receipt ID only when intentionally dispatching the next stage.
+
+All production promotion and enablement stages share one target-level
+concurrency queue. A second approved run waits for the active run instead of
+racing it, even when it uses a different receipt, stage, or feature.
 
 ## Stop conditions
 

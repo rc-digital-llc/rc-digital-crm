@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "baseline_id": "002-pre-financial-pg17",
+  "source_baseline": "001-pre-financial",
+  "source_manifest_sha256": "eb1f2e2cdee134e72f45664a11557dcecce66cec1011cfdfaf99bd5dfd100e93",
+  "postgres_major_version": 17,
+  "expected_fingerprints_sha256": "105188b7089295bee54228c6d0e289f7919df202c39bbe3348477318630b720f"
+}
