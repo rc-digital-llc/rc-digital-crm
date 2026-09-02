@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 2 released and proven at canonical production; Phase 3 planning is next
-last_updated: "2026-09-02T04:22:20.000Z"
-last_activity: 2026-09-01
+stopped_at: Auth confirmation redirect hotfix released and verified; Phase 3 planning is next
+last_updated: "2026-09-02T17:54:09.000Z"
+last_activity: 2026-09-02
 progress:
   total_phases: 10
   completed_phases: 2
@@ -30,8 +30,8 @@ history.
 
 Phase: 02 (tenant-role-and-evidence-security) — COMPLETE
 Plan: 12 of 12
-Status: Released to canonical production with exact artifact and five-viewport receipts
-Last activity: 2026-09-01
+Status: Released to canonical production; auth confirmation redirect hotfix verified
+Last activity: 2026-09-02
 
 Progress: [██████████] 100% of currently planned work (22/22 plans)
 
@@ -101,19 +101,24 @@ security decisions:
 - [Release]: Credential-free production freshness is proven at the first-owner
   sign-up surface; authenticated billing remains separately proven in an
   immutable deterministic preview until an owner-created account exists.
+- [Release]: Email confirmation redirects are explicit in the signup request
+  and canonical in hosted Supabase Auth; every promotion reads back that live
+  configuration and fails before mutation on localhost, a missing canonical
+  allow-list entry, or a cross-project target.
 
 ### Pending Todos
 
 - Start Phase 03 exact-money-and-rounding-contract planning.
-- After the owner creates the first account, retain an authenticated production
-  billing receipt without storing or fabricating credentials.
+- If requested after owner sign-in, retain an authenticated production billing
+  receipt without storing or fabricating credentials.
 - Record residual screen-reader and physical-device coverage when performed.
 
 ### Blockers/Concerns
 
-- No Phase 2 implementation or release blocker remains.
-- Canonical production and exact artifact freshness are proven; first-owner
-  account creation is intentionally left to the real owner.
+- No Phase 2 implementation, release, or email-confirmation redirect blocker
+  remains.
+- Canonical production, exact artifact freshness, and the live Supabase Auth
+  redirect contract are proven; credentialed sign-in remains owner-operated.
 - The Vite build retains non-blocking CSS import-order, bundle-size, and stale
   Browserslist advisories for later cleanup.
 
@@ -125,6 +130,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-02T04:22:20.000Z
-Stopped at: Phase 2 released and proven at canonical production; Phase 3 planning is next
+Last session: 2026-09-02T17:54:09.000Z
+Stopped at: Auth confirmation redirect hotfix released and verified; Phase 3 planning is next
 Resume file: None
