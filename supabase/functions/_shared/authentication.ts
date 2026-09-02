@@ -4,8 +4,8 @@ import { createErrorResponse } from "./utils.ts";
 function publishableKey() {
   return (
     Deno.env.get("SB_PUBLISHABLE_KEY") ??
-      Deno.env.get("SUPABASE_ANON_KEY") ??
-      ""
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    ""
   );
 }
 

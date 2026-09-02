@@ -26,3 +26,4 @@ cypress/screenshots
 !.yarn/sdks
 !.yarn/versions
 .github
+.planning/evidence/**/receipt.json

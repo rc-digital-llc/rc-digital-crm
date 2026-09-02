@@ -358,9 +358,9 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
       );
 
       expect(results).toHaveLength(32);
-      expect(results.filter((result) => result.result === "applied")).toHaveLength(
-        1,
-      );
+      expect(
+        results.filter((result) => result.result === "applied"),
+      ).toHaveLength(1);
       expect(
         results.filter((result) => result.result === "duplicate"),
       ).toHaveLength(31);
