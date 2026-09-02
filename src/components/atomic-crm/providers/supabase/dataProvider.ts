@@ -31,6 +31,7 @@ import type {
   BillingEvidenceUploadResponse,
 } from "../types";
 import { getIsInitialized } from "./authProvider";
+import { getEmailRedirectTo } from "./authRedirect";
 import { supabase } from "./supabase";
 
 if (import.meta.env.VITE_SUPABASE_URL === undefined) {
@@ -93,6 +94,7 @@ const dataProviderWithCustomMethods = {
       email,
       password,
       options: {
+        emailRedirectTo: getEmailRedirectTo(),
         data: {
           first_name,
           last_name,
