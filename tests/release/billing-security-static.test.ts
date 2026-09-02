@@ -55,18 +55,26 @@ describe("billing resource registration", () => {
     const metadataSource = readSource(
       "src/components/atomic-crm/billing-accounts/BillingSurfaceMetadata.tsx",
     );
+    const releaseMetadataSource = readSource(
+      "src/components/atomic-crm/root/releaseSurface.ts",
+    );
 
-    expect(metadataSource.match(/billing-security-phase2/g)).toHaveLength(1);
+    expect(
+      releaseMetadataSource.match(/billing-security-phase2/g),
+    ).toHaveLength(1);
     expect(metadataSource).toContain("scrollPaddingBottom");
     expect(metadataSource).toContain('"9.5rem"');
+    expect(metadataSource).toContain("ReleaseSurfaceMetadata");
     expect(listSource.match(/data-surface-version/g)).toHaveLength(2);
     expect(listSource).toMatch(
-      /isPending \? undefined : BILLING_SECURITY_SURFACE_MARKER/,
+      /isPending \? undefined : RELEASE_SURFACE_MARKER/,
     );
     expect(listSource).not.toMatch(
       /export const BillingAccountList = \(\) => \([\s\S]{0,160}data-surface-version/,
     );
-    expect(`${metadataSource}\n${listSource}`).not.toMatch(
+    expect(
+      `${releaseMetadataSource}\n${metadataSource}\n${listSource}`,
+    ).not.toMatch(
       /data-surface-version[\s\S]{0,100}(?:customer_name|organization_id|account_id|commit|sha|token)/i,
     );
   });
@@ -176,7 +184,7 @@ describe("billing surface contracts", () => {
       expect(contract.canonical_policy).toBe("match");
       expect(contract.expected_serving_origin).toMatch(/^https?:\/\//);
       expect(contract.expected_canonical_origin).toBe(
-        "https://atomic-crm-ryans-projects-51d84217.vercel.app",
+        "https://atomic-crm-sigma-one.vercel.app",
       );
       expect(contract.freshness_markers).toEqual(["billing-security-phase2"]);
       expect(routes).toEqual([

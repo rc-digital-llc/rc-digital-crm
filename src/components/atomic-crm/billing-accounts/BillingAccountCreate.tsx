@@ -11,16 +11,14 @@ import { SaveButton } from "@/components/admin/form";
 import { Card, CardContent } from "@/components/ui/card";
 
 import type { CrmDataProvider } from "../providers/types";
+import { RELEASE_SURFACE_MARKER } from "../root/releaseSurface";
 import {
   BillingAccountInputs,
   sanitizeBillingAccountFormValues,
   validateBillingAccountForm,
   type BillingAccountFormValues,
 } from "./BillingAccountInputs";
-import {
-  BILLING_SECURITY_SURFACE_MARKER,
-  BillingSurfaceMetadata,
-} from "./BillingSurfaceMetadata";
+import { BillingSurfaceMetadata } from "./BillingSurfaceMetadata";
 
 const defaultValues = {
   billing_status: "active",
@@ -66,10 +64,7 @@ const BillingAccountCreateForm = () => {
   };
 
   return (
-    <div
-      className="min-w-0"
-      data-surface-version={BILLING_SECURITY_SURFACE_MARKER}
-    >
+    <div className="min-w-0" data-surface-version={RELEASE_SURFACE_MARKER}>
       <BillingSurfaceMetadata />
       <Form
         defaultValues={defaultValues}

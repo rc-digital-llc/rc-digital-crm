@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "name": "rc-digital-billing-accounts-production",
-  "expected_serving_origin": "https://atomic-crm-ryans-projects-51d84217.vercel.app",
-  "expected_canonical_origin": "https://atomic-crm-ryans-projects-51d84217.vercel.app",
+  "expected_serving_origin": "https://atomic-crm-sigma-one.vercel.app",
+  "expected_canonical_origin": "https://atomic-crm-sigma-one.vercel.app",
   "canonical_policy": "match",
   "freshness_markers": ["billing-security-phase2"],
   "max_redirects": 0,
