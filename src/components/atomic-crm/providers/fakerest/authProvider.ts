@@ -1,6 +1,16 @@
 import type { AuthProvider } from "ra-core";
 
-import type { Sale } from "../../types";
+import type {
+  BillingRoleAssignment,
+  BillingRoleCapability,
+  Sale,
+} from "../../types";
+import {
+  EMPTY_BILLING_CAPABILITY_SUMMARY,
+  isBillingPresentationResource,
+  registerBillingSecurityInvalidator,
+  type BillingCapabilitySummary,
+} from "../../billing-accounts/billingAccess";
 import { canAccess } from "../commons/canAccess";
 import { dataProvider } from "./dataProvider";
 
@@ -17,6 +27,61 @@ export const DEFAULT_USER = {
 } as const;
 
 export const USER_STORAGE_KEY = "user";
+
+let demoBillingCapabilityCache: Promise<BillingCapabilitySummary> | null = null;
+
+const clearDemoBillingCapabilityCache = () => {
+  demoBillingCapabilityCache = null;
+};
+
+export const getDemoBillingCapabilitySummary = async (
+  saleId: number,
+): Promise<BillingCapabilitySummary> => {
+  if (!demoBillingCapabilityCache) {
+    demoBillingCapabilityCache = Promise.all([
+      dataProvider.getList<BillingRoleAssignment>("billing_role_assignments", {
+        filter: { sales_id: saleId, disabled_at: null },
+        pagination: { page: 1, perPage: 100 },
+        sort: { field: "created_at", order: "ASC" },
+      }),
+      dataProvider.getList<BillingRoleCapability>("billing_role_capabilities", {
+        filter: {},
+        pagination: { page: 1, perPage: 1000 },
+        sort: { field: "capability", order: "ASC" },
+      }),
+    ]).then(([assignmentResponse, capabilityResponse]) => {
+      const globalCapabilities = new Set<string>();
+      const accountCapabilities = new Map<string, Set<string>>();
+      for (const assignment of assignmentResponse.data) {
+        const capabilities = capabilityResponse.data
+          .filter((capability) => capability.role === assignment.role)
+          .map((capability) => capability.capability);
+        if (!assignment.account_id) {
+          capabilities.forEach((capability) =>
+            globalCapabilities.add(capability),
+          );
+          continue;
+        }
+        const scoped =
+          accountCapabilities.get(assignment.account_id) ?? new Set<string>();
+        capabilities.forEach((capability) => scoped.add(capability));
+        accountCapabilities.set(assignment.account_id, scoped);
+      }
+      return {
+        global_capabilities: [...globalCapabilities].sort(),
+        accounts: [...accountCapabilities.entries()]
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([account_id, capabilities]) => ({
+            account_id,
+            capabilities: [...capabilities].sort(),
+          })),
+      };
+    });
+  }
+  return demoBillingCapabilityCache;
+};
+
+registerBillingSecurityInvalidator(clearDemoBillingCapabilityCache);
 
 localStorage.setItem(USER_STORAGE_KEY, JSON.stringify({ ...DEFAULT_USER }));
 
@@ -39,6 +104,7 @@ async function getUser(email: string) {
 
 export const authProvider: AuthProvider = {
   login: async ({ email }) => {
+    clearDemoBillingCapabilityCache();
     const user = await getUser(email);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
     return Promise.resolve();
@@ -54,6 +120,7 @@ export const authProvider: AuthProvider = {
     return;
   },
   logout: () => {
+    clearDemoBillingCapabilityCache();
     localStorage.removeItem(USER_STORAGE_KEY);
     return Promise.resolve();
   },
@@ -70,7 +137,10 @@ export const authProvider: AuthProvider = {
 
     // Compute access rights from the sale role
     const role = localUser.administrator ? "admin" : "user";
-    return canAccess(role, params);
+    const billingSummary = isBillingPresentationResource(params.resource)
+      ? await getDemoBillingCapabilitySummary(Number(localUser.id))
+      : EMPTY_BILLING_CAPABILITY_SUMMARY;
+    return canAccess(role, params, billingSummary);
   },
   getIdentity: () => {
     const userItem = localStorage.getItem(USER_STORAGE_KEY);

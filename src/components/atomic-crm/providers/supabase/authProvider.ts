@@ -4,6 +4,12 @@ import { supabaseAuthProvider } from "ra-supabase-core";
 import { canAccess } from "../commons/canAccess";
 import { supabase } from "./supabase";
 import { analytics } from "@/providers/posthog";
+import {
+  EMPTY_BILLING_CAPABILITY_SUMMARY,
+  isBillingPresentationResource,
+  registerBillingSecurityInvalidator,
+  type BillingCapabilitySummary,
+} from "../../billing-accounts/billingAccess";
 
 const baseAuthProvider = supabaseAuthProvider(supabase, {
   getIdentity: async () => {
@@ -86,9 +92,66 @@ function clearCache() {
   storage?.removeItem(CURRENT_SALE_CACHE_KEY);
 }
 
+let billingCapabilityCache: Promise<BillingCapabilitySummary> | null = null;
+
+const normalizeBillingCapabilitySummary = (
+  value: unknown,
+): BillingCapabilitySummary => {
+  if (!value || typeof value !== "object") {
+    return EMPTY_BILLING_CAPABILITY_SUMMARY;
+  }
+  const summary = value as Record<string, unknown>;
+  const globalCapabilities = Array.isArray(summary.global_capabilities)
+    ? summary.global_capabilities.filter(
+        (capability): capability is string => typeof capability === "string",
+      )
+    : [];
+  const accounts = Array.isArray(summary.accounts)
+    ? summary.accounts.flatMap((value) => {
+        if (!value || typeof value !== "object") return [];
+        const account = value as Record<string, unknown>;
+        if (
+          typeof account.account_id !== "string" ||
+          !Array.isArray(account.capabilities)
+        ) {
+          return [];
+        }
+        return [
+          {
+            account_id: account.account_id,
+            capabilities: account.capabilities.filter(
+              (capability): capability is string =>
+                typeof capability === "string",
+            ),
+          },
+        ];
+      })
+    : [];
+  return { global_capabilities: globalCapabilities, accounts };
+};
+
+export const clearBillingCapabilityCache = () => {
+  billingCapabilityCache = null;
+};
+
+export const getBillingCapabilitySummary = async () => {
+  if (!billingCapabilityCache) {
+    billingCapabilityCache = supabase
+      .rpc("get_billing_capability_summary")
+      .then(({ data, error }) => {
+        if (error) return EMPTY_BILLING_CAPABILITY_SUMMARY;
+        return normalizeBillingCapabilitySummary(data);
+      });
+  }
+  return billingCapabilityCache;
+};
+
+registerBillingSecurityInvalidator(clearBillingCapabilityCache);
+
 export const authProvider: AuthProvider = {
   ...baseAuthProvider,
   login: async (params) => {
+    clearBillingCapabilityCache();
     if (params.ssoDomain) {
       const { error } = await supabase.auth.signInWithSSO({
         domain: params.ssoDomain,
@@ -115,6 +178,7 @@ export const authProvider: AuthProvider = {
   },
   logout: async (params) => {
     clearCache();
+    clearBillingCapabilityCache();
     return baseAuthProvider.logout(params);
   },
   checkAuth: async (params) => {
@@ -162,7 +226,10 @@ export const authProvider: AuthProvider = {
 
     // Compute access rights from the sale role
     const role = sale.administrator ? "admin" : "user";
-    return canAccess(role, params);
+    const billingSummary = isBillingPresentationResource(params.resource)
+      ? await getBillingCapabilitySummary()
+      : EMPTY_BILLING_CAPABILITY_SUMMARY;
+    return canAccess(role, params, billingSummary);
   },
   getAuthorizationDetails(authorizationId: string) {
     return supabase.auth.oauth.getAuthorizationDetails(authorizationId);

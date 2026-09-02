@@ -1,3 +1,10 @@
+import {
+  canAccessBillingPresentation,
+  EMPTY_BILLING_CAPABILITY_SUMMARY,
+  isBillingPresentationResource,
+  type BillingCapabilitySummary,
+} from "../../billing-accounts/billingAccess";
+
 // FIXME: This should be exported from the ra-core package
 type CanAccessParams<
   RecordType extends Record<string, any> = Record<string, any>,
@@ -12,7 +19,13 @@ export const canAccess = <
 >(
   role: string,
   params: CanAccessParams<RecordType>,
+  billingSummary: BillingCapabilitySummary = EMPTY_BILLING_CAPABILITY_SUMMARY,
 ) => {
+  if (isBillingPresentationResource(params.resource)) {
+    // Browser checks are presentation only. RLS/RPC/Edge remains authoritative.
+    return canAccessBillingPresentation(billingSummary, params);
+  }
+
   if (role === "admin") {
     return true;
   }

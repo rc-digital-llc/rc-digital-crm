@@ -1,4 +1,5 @@
 import { generateCompanies } from "./companies";
+import { generateBillingAccounts } from "./billingAccounts";
 import { generateContactNotes } from "./contactNotes";
 import { generateContacts } from "./contacts";
 import { generateDealNotes } from "./dealNotes";
@@ -25,6 +26,7 @@ export default (): Db => {
       config: {} as Db["configuration"][number]["config"],
     },
   ];
+  Object.assign(db, generateBillingAccounts());
   finalize(db);
 
   return db;

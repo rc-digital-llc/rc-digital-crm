@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Home,
   Import,
+  Landmark,
   LogOut,
   Search,
   Settings,
@@ -117,6 +118,14 @@ const Header = () => {
           label="Invoices"
           active={isActive("/invoices")}
         />
+        <CanAccess resource="billing_accounts" action="list">
+          <SidebarNavItem
+            to="/billing_accounts"
+            icon={<Landmark className="w-[18px] h-[18px]" />}
+            label="Billing accounts"
+            active={isActive("/billing_accounts")}
+          />
+        </CanAccess>
 
         {/* Spacer */}
         <div className="flex-1" />
