@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "name": "rc-digital-public-entry-production",
-  "expected_serving_origin": "https://atomic-crm-sigma-one.vercel.app",
+  "name": "rc-digital-public-entry-source",
+  "expected_serving_origin": "http://127.0.0.1:4179",
   "expected_canonical_origin": "https://atomic-crm-sigma-one.vercel.app",
   "canonical_policy": "match",
   "freshness_markers": ["auth-confirmation-redirect-v1"],
@@ -23,24 +23,9 @@
       "height": 568
     },
     {
-      "name": "android-360",
-      "width": 360,
+      "name": "desktop-1280",
+      "width": 1280,
       "height": 800
-    },
-    {
-      "name": "iphone-393",
-      "width": 393,
-      "height": 852
-    },
-    {
-      "name": "large-430",
-      "width": 430,
-      "height": 932
-    },
-    {
-      "name": "landscape-740",
-      "width": 740,
-      "height": 360
     }
   ],
   "routes": [

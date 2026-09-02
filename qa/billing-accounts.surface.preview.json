@@ -4,7 +4,7 @@
   "expected_serving_origin": "https://atomic-d4eu80380-ryans-projects-51d84217.vercel.app",
   "expected_canonical_origin": "https://atomic-crm-sigma-one.vercel.app",
   "canonical_policy": "match",
-  "freshness_markers": ["billing-security-phase2"],
+  "freshness_markers": ["auth-confirmation-redirect-v1"],
   "max_redirects": 0,
   "min_touch_target_css_px": 44,
   "max_fixed_viewport_ratio": 0.13,
@@ -13,7 +13,7 @@
   "max_page_errors": 0,
   "max_focus_steps": 12,
   "stability_wait_ms": 500,
-  "readiness_selector": "[data-surface-version=\"billing-security-phase2\"]",
+  "readiness_selector": "[data-surface-version=\"auth-confirmation-redirect-v1\"]",
   "locale": "en-US",
   "timezone": "America/Los_Angeles",
   "viewports": [
