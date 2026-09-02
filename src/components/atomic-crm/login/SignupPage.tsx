@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 
 import type { CrmDataProvider } from "../providers/types";
 import { useConfigurationContext } from "../root/ConfigurationContext";
+import { ReleaseSurfaceMetadata } from "../root/ReleaseSurfaceMetadata";
+import { RELEASE_SURFACE_MARKER } from "../root/releaseSurface";
 import type { SignUpData } from "../types";
 import { LoginSkeleton } from "./LoginSkeleton";
 import { Notification } from "@/components/admin/notification";
@@ -69,11 +71,7 @@ export const SignupPage = () => {
   const login = useLogin();
   const notify = useNotify();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { isValid },
-  } = useForm<SignUpData>({
+  const { register, handleSubmit } = useForm<SignUpData>({
     mode: "onChange",
   });
 
@@ -91,7 +89,8 @@ export const SignupPage = () => {
   };
 
   return (
-    <div className="h-screen p-8">
+    <div className="h-screen p-8" data-surface-version={RELEASE_SURFACE_MARKER}>
+      <ReleaseSurfaceMetadata canonicalPath="/" />
       <div className="flex items-center gap-4">
         <img
           src={logo}
@@ -147,8 +146,8 @@ export const SignupPage = () => {
             <div className="flex flex-col gap-4 justify-between items-center mt-8">
               <Button
                 type="submit"
-                disabled={!isValid || isSignUpPending}
-                className="w-full"
+                disabled={isSignUpPending}
+                className="h-11 w-full"
               >
                 {isSignUpPending ? (
                   <>

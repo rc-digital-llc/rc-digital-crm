@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/admin/text-input";
 import { Notification } from "@/components/admin/notification";
 import { useConfigurationContext } from "@/components/atomic-crm/root/ConfigurationContext.tsx";
+import { ReleaseSurfaceMetadata } from "@/components/atomic-crm/root/ReleaseSurfaceMetadata";
+import { RELEASE_SURFACE_MARKER } from "@/components/atomic-crm/root/releaseSurface";
 import { SSOAuthButton } from "./SSOAuthButton";
 
 export const LoginPage = (props: { redirectTo?: string }) => {
@@ -80,7 +82,11 @@ export const LoginPage = (props: { redirectTo?: string }) => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div
+      className="min-h-screen flex"
+      data-surface-version={RELEASE_SURFACE_MARKER}
+    >
+      <ReleaseSurfaceMetadata canonicalPath="/" />
       <div className="relative grid w-full lg:grid-cols-2">
         {/* Left branding panel - Twenty-inspired dark panel */}
         <div className="relative hidden h-full flex-col p-10 text-white lg:flex overflow-hidden">

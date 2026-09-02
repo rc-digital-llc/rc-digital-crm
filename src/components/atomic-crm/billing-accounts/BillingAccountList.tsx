@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { MobileContent } from "../layout/MobileContent";
 import MobileHeader from "../layout/MobileHeader";
+import { RELEASE_SURFACE_MARKER } from "../root/releaseSurface";
 import type {
   BillingAccount,
   BillingAccountOwner,
@@ -31,10 +32,7 @@ import type {
   Sale,
 } from "../types";
 import { billingAccountExporter } from "./billingAccountExport";
-import {
-  BILLING_SECURITY_SURFACE_MARKER,
-  BillingSurfaceMetadata,
-} from "./BillingSurfaceMetadata";
+import { BillingSurfaceMetadata } from "./BillingSurfaceMetadata";
 
 const statusChoices = [
   { id: "active", name: "Active" },
@@ -117,7 +115,7 @@ const BillingAccountListLayout = () => {
   if (isPending) return <BillingAccountListLoading />;
 
   return (
-    <div data-surface-version={BILLING_SECURITY_SURFACE_MARKER}>
+    <div data-surface-version={RELEASE_SURFACE_MARKER}>
       {error ? (
         <BillingAccountListError onRetry={() => void refetch()} />
       ) : !data?.length ? (
@@ -174,9 +172,7 @@ const BillingAccountMobileLayout = () => {
   return (
     <div
       className="min-w-0 bg-white text-base dark:bg-[#111113]"
-      data-surface-version={
-        isPending ? undefined : BILLING_SECURITY_SURFACE_MARKER
-      }
+      data-surface-version={isPending ? undefined : RELEASE_SURFACE_MARKER}
     >
       <MobileHeader>
         <FilterLiveForm className="flex min-w-0 flex-1 gap-2 [&_button]:min-h-11">
