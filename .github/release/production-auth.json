@@ -1,0 +1,8 @@
+{
+  "project_ref": "gtasqgavcrodxusvcsyt",
+  "site_url": "https://atomic-crm-sigma-one.vercel.app",
+  "required_redirect_urls": [
+    "https://atomic-crm-sigma-one.vercel.app/**"
+  ],
+  "forbidden_redirect_url_patterns": ["localhost", "127.0.0.1"]
+}

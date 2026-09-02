@@ -602,6 +602,7 @@ describe("release promotion workflow contracts", () => {
 
   it("verifies predecessor evidence and pinned inputs immediately before one mutation", () => {
     const workflow = readWorkflow("release-promote.yml");
+    expect(workflow).toContain("verify-production-auth-config.mjs");
     expect(workflow).toContain("fetch-private-evidence.mjs");
     expect(workflow).toContain("verify-receipt.mjs");
     expect(workflow).toContain("verify-promotion-input.mjs");
@@ -623,6 +624,9 @@ describe("release promotion workflow contracts", () => {
     expect(workflow).toContain("feature-transition.mjs dormant");
     expect(workflow).not.toMatch(/npm run build|make build/);
     expect(workflow).not.toMatch(/workflow_call|workflow_run|gh workflow run/);
+    expect(workflow.indexOf("verify-production-auth-config.mjs")).toBeLessThan(
+      workflow.indexOf("supabase db push"),
+    );
   });
 
   it("fails on missing protected inputs and receipts every post-state", () => {

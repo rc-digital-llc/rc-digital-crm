@@ -60,7 +60,7 @@ describe("billing resource registration", () => {
     );
 
     expect(
-      releaseMetadataSource.match(/billing-security-phase2/g),
+      releaseMetadataSource.match(/auth-confirmation-redirect-v1/g),
     ).toHaveLength(1);
     expect(metadataSource).toContain("scrollPaddingBottom");
     expect(metadataSource).toContain('"9.5rem"');
@@ -186,7 +186,9 @@ describe("billing surface contracts", () => {
       expect(contract.expected_canonical_origin).toBe(
         "https://atomic-crm-sigma-one.vercel.app",
       );
-      expect(contract.freshness_markers).toEqual(["billing-security-phase2"]);
+      expect(contract.freshness_markers).toEqual([
+        "auth-confirmation-redirect-v1",
+      ]);
       expect(routes).toEqual([
         {
           path: "/billing_accounts",
@@ -198,7 +200,7 @@ describe("billing surface contracts", () => {
         },
       ]);
       expect(contract.readiness_selector).toBe(
-        '[data-surface-version="billing-security-phase2"]',
+        '[data-surface-version="auth-confirmation-redirect-v1"]',
       );
       expect(contract.min_touch_target_css_px).toBe(44);
       expect(contract.max_console_errors).toBe(0);
