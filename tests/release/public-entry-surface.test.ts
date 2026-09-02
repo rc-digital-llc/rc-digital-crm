@@ -8,6 +8,7 @@ import {
   RELEASE_SURFACE_MARKER,
   buildReleaseCanonicalUrl,
 } from "../../src/components/atomic-crm/root/releaseSurface";
+import { resolveEmailRedirectOrigin } from "../../src/components/atomic-crm/providers/supabase/authRedirect";
 
 const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const readSource = (relativePath: string) =>
@@ -18,13 +19,33 @@ describe("public production entry surface", () => {
     expect(RELEASE_CANONICAL_ORIGIN).toBe(
       "https://atomic-crm-sigma-one.vercel.app",
     );
-    expect(RELEASE_SURFACE_MARKER).toBe("billing-security-phase2");
+    expect(RELEASE_SURFACE_MARKER).toBe("auth-confirmation-redirect-v1");
     expect(buildReleaseCanonicalUrl("/")).toBe(
       "https://atomic-crm-sigma-one.vercel.app/",
     );
     expect(buildReleaseCanonicalUrl("/billing_accounts")).toBe(
       "https://atomic-crm-sigma-one.vercel.app/billing_accounts",
     );
+  });
+
+  it("returns confirmation emails to production except during local development", () => {
+    expect(
+      resolveEmailRedirectOrigin("https://preview.example.vercel.app"),
+    ).toBe(RELEASE_CANONICAL_ORIGIN);
+    expect(resolveEmailRedirectOrigin(undefined)).toBe(
+      RELEASE_CANONICAL_ORIGIN,
+    );
+    expect(resolveEmailRedirectOrigin("http://localhost:5173")).toBe(
+      "http://localhost:5173",
+    );
+    expect(resolveEmailRedirectOrigin("http://127.0.0.1:5173")).toBe(
+      "http://127.0.0.1:5173",
+    );
+
+    const dataProvider = readSource(
+      "src/components/atomic-crm/providers/supabase/dataProvider.ts",
+    );
+    expect(dataProvider).toContain("emailRedirectTo: getEmailRedirectTo()");
   });
 
   it("marks both first-owner setup and returning-user login without credentials", () => {
