@@ -14,9 +14,9 @@ const baselineDirectory = path.join(
   repositoryRoot,
   "supabase/tests/baselines/001-pre-financial",
 );
-const expectationDirectory = path.join(
+const transformationRegistryDirectory = path.join(
   repositoryRoot,
-  "supabase/tests/baselines/002-pre-financial-pg17",
+  "supabase/tests/upgrades",
 );
 const categoryNames = [
   "row_identity_counts",
@@ -31,6 +31,27 @@ const fixtureUserIds = [
   "10000000-0000-0000-0000-000000000001",
   "10000000-0000-0000-0000-000000000002",
 ];
+const allowedSemanticInvariants = new Set([
+  "billing_grants_least_privilege",
+  "billing_kernel_rows_added",
+  "invoice_business_facts_preserved",
+  "invoice_count_preserved",
+  "invoice_legacy_ownership_preserved",
+  "invoice_numeric_text_preserved",
+  "invoice_provider_text_preserved",
+  "invoice_tenant_foreign_keys_valid",
+  "invoice_tenant_keys_complete",
+]);
+const registryFields = [
+  "baseline_id",
+  "migrations",
+  "registry_id",
+  "semantic_invariants",
+  "sequence",
+  "transformations",
+  "version",
+];
+const transformationFields = ["after_sha256", "before_sha256", "migration"];
 
 const fingerprintQueries = {
   row_identity_counts: `
@@ -162,6 +183,133 @@ const fingerprintQueries = {
     )`,
 };
 
+const invoiceSemanticQuery = `
+  SELECT jsonb_build_object(
+    'invoice_count', pg_catalog.count(*)::text,
+    'numeric_values', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', id::text,
+          'amount', amount::text,
+          'tax_rate', tax_rate::text,
+          'tax_amount', tax_amount::text,
+          'total_amount', total_amount::text
+        ) ORDER BY id
+      ),
+      '[]'::jsonb
+    ),
+    'provider_values', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', id::text,
+          'payment_method', payment_method,
+          'payment_reference', payment_reference
+        ) ORDER BY id
+      ),
+      '[]'::jsonb
+    ),
+    'legacy_ownership', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', id::text,
+          'company_id', company_id::text,
+          'project_id', project_id::text,
+          'deal_id', deal_id::text,
+          'sales_id', sales_id::text
+        ) ORDER BY id
+      ),
+      '[]'::jsonb
+    ),
+    'business_facts', COALESCE(
+      jsonb_agg(
+        jsonb_build_object(
+          'id', id::text,
+          'created_at', created_at::text,
+          'company_id', company_id::text,
+          'project_id', project_id::text,
+          'deal_id', deal_id::text,
+          'sales_id', sales_id::text,
+          'invoice_number', invoice_number,
+          'description', description,
+          'amount', amount::text,
+          'tax_rate', tax_rate::text,
+          'tax_amount', tax_amount::text,
+          'total_amount', total_amount::text,
+          'line_items', line_items,
+          'status', status,
+          'issue_date', issue_date::text,
+          'due_date', due_date::text,
+          'paid_date', paid_date::text,
+          'payment_method', payment_method,
+          'payment_reference', payment_reference,
+          'notes', notes,
+          'terms', terms
+        ) ORDER BY id
+      ),
+      '[]'::jsonb
+    )
+  )
+  FROM public.invoices`;
+
+const postUpgradeSemanticQuery = `
+  SELECT jsonb_build_object(
+    'null_tenant_count', (
+      SELECT count(*)::text
+      FROM public.invoices
+      WHERE organization_id IS NULL OR billing_account_id IS NULL
+    ),
+    'invalid_tenant_link_count', (
+      SELECT count(*)::text
+      FROM public.invoices AS invoice
+      LEFT JOIN public.billing_accounts AS account
+        ON account.id = invoice.billing_account_id
+        AND account.organization_id = invoice.organization_id
+        AND account.company_id = invoice.company_id
+      WHERE account.id IS NULL
+    ),
+    'invoice_company_count', (
+      SELECT count(DISTINCT company_id)::text FROM public.invoices
+    ),
+    'mapped_account_count', (
+      SELECT count(DISTINCT billing_account_id)::text FROM public.invoices
+    ),
+    'missing_owner_count', (
+      SELECT count(*)::text
+      FROM public.invoices AS invoice
+      LEFT JOIN public.billing_account_owners AS owner
+        ON owner.organization_id = invoice.organization_id
+        AND owner.account_id = invoice.billing_account_id
+        AND owner.sales_id = invoice.sales_id
+        AND owner.effective_until IS NULL
+      WHERE owner.id IS NULL
+    ),
+    'missing_operator_count', (
+      SELECT count(*)::text
+      FROM public.invoices AS invoice
+      JOIN public.sales AS sale ON sale.id = invoice.sales_id
+      LEFT JOIN public.billing_role_assignments AS assignment
+        ON assignment.organization_id = invoice.organization_id
+        AND assignment.account_id = invoice.billing_account_id
+        AND assignment.sales_id = invoice.sales_id
+        AND assignment.role = 'operator'
+        AND assignment.disabled_at IS NULL
+        AND assignment.valid_until IS NULL
+      WHERE NOT sale.administrator AND NOT sale.disabled AND assignment.id IS NULL
+    ),
+    'anonymous_invoice_privilege_count', (
+      SELECT count(*)::text
+      FROM information_schema.table_privileges
+      WHERE table_schema = 'public'
+        AND table_name = 'invoices'
+        AND grantee = 'anon'
+    ),
+    'authenticated_delete', pg_catalog.has_table_privilege(
+      'authenticated',
+      'public.invoices',
+      'DELETE'
+    )
+  )`;
+
 function executeProcess(command, args, options = {}) {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
@@ -221,10 +369,6 @@ function hashFingerprint(value) {
     .digest("hex");
 }
 
-function sha256(bytes) {
-  return createHash("sha256").update(bytes).digest("hex");
-}
-
 function assertFingerprintShape(fingerprints, label) {
   const received = Object.keys(fingerprints ?? {}).sort();
   if (JSON.stringify(received) !== JSON.stringify([...categoryNames].sort())) {
@@ -244,10 +388,7 @@ export function compareFingerprintSets({ before, after, expected }) {
   const results = {};
   for (const category of categoryNames) {
     if (before[category] !== expected.categories[category]) {
-      throw new Error(
-        `upgrade fingerprint mismatch before: ${category} ` +
-          `(expected ${expected.categories[category]}, received ${before[category]})`,
-      );
+      throw new Error(`upgrade fingerprint mismatch before: ${category}`);
     }
     const transformation = expected.transformations?.[category];
     const expectedAfter = transformation?.after_sha256 ?? before[category];
@@ -255,10 +396,7 @@ export function compareFingerprintSets({ before, after, expected }) {
       throw new Error(`upgrade transformation mismatch: ${category}`);
     }
     if (after[category] !== expectedAfter) {
-      throw new Error(
-        `upgrade fingerprint mismatch after: ${category} ` +
-          `(expected ${expectedAfter}, received ${after[category]})`,
-      );
+      throw new Error(`upgrade fingerprint mismatch after: ${category}`);
     }
     results[category] = {
       before: before[category],
@@ -269,48 +407,203 @@ export function compareFingerprintSets({ before, after, expected }) {
   return results;
 }
 
-export function loadUpgradeExpectation() {
-  const config = fs.readFileSync(
-    path.join(repositoryRoot, "supabase/config.toml"),
-    "utf8",
-  );
-  if (!/^major_version\s*=\s*17$/m.test(config)) {
-    throw new Error("PG17 upgrade expectation requires PostgreSQL 17");
+function assertExactFields(value, expectedFields, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`${label} must be an object`);
   }
-  const manifest = JSON.parse(
-    fs.readFileSync(path.join(expectationDirectory, "manifest.json"), "utf8"),
-  );
-  const expectedBytes = fs.readFileSync(
-    path.join(expectationDirectory, "expected-fingerprints.json"),
-  );
-  const expected = JSON.parse(expectedBytes.toString("utf8"));
-  const sourceManifestBytes = fs.readFileSync(
-    path.join(baselineDirectory, "manifest.json"),
-  );
+  const actualFields = Object.keys(value).sort();
   if (
-    manifest.version !== "1.0.0" ||
-    manifest.baseline_id !== "002-pre-financial-pg17" ||
-    manifest.source_baseline !== "001-pre-financial" ||
-    manifest.postgres_major_version !== 17 ||
-    expected.version !== "1.0.0" ||
-    expected.baseline_id !== manifest.baseline_id
+    JSON.stringify(actualFields) !== JSON.stringify([...expectedFields].sort())
   ) {
-    throw new Error("PG17 upgrade expectation identity is invalid");
+    const unknown = actualFields.filter(
+      (field) => !expectedFields.includes(field),
+    );
+    if (unknown.length > 0) {
+      throw new Error(`${label} has unknown registry field: ${unknown[0]}`);
+    }
+    const missing = expectedFields.filter(
+      (field) => !actualFields.includes(field),
+    );
+    throw new Error(`${label} is missing ${missing[0]}`);
   }
-  if (manifest.source_manifest_sha256 !== sha256(sourceManifestBytes)) {
-    throw new Error("PG17 upgrade expectation source baseline differs");
+}
+
+function assertDigest(value, label) {
+  if (typeof value !== "string" || !/^[0-9a-f]{64}$/.test(value)) {
+    throw new Error(`${label} is invalid`);
   }
-  if (manifest.expected_fingerprints_sha256 !== sha256(expectedBytes)) {
-    throw new Error("PG17 expected fingerprint file hash differs");
+}
+
+export function validateTransformationRegistries({
+  baselineExpected,
+  registries,
+}) {
+  assertFingerprintShape(baselineExpected?.categories, "expected");
+  if (typeof baselineExpected?.baseline_id !== "string") {
+    throw new Error("baseline expected identity is missing");
   }
-  assertFingerprintShape(expected.categories, "expected");
-  if (
-    expected.categories_sha256 !==
-    sha256(Buffer.from(JSON.stringify(expected.categories), "utf8"))
-  ) {
-    throw new Error("PG17 expected fingerprint category hash differs");
+  if (!Array.isArray(registries)) {
+    throw new Error("transformation registries must be ordered");
   }
-  return expected;
+
+  const current = { ...baselineExpected.categories };
+  const combined = {};
+  for (const [category, transformation] of Object.entries(
+    baselineExpected.transformations ?? {},
+  )) {
+    if (!categoryNames.includes(category)) {
+      throw new Error(
+        `baseline has unknown transformation category: ${category}`,
+      );
+    }
+    assertDigest(transformation?.before_sha256, `${category} before_sha256`);
+    assertDigest(transformation?.after_sha256, `${category} after_sha256`);
+    if (transformation.before_sha256 !== current[category]) {
+      throw new Error(`baseline transformation is stale: ${category}`);
+    }
+    current[category] = transformation.after_sha256;
+    combined[category] = {
+      migration: transformation.migration,
+      before_sha256: baselineExpected.categories[category],
+      after_sha256: transformation.after_sha256,
+    };
+  }
+
+  const transformedCategories = new Set();
+  const semanticInvariants = [];
+  const seenInvariants = new Set();
+  for (const [index, registry] of registries.entries()) {
+    assertExactFields(registry, registryFields, `registry ${index + 2}`);
+    const expectedSequence = index + 2;
+    if (registry.sequence !== expectedSequence) {
+      throw new Error("transformation registries are not ordered");
+    }
+    if (
+      typeof registry.registry_id !== "string" ||
+      !registry.registry_id.startsWith(
+        `${String(registry.sequence).padStart(3, "0")}-`,
+      )
+    ) {
+      throw new Error(`registry ${registry.sequence} identity is invalid`);
+    }
+    if (registry.version !== "1.0.0") {
+      throw new Error(`${registry.registry_id} version is unsupported`);
+    }
+    if (registry.baseline_id !== baselineExpected.baseline_id) {
+      throw new Error(`${registry.registry_id} baseline identity is stale`);
+    }
+    if (
+      !Array.isArray(registry.migrations) ||
+      registry.migrations.length === 0 ||
+      registry.migrations.some(
+        (migration) =>
+          typeof migration !== "string" || !/^\d{14}$/.test(migration),
+      ) ||
+      registry.migrations.some(
+        (migration, migrationIndex) =>
+          migrationIndex > 0 &&
+          migration <= registry.migrations[migrationIndex - 1],
+      )
+    ) {
+      throw new Error(`${registry.registry_id} migrations are not ordered`);
+    }
+    if (
+      !registry.transformations ||
+      typeof registry.transformations !== "object" ||
+      Array.isArray(registry.transformations) ||
+      Object.keys(registry.transformations).length === 0
+    ) {
+      throw new Error(`${registry.registry_id} transformations are missing`);
+    }
+
+    for (const [category, transformation] of Object.entries(
+      registry.transformations,
+    )) {
+      if (!categoryNames.includes(category)) {
+        throw new Error(`unknown transformation category: ${category}`);
+      }
+      if (transformedCategories.has(category)) {
+        throw new Error(`overlapping transformation category: ${category}`);
+      }
+      assertExactFields(
+        transformation,
+        transformationFields,
+        `${registry.registry_id} ${category}`,
+      );
+      assertDigest(transformation.before_sha256, `${category} before_sha256`);
+      assertDigest(transformation.after_sha256, `${category} after_sha256`);
+      if (!registry.migrations.includes(transformation.migration)) {
+        throw new Error(`${category} transformation migration is unknown`);
+      }
+      if (transformation.before_sha256 !== current[category]) {
+        throw new Error(`stale transformation hash: ${category}`);
+      }
+      if (transformation.after_sha256 === transformation.before_sha256) {
+        throw new Error(`overbroad unchanged transformation: ${category}`);
+      }
+      transformedCategories.add(category);
+      current[category] = transformation.after_sha256;
+      combined[category] = {
+        migration: transformation.migration,
+        before_sha256: baselineExpected.categories[category],
+        after_sha256: transformation.after_sha256,
+      };
+    }
+
+    if (
+      !Array.isArray(registry.semantic_invariants) ||
+      registry.semantic_invariants.length === 0
+    ) {
+      throw new Error(
+        `${registry.registry_id} semantic invariants are missing`,
+      );
+    }
+    for (const invariant of registry.semantic_invariants) {
+      if (!allowedSemanticInvariants.has(invariant)) {
+        throw new Error(`unknown semantic invariant: ${String(invariant)}`);
+      }
+      if (seenInvariants.has(invariant)) {
+        throw new Error(`overlapping semantic invariant: ${invariant}`);
+      }
+      seenInvariants.add(invariant);
+      semanticInvariants.push(invariant);
+    }
+  }
+
+  return {
+    baseline_id: baselineExpected.baseline_id,
+    categories: { ...baselineExpected.categories },
+    transformations: combined,
+    semantic_invariants: semanticInvariants,
+  };
+}
+
+export function loadTransformationRegistries({
+  baselineExpected,
+  registryDirectory = transformationRegistryDirectory,
+}) {
+  if (!fs.existsSync(registryDirectory)) {
+    return validateTransformationRegistries({
+      baselineExpected,
+      registries: [],
+    });
+  }
+  const registryDirectories = fs
+    .readdirSync(registryDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^\d{3}-/.test(entry.name))
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const registries = registryDirectories.map((entry) => {
+    const registryPath = path.join(
+      registryDirectory,
+      entry.name,
+      "expected-transformations.json",
+    );
+    if (!fs.existsSync(registryPath)) {
+      throw new Error(`${entry.name} transformation registry is missing`);
+    }
+    return JSON.parse(fs.readFileSync(registryPath, "utf8"));
+  });
+  return validateTransformationRegistries({ baselineExpected, registries });
 }
 
 function assertLocalDatabase(databaseUrl) {
@@ -467,10 +760,7 @@ async function queryJson(container, query, category, execute) {
   }
 }
 
-export async function captureFingerprints(
-  container,
-  execute = executeProcess,
-) {
+export async function captureFingerprints(container, execute = executeProcess) {
   const fingerprints = {};
   for (const category of categoryNames) {
     fingerprints[category] = hashFingerprint(
@@ -485,20 +775,90 @@ export async function captureFingerprints(
   return fingerprints;
 }
 
+async function captureInvoiceSemantics(container, execute) {
+  const snapshot = await queryJson(
+    container,
+    invoiceSemanticQuery,
+    "invoice_semantics",
+    execute,
+  );
+  return {
+    invoice_count: snapshot.invoice_count,
+    invoice_numeric_text: hashFingerprint(snapshot.numeric_values),
+    invoice_provider_text: hashFingerprint(snapshot.provider_values),
+    invoice_legacy_ownership: hashFingerprint(snapshot.legacy_ownership),
+    invoice_business_facts: hashFingerprint(snapshot.business_facts),
+  };
+}
+
+function assertSemanticInvariants({ before, after, postUpgrade, invariants }) {
+  const results = {};
+  const assertions = {
+    invoice_count_preserved: () => before.invoice_count === after.invoice_count,
+    invoice_numeric_text_preserved: () =>
+      before.invoice_numeric_text === after.invoice_numeric_text,
+    invoice_provider_text_preserved: () =>
+      before.invoice_provider_text === after.invoice_provider_text,
+    invoice_legacy_ownership_preserved: () =>
+      before.invoice_legacy_ownership === after.invoice_legacy_ownership,
+    invoice_business_facts_preserved: () =>
+      before.invoice_business_facts === after.invoice_business_facts,
+    invoice_tenant_keys_complete: () => postUpgrade.null_tenant_count === "0",
+    invoice_tenant_foreign_keys_valid: () =>
+      postUpgrade.invalid_tenant_link_count === "0" &&
+      postUpgrade.missing_owner_count === "0" &&
+      postUpgrade.missing_operator_count === "0",
+    billing_kernel_rows_added: () =>
+      postUpgrade.invoice_company_count === postUpgrade.mapped_account_count,
+    billing_grants_least_privilege: () =>
+      postUpgrade.anonymous_invoice_privilege_count === "0" &&
+      postUpgrade.authenticated_delete === false,
+  };
+  for (const invariant of invariants) {
+    const assertion = assertions[invariant];
+    if (!assertion || !assertion()) {
+      throw new Error(`upgrade semantic invariant failed: ${invariant}`);
+    }
+    results[invariant] = true;
+  }
+  return results;
+}
+
+function fingerprintMismatches({ before, after, expected }) {
+  const mismatches = {};
+  for (const category of categoryNames) {
+    const expectedAfter =
+      expected.transformations?.[category]?.after_sha256 ?? before[category];
+    if (after[category] !== expectedAfter) {
+      mismatches[category] = {
+        expected_sha256: expectedAfter,
+        actual_sha256: after[category],
+      };
+    }
+  }
+  return mismatches;
+}
+
 async function runUpgradeProof({ execute = executeProcess } = {}) {
   assertLocalDatabase(process.env.SUPABASE_DB_URL);
   await verifyBaseline({ baselineDirectory });
   const container = await resolveDatabaseContainer(execute);
   await prepareBaseline(container, execute);
   const before = await captureFingerprints(container, execute);
-  const expected = loadUpgradeExpectation();
-  assertFingerprintShape(expected.categories, "expected");
+  const beforeSemantics = await captureInvoiceSemantics(container, execute);
+  const expected = JSON.parse(
+    fs.readFileSync(
+      path.join(baselineDirectory, "expected-fingerprints.json"),
+      "utf8",
+    ),
+  );
+  const expectedUpgrade = loadTransformationRegistries({
+    baselineExpected: expected,
+  });
+  assertFingerprintShape(expectedUpgrade.categories, "expected");
   for (const category of categoryNames) {
-    if (before[category] !== expected.categories[category]) {
-      throw new Error(
-        `upgrade fingerprint mismatch before: ${category} ` +
-          `(expected ${expected.categories[category]}, received ${before[category]})`,
-      );
+    if (before[category] !== expectedUpgrade.categories[category]) {
+      throw new Error(`upgrade fingerprint mismatch before: ${category}`);
     }
   }
   await runChecked(
@@ -508,10 +868,38 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
     "pending migration application",
   );
   const after = await captureFingerprints(container, execute);
-  const categories = compareFingerprintSets({ before, after, expected });
+  const afterSemantics = await captureInvoiceSemantics(container, execute);
+  const postUpgradeSemantics = await queryJson(
+    container,
+    postUpgradeSemanticQuery,
+    "post_upgrade_semantics",
+    execute,
+  );
+  const mismatches = fingerprintMismatches({
+    before,
+    after,
+    expected: expectedUpgrade,
+  });
+  if (Object.keys(mismatches).length > 0) {
+    throw new Error(
+      `upgrade fingerprint mismatch after: ${JSON.stringify(mismatches)}`,
+    );
+  }
+  const categories = compareFingerprintSets({
+    before,
+    after,
+    expected: expectedUpgrade,
+  });
+  const semanticInvariants = assertSemanticInvariants({
+    before: beforeSemantics,
+    after: afterSemantics,
+    postUpgrade: postUpgradeSemantics,
+    invariants: expectedUpgrade.semantic_invariants,
+  });
   return {
-    baseline_id: expected.baseline_id,
+    baseline_id: expectedUpgrade.baseline_id,
     categories,
+    semantic_invariants: semanticInvariants,
     report_sha256: hashFingerprint(categories),
   };
 }

@@ -10,6 +10,7 @@ const App = () => (
     dataProvider={dataProvider}
     authProvider={authProvider}
     store={memoryStore()}
+    disableTelemetry
   />
 );
 
