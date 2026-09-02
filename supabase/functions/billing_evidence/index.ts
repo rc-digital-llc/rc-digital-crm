@@ -81,13 +81,24 @@ function isUuid(value: unknown): value is string {
 }
 
 function isSafeFilename(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    value.length > 0 &&
-    value.length <= 255 &&
-    value === value.trim() &&
-    !/[\/\\\u0000-\u001f\u007f]/.test(value)
-  );
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > 255 ||
+    value !== value.trim()
+  ) {
+    return false;
+  }
+
+  return !Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return (
+      character === "/" ||
+      character === "\\" ||
+      codePoint <= 0x1f ||
+      codePoint === 0x7f
+    );
+  });
 }
 
 function isReasonCode(value: unknown): value is string {
@@ -108,6 +119,8 @@ function logResult(
   status: number,
   requestId: string,
 ) {
+  // Edge observability emits only the recursively redacted structured context.
+  // eslint-disable-next-line no-console
   console.info(
     JSON.stringify(
       createSafeLogContext({

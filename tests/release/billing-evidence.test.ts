@@ -496,6 +496,13 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           status: 400,
           body: { ...validBody, size_bytes: 10 * 1024 * 1024 + 1 },
         },
+        ...["nested/receipt.pdf", "nested\\receipt.pdf", "receipt\u0000.pdf"].map(
+          (original_filename) => ({
+            principal: operator,
+            status: 400,
+            body: { ...validBody, original_filename },
+          }),
+        ),
         {
           principal: reviewer,
           status: 200,
