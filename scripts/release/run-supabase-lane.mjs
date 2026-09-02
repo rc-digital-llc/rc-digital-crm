@@ -12,10 +12,10 @@ const policyPath = path.join(
   ".github/release/release-policy.json",
 );
 const supabaseConfigPath = path.join(repositoryRoot, "supabase/config.toml");
-const databaseFixturePath = path.join(
-  repositoryRoot,
+const databaseFixturePaths = [
   "supabase/tests/support/auth-fixtures.sql",
-);
+  "supabase/tests/support/billing-security-fixtures.sql",
+].map((fixturePath) => path.join(repositoryRoot, fixturePath));
 const functionFixturePath = path.join(
   repositoryRoot,
   "supabase/tests/fixtures/functions.env",
@@ -190,13 +190,17 @@ function localProjectId() {
 async function loadDatabaseContractFixtures(execute) {
   const projectId = localProjectId();
   const container = `supabase_db_${projectId}`;
-  const containerPath = "/tmp/rc-auth-fixtures.sql";
-  const copied = await execute(
-    "docker",
-    ["cp", databaseFixturePath, `${container}:${containerPath}`],
-    { cwd: repositoryRoot, timeoutMs: 60000 },
-  );
-  if (copied.code !== 0) return copied;
+  const containerPaths = [];
+  for (const [index, fixturePath] of databaseFixturePaths.entries()) {
+    const containerPath = `/tmp/rc-database-fixture-${index}.sql`;
+    const copied = await execute(
+      "docker",
+      ["cp", fixturePath, `${container}:${containerPath}`],
+      { cwd: repositoryRoot, timeoutMs: 60000 },
+    );
+    if (copied.code !== 0) return copied;
+    containerPaths.push(containerPath);
+  }
   return execute(
     "docker",
     [
@@ -211,8 +215,7 @@ async function loadDatabaseContractFixtures(execute) {
       "postgres",
       "-v",
       "ON_ERROR_STOP=1",
-      "--file",
-      containerPath,
+      ...containerPaths.flatMap((containerPath) => ["--file", containerPath]),
     ],
     { cwd: repositoryRoot, timeoutMs: 120000 },
   );
@@ -369,6 +372,11 @@ export async function runLane({ lane, command, execute = executeProcess }) {
           }
         }
         if (lane === "replay-concurrency") {
+          const billingFixtures = await loadDatabaseContractFixtures(execute);
+          if (billingFixtures.code !== 0) {
+            result = billingFixtures;
+            break;
+          }
           const fixture = await loadReplayConcurrencyFixture(execute);
           if (fixture.code !== 0) {
             result = fixture;
@@ -376,6 +384,11 @@ export async function runLane({ lane, command, execute = executeProcess }) {
           }
         }
         if (lane === "edge-provider-contracts") {
+          const billingFixtures = await loadDatabaseContractFixtures(execute);
+          if (billingFixtures.code !== 0) {
+            result = billingFixtures;
+            break;
+          }
           functionRuntime = startFunctionRuntime();
           const runtimeReady = await functionRuntime.ready;
           if (runtimeReady.code !== 0) {

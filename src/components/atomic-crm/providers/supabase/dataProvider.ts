@@ -7,6 +7,7 @@ import {
   type ResourceCallbacks,
 } from "ra-core";
 import type {
+  BillingAccount,
   ContactNote,
   Deal,
   DealNote,
@@ -18,6 +19,17 @@ import type {
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import { ATTACHMENTS_BUCKET } from "../commons/attachments";
+import type {
+  BillingAccountAccessSummary,
+  BillingAccountBoundaryRequest,
+  BillingAccountBoundaryResponse,
+  BillingEvidenceDownloadRequest,
+  BillingEvidenceDownloadResponse,
+  BillingEvidenceInspectionRequest,
+  BillingEvidenceInspectionResponse,
+  BillingEvidenceUploadRequest,
+  BillingEvidenceUploadResponse,
+} from "../types";
 import { getIsInitialized } from "./authProvider";
 import { supabase } from "./supabase";
 
@@ -214,6 +226,124 @@ const dataProviderWithCustomMethods = {
 
     return data;
   },
+  async saveBillingAccountBoundary(
+    request: BillingAccountBoundaryRequest,
+  ): Promise<BillingAccountBoundaryResponse> {
+    const { data, error } = await supabase.rpc(
+      "save_billing_account_boundary",
+      {
+        p_payload: request,
+      },
+    );
+
+    if (!data || error) {
+      throw new Error("Account changes were not saved");
+    }
+    return data as BillingAccount;
+  },
+  async getBillingAccountAccessSummary(
+    accountId: string,
+  ): Promise<BillingAccountAccessSummary> {
+    const { data, error } = await supabase.rpc(
+      "get_billing_account_access_summary",
+      { p_account_id: accountId },
+    );
+    if (!data || error) throw new Error("Billing access could not be loaded");
+    return data as BillingAccountAccessSummary;
+  },
+  async assignBillingRole(request: {
+    account_id: string;
+    sales_id: number;
+    role: string;
+  }): Promise<{ assignment_id: string }> {
+    const { data, error } = await supabase.rpc("assign_billing_role", {
+      p_account_id: request.account_id,
+      p_sales_id: request.sales_id,
+      p_role: request.role,
+    });
+    if (!data || error) throw new Error("Billing role was not assigned");
+    return data as { assignment_id: string };
+  },
+  async endBillingRoleAssignment(request: {
+    assignment_id: string;
+    reason: string;
+  }): Promise<{ assignment_id: string }> {
+    const { data, error } = await supabase.rpc("end_billing_role_assignment", {
+      p_assignment_id: request.assignment_id,
+      p_reason: request.reason,
+      p_effective_at: new Date().toISOString(),
+    });
+    if (!data || error) throw new Error("Billing role was not ended");
+    return data as { assignment_id: string };
+  },
+  async disableBillingAutomationPrincipal(request: {
+    account_id: string;
+    principal_id: string;
+    reason: string;
+  }): Promise<{ principal_id: string }> {
+    const { data, error } = await supabase.rpc(
+      "disable_billing_automation_principal",
+      {
+        p_account_id: request.account_id,
+        p_principal_id: request.principal_id,
+        p_reason: request.reason,
+      },
+    );
+    if (!data || error)
+      throw new Error("Automation principal was not disabled");
+    return data as { principal_id: string };
+  },
+  async beginBillingEvidenceUpload(
+    request: BillingEvidenceUploadRequest,
+  ): Promise<BillingEvidenceUploadResponse> {
+    const { data, error } =
+      await supabase.functions.invoke<BillingEvidenceUploadResponse>(
+        "billing_evidence",
+        {
+          method: "POST",
+          body: { command: "upload", ...request },
+        },
+      );
+
+    if (!data || error) {
+      throw new Error("Failed to prepare billing evidence upload");
+    }
+    return data;
+  },
+  async finalizeBillingEvidenceInspection(
+    request: BillingEvidenceInspectionRequest,
+  ): Promise<BillingEvidenceInspectionResponse> {
+    const { data, error } =
+      await supabase.functions.invoke<BillingEvidenceInspectionResponse>(
+        "billing_evidence",
+        {
+          method: "POST",
+          body: { command: "inspection", ...request },
+        },
+      );
+
+    if (!data || error) {
+      throw new Error("Failed to record billing evidence inspection");
+    }
+    return data;
+  },
+  async createBillingEvidenceDownload(
+    request: BillingEvidenceDownloadRequest,
+  ): Promise<BillingEvidenceDownloadResponse> {
+    const { data, error } =
+      await supabase.functions.invoke<BillingEvidenceDownloadResponse>(
+        "billing_evidence",
+        {
+          method: "POST",
+          body: { command: "download", ...request },
+        },
+      );
+
+    if (!data || error) {
+      throw new Error("Failed to prepare billing evidence download");
+    }
+    return data;
+  },
   async getConfiguration(): Promise<ConfigurationContextValue> {
     const { data } = await baseDataProvider.getOne("configuration", { id: 1 });
     return (data?.config as ConfigurationContextValue) ?? {};
@@ -282,6 +412,12 @@ const lifeCycleCallbacks: ResourceCallbacks[] = [
         await uploadToBucket(data.avatar);
       }
       return data;
+    },
+  },
+  {
+    resource: "billing_accounts",
+    beforeGetList: async (params) => {
+      return applyFullTextSearch(["customer_name"])(params);
     },
   },
   {

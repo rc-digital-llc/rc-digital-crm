@@ -336,3 +336,169 @@ export interface ContactGender {
   label: string;
   icon: ComponentType<{ className?: string }>;
 }
+
+export type BillingOrganizationStatus = "active" | "disabled";
+export type BillingAccountStatus = "active" | "on_hold" | "closed";
+export type BillingRoleName =
+  | "administrator"
+  | "operator"
+  | "reviewer"
+  | "auditor"
+  | "customer";
+export type BillingContactMethod = "email" | "phone" | "text" | "none";
+export type BillingAutomationStatus = "active" | "disabled" | "exhausted";
+export type BillingEvidenceInspectionStatus =
+  | "quarantined"
+  | "clean"
+  | "rejected";
+export type BillingEvidenceLifecycleStatus = "active" | "disabled" | "expired";
+export type BillingEvidenceAccessPurpose =
+  | "download"
+  | "review"
+  | "audit"
+  | "invalid";
+
+export type BillingOrganization = {
+  id: string;
+  name: string;
+  status: BillingOrganizationStatus;
+  created_at: string;
+  updated_at: string;
+  ended_at: string | null;
+  end_reason: string | null;
+};
+
+export type BillingAccount = {
+  id: string;
+  organization_id: string;
+  company_id: Identifier | null;
+  customer_name: string;
+  billing_status: BillingAccountStatus;
+  created_at: string;
+  updated_at: string;
+  ended_at: string | null;
+  end_reason: string | null;
+};
+
+export type BillingAccountOwner = {
+  id: string;
+  organization_id: string;
+  account_id: string;
+  sales_id: Identifier;
+  effective_from: string;
+  effective_until: string | null;
+  end_reason: string | null;
+  created_at: string;
+};
+
+export type BillingContact = {
+  id: string;
+  organization_id: string;
+  account_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  preferred_contact_method: BillingContactMethod;
+  auth_user_id: string | null;
+  active: boolean;
+  effective_from: string;
+  effective_until: string | null;
+  end_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BillingRole = {
+  role: BillingRoleName;
+  description: string;
+  human_assignable: boolean;
+};
+
+export type BillingRoleCapability = {
+  role: BillingRoleName;
+  capability: string;
+};
+
+export type BillingRoleAssignment = {
+  id: string;
+  organization_id: string;
+  account_id: string | null;
+  sales_id: Identifier;
+  role: BillingRoleName;
+  valid_from: string;
+  valid_until: string | null;
+  disabled_at: string | null;
+  disabled_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BillingAutomationPrincipal = {
+  id: string;
+  organization_id: string;
+  auth_user_id: string;
+  name: string;
+  status: Exclude<BillingAutomationStatus, "exhausted">;
+  valid_from: string;
+  valid_until: string | null;
+  disabled_at: string | null;
+  disabled_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BillingAutomationGrant = {
+  id: string;
+  organization_id: string;
+  account_id: string;
+  principal_id: string;
+  command_name: string;
+  provider_reference: string;
+  policy_version: string;
+  action_kind: string;
+  max_amount: string | null;
+  max_actions: number | null;
+  total_amount_consumed: string;
+  actions_consumed: number;
+  valid_from: string;
+  valid_until: string | null;
+  status: BillingAutomationStatus;
+  disabled_at: string | null;
+  disabled_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Safe `billing_evidence_support_safe` projection. Raw paths and hashes are server-only. */
+export type BillingEvidenceMetadata = {
+  id: string;
+  organization_id: string;
+  account_id: string;
+  kind: "contract" | "revenue_statement" | "receipt" | "dispute" | "other";
+  original_filename: string;
+  uploader_label: string;
+  mime_type: string;
+  size_bytes: number;
+  inspection_status: BillingEvidenceInspectionStatus;
+  inspection_reason_code: string | null;
+  retention_expires_at: string;
+  is_held: boolean;
+  lifecycle_status: BillingEvidenceLifecycleStatus;
+  end_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BillingEvidenceAccessEvent = {
+  id: Identifier;
+  evidence_id: string;
+  organization_id: string;
+  account_id: string;
+  actor_type: "human" | "customer";
+  actor_id: string;
+  purpose: BillingEvidenceAccessPurpose;
+  result: "allowed" | "denied";
+  reason_code: string;
+  capability_expires_at: string | null;
+  created_at: string;
+};

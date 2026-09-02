@@ -21,7 +21,7 @@ evidence of a prerequisite phase.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Executable Financial Test and Release Gate** - Prove migrations, authorization, integration behavior, and staged releases before financial schema can ship.
-- [ ] **Phase 2: Tenant, Role, and Evidence Security** - Establish the account boundary, least privilege, private evidence, and real cross-tenant denial.
+- [x] **Phase 2: Tenant, Role, and Evidence Security** - Establish the account boundary, least privilege, private evidence, and real cross-tenant denial.
 - [ ] **Phase 3: Exact Money and Rounding Contract** - Give every later financial workflow one exact minor-unit and rounding vocabulary.
 - [ ] **Phase 4: Agreements, Revenue Evidence, and Calculation Close** - Make the signed terms and accepted evidence produce frozen, reproducible monthly calculations.
 - [ ] **Phase 5: Immutable Invoicing and Durable Provider Operations** - Create immutable obligations, durable payment commands, and a sandbox-backed provider decision.
@@ -87,8 +87,40 @@ Plans:
   4. Contracts and financial evidence use private server-authorized storage with short-lived access, quarantine, retention, and access logs.
   5. Privileged functions bind caller and tenant ownership with a locked `search_path`, while logs and exports redact secrets, credentials, sensitive provider fields, and unnecessary evidence.
 
-**Plans**: TBD
+**Plans**: 12 plans
 **UI hint**: yes
+
+Plans:
+
+**Wave 1**
+
+- [x] 02-01-PLAN.md — Install the human tenant/account/role/audit kernel and live SQL contracts.
+- [x] 02-06-PLAN.md — Build recursive redaction and safe Edge error/log boundaries.
+
+**Wave 2** *(blocked on Wave 1 foundations as declared per plan)*
+
+- [x] 02-02-PLAN.md — Backfill inherited invoices into the explicit account boundary with append-only upgrade proof.
+- [x] 02-04-PLAN.md — Install exact transactional automation principals, grants, limits, and concurrency proof.
+- [x] 02-05-PLAN.md — Install private quarantine-first evidence metadata, storage, retention, and access history.
+- [x] 02-08-PLAN.md — Define typed Supabase/FakeRest billing data contracts and safe deterministic fixtures.
+
+**Wave 3** *(blocked on the applicable Wave 2 contracts)*
+
+- [x] 02-03-PLAN.md — Prove human role/account isolation through real Auth JWT and PostgREST effects.
+- [x] 02-07-PLAN.md — Expose caller-bound signed evidence upload, inspection, and short-lived download commands.
+- [x] 02-09-PLAN.md — Build responsive billing-account list/create/edit/detail and allowlisted export surfaces.
+
+**Wave 4** *(blocked on backend commands and account UI)*
+
+- [x] 02-10-PLAN.md — Add scoped access/evidence panels and exclude sensitive billing query persistence.
+
+**Wave 5** *(blocked on complete account UI)*
+
+- [x] 02-11-PLAN.md — Register desktop/mobile resources and encode source/preview/production rendered contracts.
+
+**Wave 6** *(blocked on all security and UI contracts)*
+
+- [x] 02-12-PLAN.md — Couple Phase 2 into protected financial lanes and retain full source proof.
 
 ### Phase 3: Exact Money and Rounding Contract
 
@@ -226,7 +258,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
-| 2. Tenant, Role, and Evidence Security | 0/TBD | Not started | - |
+| 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
 | 3. Exact Money and Rounding Contract | 0/TBD | Not started | - |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |

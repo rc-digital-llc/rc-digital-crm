@@ -12,6 +12,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import {
   Home,
+  Landmark,
   ListTodo,
   LogOut,
   Moon,
@@ -21,7 +22,13 @@ import {
   Sun,
   Users,
 } from "lucide-react";
-import { Translate, useAuthProvider, useGetIdentity, useLogout } from "ra-core";
+import {
+  CanAccess,
+  Translate,
+  useAuthProvider,
+  useGetIdentity,
+  useLogout,
+} from "ra-core";
 import { Link, matchPath, useLocation, useMatch } from "react-router";
 import { ContactCreateSheet } from "../contacts/ContactCreateSheet";
 import { useState } from "react";
@@ -207,6 +214,15 @@ const SettingsButton = () => {
             </p>
           </div>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <CanAccess resource="billing_accounts" action="list">
+          <DropdownMenuItem asChild className="h-12 px-4 text-base">
+            <Link to="/billing_accounts">
+              <Landmark />
+              Billing accounts
+            </Link>
+          </DropdownMenuItem>
+        </CanAccess>
         <DropdownMenuSeparator />
         <ThemeMenu />
         <DropdownMenuSeparator />

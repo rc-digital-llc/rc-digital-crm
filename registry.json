@@ -276,6 +276,10 @@
           "type": "registry:component"
         },
         {
+          "path": "src/components/atomic-crm/providers/fakerest/dataGenerator/billingAccounts.ts",
+          "type": "registry:component"
+        },
+        {
           "path": "src/components/atomic-crm/providers/commons/mergeContacts.ts",
           "type": "registry:component"
         },
@@ -801,6 +805,50 @@
         },
         {
           "path": "src/components/atomic-crm/companies/AutocompleteCompanyInput.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/index.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/billingAccountExport.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/billingAccess.ts",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingSurfaceMetadata.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountShow.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountList.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountInputs.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountEvidencePanel.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountEdit.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountCreate.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "src/components/atomic-crm/billing-accounts/BillingAccountAccessPanels.tsx",
           "type": "registry:component"
         },
         {

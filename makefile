@@ -1,10 +1,35 @@
-.PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-database-contracts test-financial-functions test-financial-concurrency-fixture test-financial-concurrency test-financial-replay-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
+FINANCIAL_DATABASE_SQL_TESTS := \
+	supabase/tests/database/00_schema_contracts.sql \
+	supabase/tests/database/10_authorization_rls.sql \
+	supabase/tests/database/20_rpc_trigger.sql \
+	supabase/tests/database/30_billing_tenancy.sql \
+	supabase/tests/database/35_billing_automation.sql \
+	supabase/tests/database/40_billing_evidence.sql \
+	supabase/tests/database/45_billing_account_commands.sql \
+	supabase/tests/database/50_billing_access_commands.sql \
+	supabase/tests/database/55_billing_evidence_presentation.sql
+
+FINANCIAL_DATABASE_HTTP_TESTS := \
+	tests/release/auth-rls-rpc-trigger.test.ts \
+	tests/release/billing-tenancy.test.ts
+
+FINANCIAL_FUNCTION_TESTS := \
+	tests/release/edge-webhook-provider.test.ts \
+	tests/release/billing-evidence.test.ts
+
+FINANCIAL_FAST_TESTS := \
+	tests/release/billing-redaction.test.ts \
+	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
+	src/components/atomic-crm/billing-accounts/billingAccounts.test.ts \
+	tests/release/billing-security-static.test.ts
+
+.PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-database-contracts test-financial-functions test-financial-fast test-financial-concurrency-fixture test-financial-concurrency test-financial-replay-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
 
 help:
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 financial-gate-help: ## list the blocking financial release gate targets
-	@grep -E '^(financial-gate-help|test-financial-migration-clean|test-financial-schema-push|test-financial-migration-upgrade|test-financial-database-sql|test-financial-database-http|test-financial-database-contracts|test-financial-functions|test-financial-concurrency-fixture|test-financial-concurrency|test-financial-replay-concurrency|test-release-secrets|test-release-bundle|test-release-security|financial-gate):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-36s %s\n", $$1, $$2}'
+	@grep -E '^(financial-gate-help|test-financial-migration-clean|test-financial-schema-push|test-financial-migration-upgrade|test-financial-database-sql|test-financial-database-http|test-financial-database-contracts|test-financial-functions|test-financial-fast|test-financial-concurrency-fixture|test-financial-concurrency|test-financial-replay-concurrency|test-release-secrets|test-release-bundle|test-release-security|financial-gate):.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "%-36s %s\n", $$1, $$2}'
 
 test-financial-migration-clean: ## replay every migration and verify schema contracts on a clean local stack
 	node scripts/release/run-supabase-lane.mjs run --lane migration-clean -- node scripts/release/verify-migration-chain.mjs clean
@@ -17,17 +42,20 @@ test-financial-migration-upgrade: ## apply pending migrations to the checked-in 
 	node scripts/release/run-supabase-lane.mjs run --lane migration-upgrade -- node scripts/release/fingerprint-upgrade.mjs
 
 test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC, and trigger contracts
-	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database --local
+	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db $(FINANCIAL_DATABASE_SQL_TESTS) --local
 
 test-financial-database-http: ## execute Auth, REST, and RPC contracts through local HTTP APIs
-	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/auth-rls-rpc-trigger.test.ts
+	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run $(FINANCIAL_DATABASE_HTTP_TESTS)
 
 test-financial-database-contracts: ## execute all live database and HTTP authorization contracts
 	$(MAKE) test-financial-database-sql
 	$(MAKE) test-financial-database-http
 
 test-financial-functions: ## execute Edge Function and provider-boundary contracts
-	node scripts/release/run-supabase-lane.mjs run --lane edge-provider-contracts -- npm test -- --run tests/release/edge-webhook-provider.test.ts
+	node scripts/release/run-supabase-lane.mjs run --lane edge-provider-contracts -- npm test -- --run $(FINANCIAL_FUNCTION_TESTS)
+
+test-financial-fast: ## execute billing redaction, provider, UI, and release-coupling contracts
+	npm test -- --run $(FINANCIAL_FAST_TESTS)
 
 test-financial-concurrency-fixture: ## validate the deterministic replay/concurrency database fixture
 	node scripts/release/run-supabase-lane.mjs run --lane replay-concurrency -- supabase test db supabase/tests/support/replay-concurrency.sql --local
@@ -46,6 +74,7 @@ test-release-bundle: ## scan production source maps and bundles for sensitive da
 	node scripts/release/security-gate.mjs bundle
 
 test-release-security: ## run dependency, secret, source-map, and bundle security gates
+	$(MAKE) test-financial-fast
 	node scripts/release/security-gate.mjs all
 
 financial-gate: ## run all six blocking financial release lanes

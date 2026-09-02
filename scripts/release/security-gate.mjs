@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 const expectedIgnoreEntriesHash =
-  "4255f0e8b02239b000e076e043871aeb1be71a2926a9434e53877a6ac32da847";
+  "04ac927167db448f5480a718f504be16a64b929bc40eac49770ed4e4592d8ce1";
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");

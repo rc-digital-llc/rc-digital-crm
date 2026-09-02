@@ -165,3 +165,5 @@ verify_jwt = false
 verify_jwt = false
 [functions.users]
 verify_jwt = false
+[functions.billing_evidence]
+verify_jwt = false

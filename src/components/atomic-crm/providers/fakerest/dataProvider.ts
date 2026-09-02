@@ -9,6 +9,12 @@ import {
 import fakeRestDataProvider from "ra-data-fakerest";
 
 import type {
+  BillingAccount,
+  BillingAccountOwner,
+  BillingAutomationPrincipal,
+  BillingContact,
+  BillingEvidenceMetadata,
+  BillingRoleAssignment,
   Company,
   Contact,
   ContactNote,
@@ -25,8 +31,23 @@ import { getCompanyAvatar } from "../commons/getCompanyAvatar";
 import { getContactAvatar } from "../commons/getContactAvatar";
 import { mergeContacts } from "../commons/mergeContacts";
 import type { CrmDataProvider } from "../types";
+import type {
+  BillingAccountAccessSummary,
+  BillingAccountBoundaryRequest,
+  BillingAccountBoundaryResponse,
+  BillingEvidenceDownloadRequest,
+  BillingEvidenceDownloadResponse,
+  BillingEvidenceInspectionRequest,
+  BillingEvidenceInspectionResponse,
+  BillingEvidenceUploadRequest,
+  BillingEvidenceUploadResponse,
+} from "../types";
 import { authProvider, USER_STORAGE_KEY } from "./authProvider";
 import generateData from "./dataGenerator";
+import {
+  DEMO_EVIDENCE_EXPIRES_AT,
+  DEMO_EVIDENCE_NOW,
+} from "./dataGenerator/billingAccounts";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 
 const baseDataProvider = fakeRestDataProvider(generateData(), true, 300);
@@ -35,6 +56,24 @@ const TASK_MARKED_AS_DONE = "TASK_MARKED_AS_DONE";
 const TASK_MARKED_AS_UNDONE = "TASK_MARKED_AS_UNDONE";
 const TASK_DONE_NOT_CHANGED = "TASK_DONE_NOT_CHANGED";
 let taskUpdateType = TASK_DONE_NOT_CHANGED;
+
+const demoEvidenceCapability = (
+  operation: "upload" | "download",
+  evidenceId: string,
+) => `demo://billing-evidence/${operation}/${evidenceId}?expires-in=60`;
+
+const getEvidenceDenialReason = (evidence: BillingEvidenceMetadata) => {
+  if (evidence.lifecycle_status !== "active") return "EVIDENCE_NOT_ACTIVE";
+  if (evidence.inspection_status === "quarantined")
+    return "EVIDENCE_QUARANTINED";
+  if (evidence.inspection_status === "rejected") return "EVIDENCE_REJECTED";
+  if (
+    Date.parse(evidence.retention_expires_at) <= Date.parse(DEMO_EVIDENCE_NOW)
+  )
+    return "EVIDENCE_EXPIRED";
+  if (evidence.is_held) return "EVIDENCE_HELD";
+  return null;
+};
 
 const processCompanyLogo = async (params: any) => {
   let logo = params.data.logo;
@@ -227,6 +266,342 @@ const dataProviderWithCustomMethod: CrmDataProvider = {
   mergeContacts: async (sourceId: Identifier, targetId: Identifier) => {
     return mergeContacts(sourceId, targetId, baseDataProvider);
   },
+  saveBillingAccountBoundary: async (
+    request: BillingAccountBoundaryRequest,
+  ): Promise<BillingAccountBoundaryResponse> => {
+    const now = DEMO_EVIDENCE_NOW;
+    const account = request.account_id
+      ? (
+          await baseDataProvider.getOne<BillingAccount>("billing_accounts", {
+            id: request.account_id,
+          })
+        ).data
+      : null;
+    const organizationId = account
+      ? account.organization_id
+      : (
+          await baseDataProvider.getList("billing_organizations", {
+            filter: { status: "active" },
+            pagination: { page: 1, perPage: 2 },
+            sort: { field: "id", order: "ASC" },
+          })
+        ).data[0]?.id;
+
+    if (!organizationId) throw new Error("Account changes were not saved");
+
+    const accountData: BillingAccount = {
+      id: account?.id ?? crypto.randomUUID(),
+      organization_id: String(organizationId),
+      company_id: account?.company_id ?? null,
+      customer_name: request.customer_name,
+      billing_status: request.billing_status,
+      created_at: account?.created_at ?? now,
+      updated_at: now,
+      ended_at: request.billing_status === "closed" ? now : null,
+      end_reason:
+        request.billing_status === "active" ? null : request.lifecycle_reason,
+    };
+
+    if (account) {
+      await baseDataProvider.update<BillingAccount>("billing_accounts", {
+        id: account.id,
+        data: accountData,
+        previousData: account,
+      });
+    } else {
+      await baseDataProvider.create<BillingAccount>("billing_accounts", {
+        data: accountData,
+      });
+    }
+
+    const owners = await baseDataProvider.getList<BillingAccountOwner>(
+      "billing_account_owners",
+      {
+        filter: { account_id: accountData.id, effective_until: null },
+        pagination: { page: 1, perPage: 10 },
+        sort: { field: "effective_from", order: "DESC" },
+      },
+    );
+    const currentOwner = owners.data[0];
+    if (currentOwner?.sales_id !== request.responsible_owner_sales_id) {
+      if (currentOwner) {
+        await baseDataProvider.update<BillingAccountOwner>(
+          "billing_account_owners",
+          {
+            id: currentOwner.id,
+            data: {
+              effective_until: now,
+              end_reason: "Responsible owner reassigned",
+            },
+            previousData: currentOwner,
+          },
+        );
+      }
+      await baseDataProvider.create<BillingAccountOwner>(
+        "billing_account_owners",
+        {
+          data: {
+            id: crypto.randomUUID(),
+            organization_id: accountData.organization_id,
+            account_id: accountData.id,
+            sales_id: request.responsible_owner_sales_id,
+            effective_from: now,
+            effective_until: null,
+            end_reason: null,
+            created_at: now,
+          },
+        },
+      );
+    }
+
+    for (const contact of request.billing_contacts) {
+      const previousContact = contact.id
+        ? (
+            await baseDataProvider.getOne<BillingContact>("billing_contacts", {
+              id: contact.id,
+            })
+          ).data
+        : null;
+      const contactData: BillingContact = {
+        id: previousContact?.id ?? crypto.randomUUID(),
+        organization_id: accountData.organization_id,
+        account_id: accountData.id,
+        name: contact.name,
+        email: contact.email,
+        phone: contact.phone,
+        preferred_contact_method: contact.preferred_contact_method,
+        auth_user_id: contact.auth_user_id,
+        active: contact.active,
+        effective_from: previousContact?.effective_from ?? now,
+        effective_until: contact.active ? null : now,
+        end_reason: contact.active ? null : contact.end_reason,
+        created_at: previousContact?.created_at ?? now,
+        updated_at: now,
+      };
+      if (previousContact) {
+        await baseDataProvider.update<BillingContact>("billing_contacts", {
+          id: previousContact.id,
+          data: contactData,
+          previousData: previousContact,
+        });
+      } else {
+        await baseDataProvider.create<BillingContact>("billing_contacts", {
+          data: contactData,
+        });
+      }
+    }
+
+    return accountData;
+  },
+  getBillingAccountAccessSummary: async (
+    accountId: string,
+  ): Promise<BillingAccountAccessSummary> => {
+    const { data: account } = await baseDataProvider.getOne<BillingAccount>(
+      "billing_accounts",
+      { id: accountId },
+    );
+    const { data: assignments } =
+      await baseDataProvider.getList<BillingRoleAssignment>(
+        "billing_role_assignments",
+        {
+          filter: { account_id: accountId },
+          pagination: { page: 1, perPage: 100 },
+          sort: { field: "created_at", order: "ASC" },
+        },
+      );
+    const roles = await Promise.all(
+      assignments.map(async (assignment) => {
+        const [{ data: sale }, { data: role }] = await Promise.all([
+          baseDataProvider.getOne<Sale>("sales", { id: assignment.sales_id }),
+          baseDataProvider.getOne("billing_roles", { id: assignment.role }),
+        ]);
+        return {
+          assignment_id: assignment.id,
+          role: assignment.role,
+          description: String(role.description),
+          subject_display_name: `${sale.first_name} ${sale.last_name}`.trim(),
+          scope_label: account.customer_name,
+          effective_from: assignment.valid_from,
+          effective_until: assignment.valid_until,
+          status:
+            assignment.disabled_at || assignment.valid_until
+              ? ("ended" as const)
+              : ("active" as const),
+          reason: assignment.disabled_reason,
+        };
+      }),
+    );
+    return { roles, automation: [] };
+  },
+  assignBillingRole: async (request: {
+    account_id: string;
+    sales_id: number;
+    role: string;
+  }) => {
+    const { data: account } = await baseDataProvider.getOne<BillingAccount>(
+      "billing_accounts",
+      { id: request.account_id },
+    );
+    const assignmentId = crypto.randomUUID();
+    await baseDataProvider.create<BillingRoleAssignment>(
+      "billing_role_assignments",
+      {
+        data: {
+          id: assignmentId,
+          organization_id: account.organization_id,
+          account_id: account.id,
+          sales_id: request.sales_id,
+          role: request.role as BillingRoleAssignment["role"],
+          valid_from: DEMO_EVIDENCE_NOW,
+          valid_until: null,
+          disabled_at: null,
+          disabled_reason: null,
+          created_at: DEMO_EVIDENCE_NOW,
+          updated_at: DEMO_EVIDENCE_NOW,
+        },
+      },
+    );
+    return { assignment_id: assignmentId };
+  },
+  endBillingRoleAssignment: async (request: {
+    assignment_id: string;
+    reason: string;
+  }) => {
+    const { data: previousData } =
+      await baseDataProvider.getOne<BillingRoleAssignment>(
+        "billing_role_assignments",
+        { id: request.assignment_id },
+      );
+    await baseDataProvider.update<BillingRoleAssignment>(
+      "billing_role_assignments",
+      {
+        id: previousData.id,
+        data: {
+          valid_until: DEMO_EVIDENCE_NOW,
+          disabled_at: DEMO_EVIDENCE_NOW,
+          disabled_reason: request.reason,
+          updated_at: DEMO_EVIDENCE_NOW,
+        },
+        previousData,
+      },
+    );
+    return { assignment_id: previousData.id };
+  },
+  disableBillingAutomationPrincipal: async (request: {
+    account_id: string;
+    principal_id: string;
+    reason: string;
+  }) => {
+    const { data: previousData } =
+      await baseDataProvider.getOne<BillingAutomationPrincipal>(
+        "billing_automation_principals",
+        { id: request.principal_id },
+      );
+    await baseDataProvider.update<BillingAutomationPrincipal>(
+      "billing_automation_principals",
+      {
+        id: previousData.id,
+        data: {
+          status: "disabled",
+          disabled_at: DEMO_EVIDENCE_NOW,
+          disabled_reason: request.reason,
+          updated_at: DEMO_EVIDENCE_NOW,
+        },
+        previousData,
+      },
+    );
+    return { principal_id: previousData.id };
+  },
+  beginBillingEvidenceUpload: async (
+    request: BillingEvidenceUploadRequest,
+  ): Promise<BillingEvidenceUploadResponse> => {
+    const { data: account } = await baseDataProvider.getOne<BillingAccount>(
+      "billing_accounts",
+      { id: request.account_id },
+    );
+    const evidenceId = `31000000-0000-0000-0000-${request.sha256.slice(0, 12)}`;
+    const evidence: BillingEvidenceMetadata = {
+      id: evidenceId,
+      organization_id: account.organization_id,
+      account_id: account.id,
+      kind: request.kind,
+      original_filename: request.original_filename,
+      uploader_label: "Jane Doe",
+      mime_type: request.mime_type,
+      size_bytes: request.size_bytes,
+      inspection_status: "quarantined",
+      inspection_reason_code: null,
+      retention_expires_at: "2030-01-01T00:00:00.000Z",
+      is_held: false,
+      lifecycle_status: "active",
+      end_reason: null,
+      created_at: DEMO_EVIDENCE_NOW,
+      updated_at: DEMO_EVIDENCE_NOW,
+    };
+
+    await baseDataProvider.create<BillingEvidenceMetadata>(
+      "billing_evidence_support_safe",
+      { data: evidence },
+    );
+
+    return {
+      result: "ready",
+      evidence_id: evidenceId,
+      url: demoEvidenceCapability("upload", evidenceId),
+      expires_at: DEMO_EVIDENCE_EXPIRES_AT,
+    };
+  },
+  finalizeBillingEvidenceInspection: async (
+    request: BillingEvidenceInspectionRequest,
+  ): Promise<BillingEvidenceInspectionResponse> => {
+    const { data: previousData } =
+      await baseDataProvider.getOne<BillingEvidenceMetadata>(
+        "billing_evidence_support_safe",
+        { id: request.evidence_id },
+      );
+    if (previousData.inspection_status !== "quarantined") {
+      return { result: "duplicate", reason_code: "DUPLICATE_COMMAND" };
+    }
+
+    await baseDataProvider.update<BillingEvidenceMetadata>(
+      "billing_evidence_support_safe",
+      {
+        id: previousData.id,
+        data: {
+          inspection_status: request.decision,
+          inspection_reason_code: request.reason_code,
+          updated_at: DEMO_EVIDENCE_NOW,
+        },
+        previousData,
+      },
+    );
+    return {
+      result: "applied",
+      reason_code: "INSPECTION_RECORDED",
+      evidence_id: previousData.id,
+      decision: request.decision,
+    };
+  },
+  createBillingEvidenceDownload: async (
+    request: BillingEvidenceDownloadRequest,
+  ): Promise<BillingEvidenceDownloadResponse> => {
+    const { data: evidence } =
+      await baseDataProvider.getOne<BillingEvidenceMetadata>(
+        "billing_evidence_support_safe",
+        { id: request.evidence_id },
+      );
+    const reasonCode = getEvidenceDenialReason(evidence);
+    if (reasonCode) {
+      return { result: "denied", reason_code: reasonCode };
+    }
+
+    return {
+      result: "ready",
+      evidence_id: evidence.id,
+      url: demoEvidenceCapability("download", evidence.id),
+      expires_at: DEMO_EVIDENCE_EXPIRES_AT,
+    };
+  },
   getConfiguration: async (): Promise<ConfigurationContextValue> => {
     const { data } = await baseDataProvider.getOne("configuration", { id: 1 });
     return (data?.config as ConfigurationContextValue) ?? {};
@@ -388,6 +763,17 @@ export const dataProvider = withLifecycleCallbacks(
         return params;
       },
     } satisfies ResourceCallbacks<Sale>,
+    {
+      resource: "billing_accounts",
+      beforeGetList: async (params) => {
+        if (!params.filter?.q) return params;
+        const { q, ...filter } = params.filter;
+        return {
+          ...params,
+          filter: { ...filter, "customer_name@ilike": q },
+        };
+      },
+    },
     {
       resource: "contacts",
       beforeCreate: async (createParams, dataProvider) => {

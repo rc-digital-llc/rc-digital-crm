@@ -10,6 +10,7 @@
 
 # testing
 /coverage
+.planning/evidence/**/.receipt.json.lock
 
 # production
 /build

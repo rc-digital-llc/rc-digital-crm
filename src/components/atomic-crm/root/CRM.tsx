@@ -5,7 +5,7 @@ import {
   Resource,
   type AuthProvider,
 } from "ra-core";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Route } from "react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
@@ -58,8 +58,19 @@ import { ContactListMobile } from "../contacts/ContactList.tsx";
 import { ContactShow } from "../contacts/ContactShow.tsx";
 import { CompanyShow } from "../companies/CompanyShow.tsx";
 import { NoteShowPage } from "../notes/NoteShowPage.tsx";
+import {
+  invalidateBillingSecurityState,
+  isSensitiveBillingQueryKey,
+  registerBillingSecurityInvalidator,
+  shouldPersistBillingQuery,
+} from "../billing-accounts/billingAccess";
+import billingAccounts, { BillingAccountListMobile } from "../billing-accounts";
 
 const defaultStore = localStorageStore(undefined, "CRM");
+
+const purgeBillingSecurityState = async () => {
+  await invalidateBillingSecurityState();
+};
 
 export type CRMProps = {
   dataProvider?: CrmDataProvider;
@@ -159,6 +170,30 @@ export const CRM = ({
   }
 
   const isMobile = useIsMobile();
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: isMobile
+            ? {
+                gcTime: 1000 * 60 * 60 * 24,
+                networkMode: "offlineFirst",
+              }
+            : undefined,
+          mutations: isMobile ? { networkMode: "offlineFirst" } : undefined,
+        },
+      }),
+  );
+
+  useEffect(
+    () =>
+      registerBillingSecurityInvalidator(() => {
+        queryClient.removeQueries({
+          predicate: (query) => isSensitiveBillingQueryKey(query.queryKey),
+        });
+      }),
+    [queryClient],
+  );
 
   // on login, pre-fetch the configuration to avoid a flickering
   // when accessing the app for the first time
@@ -166,6 +201,7 @@ export const CRM = ({
     () => ({
       ...authProvider,
       login: async (params: any) => {
+        await purgeBillingSecurityState();
         const result = await authProvider.login(params);
         try {
           const config = await dataProvider.getConfiguration();
@@ -178,6 +214,7 @@ export const CRM = ({
         return result;
       },
       handleCallback: async (params: any) => {
+        await purgeBillingSecurityState();
         if (!authProvider.handleCallback) {
           throw new Error(
             "handleCallback is not implemented in the authProvider",
@@ -195,6 +232,7 @@ export const CRM = ({
         return result;
       },
       logout: async (params: any) => {
+        await purgeBillingSecurityState();
         try {
           store.removeItem(CONFIGURATION_STORE_KEY);
         } catch {
@@ -217,6 +255,7 @@ export const CRM = ({
       loginPage={StartPage}
       requireAuth
       disableTelemetry
+      queryClient={queryClient}
       {...rest}
     />
   );
@@ -259,30 +298,55 @@ const DesktopAdmin = (props: CoreAdminProps) => {
       <Resource name="tasks" />
       <Resource name="sales" {...sales} />
       <Resource name="tags" />
+      <Resource name="billing_accounts" {...billingAccounts} />
     </Admin>
   );
 };
 
 const MobileAdmin = (props: CoreAdminProps) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        gcTime: 1000 * 60 * 60 * 24, // 24 hours
-        networkMode: "offlineFirst",
-      },
-      mutations: {
-        networkMode: "offlineFirst",
-      },
-    },
-  });
-  const asyncStoragePersister = createAsyncStoragePersister({
-    storage: localStorage,
-  });
+  const [fallbackQueryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            gcTime: 1000 * 60 * 60 * 24, // 24 hours
+            networkMode: "offlineFirst",
+          },
+          mutations: {
+            networkMode: "offlineFirst",
+          },
+        },
+      }),
+  );
+  const queryClient = props.queryClient ?? fallbackQueryClient;
+  const asyncStoragePersister = useMemo(
+    () =>
+      createAsyncStoragePersister({
+        storage: localStorage,
+      }),
+    [],
+  );
+
+  useEffect(
+    () =>
+      registerBillingSecurityInvalidator(async () => {
+        queryClient.removeQueries({
+          predicate: (query) => isSensitiveBillingQueryKey(query.queryKey),
+        });
+        await asyncStoragePersister.removeClient();
+      }),
+    [asyncStoragePersister, queryClient],
+  );
 
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister: asyncStoragePersister }}
+      persistOptions={{
+        persister: asyncStoragePersister,
+        dehydrateOptions: {
+          shouldDehydrateQuery: shouldPersistBillingQuery,
+        },
+      }}
     >
       <Admin
         queryClient={queryClient}
@@ -313,6 +377,11 @@ const MobileAdmin = (props: CoreAdminProps) => {
         </Resource>
         <Resource name="companies" show={CompanyShow} />
         <Resource name="tasks" list={MobileTasksList} />
+        <Resource
+          name="billing_accounts"
+          {...billingAccounts}
+          list={BillingAccountListMobile}
+        />
       </Admin>
     </PersistQueryClientProvider>
   );

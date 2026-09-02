@@ -1,0 +1,43 @@
+{
+  "version": "1.0.0",
+  "registry_id": "002-billing-tenancy",
+  "sequence": 2,
+  "baseline_id": "002-pre-financial-pg17",
+  "migrations": [
+    "20260901000001",
+    "20260901000002",
+    "20260901000003",
+    "20260901000004",
+    "20260901000005",
+    "20260901000006",
+    "20260901000007"
+  ],
+  "transformations": {
+    "row_payload_hashes": {
+      "migration": "20260901000002",
+      "before_sha256": "d67ac64c71c92e9ff00b580fc57546f50663d4a26bed9df563f5e7983175ddd8",
+      "after_sha256": "cccf58e4d575209155cf4f36487c29656b6f3708af3cd9c0a82bcecb7ec9daa3"
+    },
+    "constraint_definitions": {
+      "migration": "20260901000007",
+      "before_sha256": "4ffe1ecac064354096b38e4816b1127d753f514e5b09a9e01d8b89984885e410",
+      "after_sha256": "95feed85ec36cc7908dde269f7867988074a8b04a1482c96c28e459dd96d1fc7"
+    },
+    "grant_matrix": {
+      "migration": "20260901000007",
+      "before_sha256": "271750a1fdc9ef453ef689654f36a9cd1995fad5df9da421be361e6b837c9a1c",
+      "after_sha256": "452df1f7b5e97ef2879a734bcaf4d4778f6bb6363140e90e2f524a6c415a09f6"
+    }
+  },
+  "semantic_invariants": [
+    "billing_kernel_rows_added",
+    "billing_grants_least_privilege",
+    "invoice_business_facts_preserved",
+    "invoice_count_preserved",
+    "invoice_legacy_ownership_preserved",
+    "invoice_numeric_text_preserved",
+    "invoice_provider_text_preserved",
+    "invoice_tenant_foreign_keys_valid",
+    "invoice_tenant_keys_complete"
+  ]
+}

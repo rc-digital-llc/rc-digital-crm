@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "name": "rc-digital-billing-accounts-production",
+  "expected_serving_origin": "https://atomic-crm-ryans-projects-51d84217.vercel.app",
+  "expected_canonical_origin": "https://atomic-crm-ryans-projects-51d84217.vercel.app",
+  "canonical_policy": "match",
+  "freshness_markers": ["billing-security-phase2"],
+  "max_redirects": 0,
+  "min_touch_target_css_px": 44,
+  "max_fixed_viewport_ratio": 0.13,
+  "max_landscape_fixed_viewport_ratio": 0.18,
+  "max_console_errors": 0,
+  "max_page_errors": 0,
+  "max_focus_steps": 12,
+  "stability_wait_ms": 500,
+  "readiness_selector": "[data-surface-version=\"billing-security-phase2\"]",
+  "locale": "en-US",
+  "timezone": "America/Los_Angeles",
+  "viewports": [
+    { "name": "small-320", "width": 320, "height": 568 },
+    { "name": "android-360", "width": 360, "height": 800 },
+    { "name": "iphone-393", "width": 393, "height": 852 },
+    { "name": "large-430", "width": 430, "height": 932 },
+    { "name": "landscape-740", "width": 740, "height": 360 }
+  ],
+  "routes": [
+    {
+      "path": "/billing_accounts",
+      "expected_canonical_path": "/billing_accounts"
+    },
+    {
+      "path": "/billing_accounts/create",
+      "expected_canonical_path": "/billing_accounts/create"
+    }
+  ],
+  "critical_targets": [
+    {
+      "selector": "[data-critical-billing-create] a, [data-critical-billing-create] button",
+      "min_width": 44,
+      "min_height": 44
+    },
+    {
+      "selector": "a[aria-label=\"Open billing account details\"] >> nth=0",
+      "required": false,
+      "min_width": 44,
+      "min_height": 44,
+      "max_viewport_width": 767
+    },
+    {
+      "selector": "nav[aria-label=\"CRM navigation\"] a[href=\"/\"]",
+      "min_width": 44,
+      "min_height": 44,
+      "max_viewport_width": 767
+    }
+  ],
+  "fixed_elements": [
+    {
+      "selector": "nav[aria-label=\"CRM navigation\"]",
+      "max_viewport_ratio": 0.13,
+      "max_landscape_viewport_ratio": 0.18,
+      "max_viewport_width": 767
+    },
+    {
+      "selector": "header.fixed.top-0",
+      "required": false,
+      "max_viewport_ratio": 0.13,
+      "max_landscape_viewport_ratio": 0.18,
+      "max_viewport_width": 767
+    }
+  ],
+  "forbidden_visible_selectors": [
+    "[role=\"dialog\"][data-state=\"open\"]",
+    "[role=\"alertdialog\"]",
+    "[data-vaul-drawer][data-state=\"open\"]",
+    "[data-slot=\"sheet-content\"][data-state=\"open\"]"
+  ],
+  "allowed_console_error_patterns": []
+}

@@ -32,7 +32,7 @@ export default defineConfig({
       process.env.VITE_SB_PUBLISHABLE_KEY ?? "https://demo.example.org",
     ),
   },
-  base: "./",
+  base: "/",
   esbuild: {
     keepNames: true,
   },

@@ -1,14 +1,13 @@
-// Based on https://github.com/supabase/supabase/blob/master/examples/edge-functions/supabase/functions/_shared/jwt/default.ts
-import * as jose from "jsr:@panva/jose@6";
 import { createClient, type User } from "jsr:@supabase/supabase-js@2";
 import { createErrorResponse } from "./utils.ts";
 
-const SUPABASE_JWT_ISSUER =
-  Deno.env.get("SB_JWT_ISSUER") ?? Deno.env.get("SUPABASE_URL") + "/auth/v1";
-
-const SUPABASE_JWT_KEYS = jose.createRemoteJWKSet(
-  new URL(Deno.env.get("SUPABASE_URL")! + "/auth/v1/.well-known/jwks.json"),
-);
+function publishableKey() {
+  return (
+    Deno.env.get("SB_PUBLISHABLE_KEY") ??
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    ""
+  );
+}
 
 function getAuthToken(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -23,10 +22,14 @@ function getAuthToken(req: Request) {
   return token;
 }
 
-function verifySupabaseJWT(jwt: string) {
-  return jose.jwtVerify(jwt, SUPABASE_JWT_KEYS, {
-    issuer: SUPABASE_JWT_ISSUER,
-  });
+async function verifySupabaseJWT(jwt: string) {
+  const localClient = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    publishableKey(),
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+  const { data, error } = await localClient.auth.getUser(jwt);
+  return Boolean(data.user && !error);
 }
 
 /**
@@ -45,8 +48,8 @@ export const AuthMiddleware = async (
     if (isValidJWT) return await next(req);
 
     return createErrorResponse(401, "Invalid authentication");
-  } catch (e) {
-    return createErrorResponse(401, e?.toString() || "Unauthorized");
+  } catch {
+    return createErrorResponse(401, "Unauthorized");
   }
 };
 
@@ -64,7 +67,7 @@ export const UserMiddleware = async (
     const authHeader = req.headers.get("Authorization")!;
     const localClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SB_PUBLISHABLE_KEY") ?? "",
+      publishableKey(),
       { global: { headers: { Authorization: authHeader } } },
     );
 
@@ -74,7 +77,7 @@ export const UserMiddleware = async (
     }
 
     return next(req, data.user);
-  } catch (err) {
-    return createErrorResponse(401, err?.toString() || "Unauthorized");
+  } catch {
+    return createErrorResponse(401, "Unauthorized");
   }
 };
