@@ -1,6 +1,6 @@
 ---
 quick_id: 260901-rib
-status: in_progress
+status: complete
 description: Fix production frontend release runtime configuration and verification
 created: 2026-09-02
 ---
