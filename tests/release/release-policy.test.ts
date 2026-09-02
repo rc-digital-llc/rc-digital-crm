@@ -510,6 +510,25 @@ describe("release build workflow contracts", () => {
     );
   });
 
+  it("fails closed unless the production browser build targets the release project", () => {
+    const workflow = readWorkflow("release-build.yml");
+    expect(workflow).toContain(
+      "VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}",
+    );
+    expect(workflow).toContain(
+      "VITE_SB_PUBLISHABLE_KEY: ${{ vars.VITE_SB_PUBLISHABLE_KEY }}",
+    );
+    expect(workflow).toContain(
+      'test "$VITE_SUPABASE_URL" = "https://${RELEASE_PROVIDER_TARGET}.supabase.co"',
+    );
+    expect(workflow).toContain('test "${#VITE_SB_PUBLISHABLE_KEY}" -ge 20');
+    expect(workflow).toContain("sb_publishable_*|eyJ*) ;;");
+    expect(workflow).not.toMatch(
+      /secrets\.(?:VITE_SUPABASE_URL|VITE_SB_PUBLISHABLE_KEY)/,
+    );
+    expect(workflow).not.toMatch(/SUPABASE_(?:SERVICE_ROLE|SECRET)_KEY/);
+  });
+
   it("legacy deploy workflow cannot mutate Supabase or publish the customer frontend", () => {
     const workflow = readWorkflow("deploy.yml");
     expect(workflow).not.toMatch(/deploy-supabase|supabase\s+/i);
