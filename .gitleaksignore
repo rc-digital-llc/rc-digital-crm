@@ -8,6 +8,9 @@
 # historical secret and companion publishable key exactly match `supabase start`
 # using the repository's committed local signing-key configuration. They grant
 # no hosted-project authority and have no provider-side credential to rotate.
+# The Plan 07 summary entry is an exact historical false positive caused by
+# ordinary prose about tamper rejection; the current documentation removes the
+# trigger phrase and contains no credential value.
 127d4935b297de04a172708d5499a722d240e5c1:assets/index-Bk_UwYsO.js:jwt:331
 127d4935b297de04a172708d5499a722d240e5c1:assets/index-Bk_UwYsO.js:jwt:388
 16b58c2838164ccb655da91b513c0beea058ef26:assets/index-BgedIBsY.js:jwt:331
@@ -43,6 +46,7 @@
 89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:supabase/functions/.env.development:generic-api-key:11
 89e0cd0688773174fe49c0a4aa8a357a9c2a04b7:assets/index-jGBUrfJv.js:jwt:331
 89e0cd0688773174fe49c0a4aa8a357a9c2a04b7:assets/index-jGBUrfJv.js:jwt:388
+8a90ce12bd295350c07bc10b978f234d5883802c:.planning/phases/02-tenant-role-and-evidence-security/02-07-SUMMARY.md:generic-api-key:78
 9844ac900acc43e94dc6afa7c1b534524528dcff:.env.development:generic-api-key:4
 9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:10
 9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:11

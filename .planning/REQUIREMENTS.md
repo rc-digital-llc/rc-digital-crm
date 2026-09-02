@@ -44,7 +44,7 @@ history.
 
 ### Customer and Operator Workspace
 
-- [ ] **WORK-01**: An operator can manage a billing account with customer name,
+- [x] **WORK-01**: An operator can manage a billing account with customer name,
   billing status, responsible RC Digital owner, billing-contact name, email,
   phone, and preferred contact method.
 - [ ] **WORK-02**: An operator can see each customer's active payment plan,
@@ -63,25 +63,25 @@ history.
 
 ### Tenancy, Roles, and Evidence Security
 
-- [ ] **SEC-01**: Every billing account, agreement, evidence record, invoice,
+- [x] **SEC-01**: Every billing account, agreement, evidence record, invoice,
   payment fact, job, message, and audit event belongs to an explicit
   organization/account boundary enforced by PostgreSQL RLS.
-- [ ] **SEC-02**: Real two-tenant integration tests prove that operators,
+- [x] **SEC-02**: Real two-tenant integration tests prove that operators,
   customer contacts, automation principals, and signed document links cannot
   read or mutate another account's billing data.
-- [ ] **SEC-03**: An administrator can assign least-privilege billing roles for
+- [x] **SEC-03**: An administrator can assign least-privilege billing roles for
   administration, operation, review/approval, audit/read-only access, and
   restricted customer access with explicit separation of duties.
-- [ ] **SEC-04**: Each automation principal is limited to named commands,
+- [x] **SEC-04**: Each automation principal is limited to named commands,
   accounts, provider accounts, policy versions, and amount/action boundaries
   required for its job.
-- [ ] **SEC-05**: Contracts, revenue statements, receipts, disputes, and related
+- [x] **SEC-05**: Contracts, revenue statements, receipts, disputes, and related
   evidence are stored privately under server-authorized paths with short-lived
   access, malware/quarantine handling, retention rules, and access logs.
-- [ ] **SEC-06**: Every privileged database function and server command binds
+- [x] **SEC-06**: Every privileged database function and server command binds
   the caller to the target tenant, validates ownership, uses a locked
   `search_path`, and rejects client-controlled provider or financial identity.
-- [ ] **SEC-07**: Financial logs, telemetry, exports, and support views redact
+- [x] **SEC-07**: Financial logs, telemetry, exports, and support views redact
   secrets, raw payment credentials, sensitive provider payload fields, and
   unnecessary customer evidence.
 
@@ -432,18 +432,18 @@ A v1 requirement is complete only when:
 | REL-03 | Phase 1 | Complete |
 | REL-04 | Phase 1 | Complete |
 | REL-05 | Phase 1 | Complete |
-| WORK-01 | Phase 2 | Pending |
+| WORK-01 | Phase 2 | Complete |
 | WORK-02 | Phase 9 | Pending |
 | WORK-03 | Phase 9 | Pending |
 | WORK-04 | Phase 9 | Pending |
 | WORK-05 | Phase 9 | Pending |
-| SEC-01 | Phase 2 | Pending |
-| SEC-02 | Phase 2 | Pending |
-| SEC-03 | Phase 2 | Pending |
-| SEC-04 | Phase 2 | Pending |
-| SEC-05 | Phase 2 | Pending |
-| SEC-06 | Phase 2 | Pending |
-| SEC-07 | Phase 2 | Pending |
+| SEC-01 | Phase 2 | Complete |
+| SEC-02 | Phase 2 | Complete |
+| SEC-03 | Phase 2 | Complete |
+| SEC-04 | Phase 2 | Complete |
+| SEC-05 | Phase 2 | Complete |
+| SEC-06 | Phase 2 | Complete |
+| SEC-07 | Phase 2 | Complete |
 | AGR-01 | Phase 4 | Pending |
 | AGR-02 | Phase 4 | Pending |
 | AGR-03 | Phase 4 | Pending |
