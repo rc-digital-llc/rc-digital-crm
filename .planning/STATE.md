@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Auth confirmation redirect hotfix released and verified; Phase 3 planning is next
-last_updated: "2026-09-02T17:54:09.000Z"
+status: planning
+stopped_at: Phase 3 context gathered; ready for research and planning
+last_updated: "2026-09-02T20:51:56.733Z"
 last_activity: 2026-09-02
 progress:
   total_phases: 10
@@ -30,7 +30,7 @@ history.
 
 Phase: 02 (tenant-role-and-evidence-security) — COMPLETE
 Plan: 12 of 12
-Status: Released to canonical production; auth confirmation redirect hotfix verified
+Status: Ready for planning
 Last activity: 2026-09-02
 
 Progress: [██████████] 100% of currently planned work (22/22 plans)
@@ -64,43 +64,59 @@ security decisions:
 
 - [Phase 01]: Financial behavior reaches `main` only through six protected,
   unconditional, merge-queue-aware identities plus the staged promotion path.
+
 - [Phase 01]: Source, build, preview, promotion, and customer-facing production
   are distinct evidence stages; one cannot substitute for another.
+
 - [Phase 01]: Exact historical findings may be classified only after review and
   only by immutable fingerprint; broader scanner exceptions fail closed.
+
 - [Phase 02]: Tenant authority derives from the authenticated caller's active
   assignments/bindings, never a browser-supplied organization or account ID.
+
 - [Phase 02]: Human role capabilities are independent and additive; automation
   identities cannot hold human roles and can invoke only exact transactional
   grant tuples with limits, policy, provider, account, and command binding.
+
 - [Phase 02]: Billing accounts, contacts, invoices, evidence, assignments, and
   audit history are non-destructive, caller-bound, forced-RLS resources.
+
 - [Phase 02]: Evidence paths and short-lived capabilities remain server-owned;
   quarantine, inspection, retention, holds, and durable access decisions gate
   every download.
+
 - [Phase 02]: Logs and errors use recursive fail-closed redaction plus a narrow
   scalar context allowlist; sensitive billing queries never persist offline.
+
 - [Phase 02]: Supabase and FakeRest share executable billing contracts, while
   deterministic demo values remain non-network and non-sensitive.
+
 - [Phase 02]: Billing UI capability summaries are presentation-only; every
   database, RPC, Storage, and Edge operation reauthorizes independently.
+
 - [Phase 02]: Billing paths use real browser-history routes with root-relative
   assets and route-scoped canonical metadata.
+
 - [Phase 02]: All SQL/Auth/Storage/Edge/redaction/provider/UI/QA contracts run
   inside the inherited six blocking identities, and exact path classification
   prevents billing changes from skipping them.
+
 - [Phase 02]: The accepted upgrade registry chains the full Phase 2 migration
   set and pins final constraint/grant transforms plus semantic invariants.
+
 - [Phase 02]: Source proof passed at integrated implementation head `68b013e4`;
   immutable preview and canonical production later passed at protected release
   commit `0a7aa022`, while screen-reader, physical-device, and owner-authenticated
   production billing checks remain explicitly separate manual gates.
+
 - [Release]: The browser artifact is built once with an exact Supabase origin
   and publishable key, content-addressed through build → schema → functions →
   frontend receipts, then deployed prebuilt to Vercel and byte-read back.
+
 - [Release]: Credential-free production freshness is proven at the first-owner
   sign-up surface; authenticated billing remains separately proven in an
   immutable deterministic preview until an owner-created account exists.
+
 - [Release]: Email confirmation redirects are explicit in the signup request
   and canonical in hosted Supabase Auth; every promotion reads back that live
   configuration and fails before mutation on localhost, a missing canonical
@@ -111,14 +127,17 @@ security decisions:
 - Start Phase 03 exact-money-and-rounding-contract planning.
 - If requested after owner sign-in, retain an authenticated production billing
   receipt without storing or fabricating credentials.
+
 - Record residual screen-reader and physical-device coverage when performed.
 
 ### Blockers/Concerns
 
 - No Phase 2 implementation, release, or email-confirmation redirect blocker
   remains.
+
 - Canonical production, exact artifact freshness, and the live Supabase Auth
   redirect contract are proven; credentialed sign-in remains owner-operated.
+
 - The Vite build retains non-blocking CSS import-order, bundle-size, and stale
   Browserslist advisories for later cleanup.
 
@@ -130,6 +149,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-02T17:54:09.000Z
-Stopped at: Auth confirmation redirect hotfix released and verified; Phase 3 planning is next
-Resume file: None
+Last session: 2026-09-02T20:51:17.736Z
+Stopped at: Phase 3 context gathered; ready for research and planning
+Resume file: .planning/phases/03-exact-money-and-rounding-contract/03-CONTEXT.md
