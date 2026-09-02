@@ -30,6 +30,8 @@ jobs:
       RELEASE_AUTHENTICATED_OWNER: ${{ vars.RELEASE_OWNER_LOGIN || github.actor }}
       RELEASE_PROVIDER_TARGET: ${{ vars.RELEASE_PROVIDER_TARGET }}
       RELEASE_EVIDENCE_REPOSITORY: ${{ vars.RELEASE_EVIDENCE_REPOSITORY }}
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SB_PUBLISHABLE_KEY: ${{ vars.VITE_SB_PUBLISHABLE_KEY }}
     steps:
       - name: Require immutable build inputs
         env:
@@ -39,6 +41,13 @@ jobs:
           test -n "$RELEASE_PROVIDER_TARGET"
           test -n "$RELEASE_EVIDENCE_REPOSITORY"
           test -n "$RELEASE_EVIDENCE_TOKEN"
+          test -n "$VITE_SUPABASE_URL"
+          test "$VITE_SUPABASE_URL" = "https://${RELEASE_PROVIDER_TARGET}.supabase.co"
+          test "${#VITE_SB_PUBLISHABLE_KEY}" -ge 20
+          case "$VITE_SB_PUBLISHABLE_KEY" in
+            sb_publishable_*|eyJ*) ;;
+            *) echo "Production browser key must be a Supabase publishable or legacy anon key" >&2; exit 1 ;;
+          esac
       - name: Checkout exact protected commit
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
