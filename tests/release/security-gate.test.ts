@@ -19,6 +19,8 @@ const provenLocalSecretFingerprints = [
   "89d87d9fcbdf0de7bdc3588bc9e9f74f69397cc9:supabase/functions/.env.development:generic-api-key:11",
   "9844ac900acc43e94dc6afa7c1b534524528dcff:supabase/functions/.env.development:generic-api-key:11",
 ];
+const reviewedDocumentationFalsePositiveFingerprint =
+  "8a90ce12bd295350c07bc10b978f234d5883802c:.planning/phases/02-tenant-role-and-evidence-security/02-07-SUMMARY.md:generic-api-key:78";
 
 const syntheticFinding = {
   RuleID: "generic-api-key",
@@ -108,7 +110,7 @@ describe("release security secret gate", () => {
     ).not.toThrow();
   });
 
-  it("pins only the two value-blind proven local Supabase secret fingerprints", () => {
+  it("pins reviewed exact findings including the documentation false positive", () => {
     const ignoreText = fs.readFileSync(
       path.join(repositoryRoot, ".gitleaksignore"),
       "utf8",
@@ -118,6 +120,16 @@ describe("release security secret gate", () => {
     expect(entries).toEqual(
       expect.arrayContaining(provenLocalSecretFingerprints),
     );
+    expect(entries).toContain(reviewedDocumentationFalsePositiveFingerprint);
+    expect(
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          ".planning/phases/02-tenant-role-and-evidence-security/02-07-SUMMARY.md",
+        ),
+        "utf8",
+      ),
+    ).not.toContain("modified signed tokens");
     expect(() =>
       validateGitleaksIgnore(
         `${ignoreText}\n0123456789abcdef0123456789abcdef01234567:unsafe.env:generic-api-key:1\n`,

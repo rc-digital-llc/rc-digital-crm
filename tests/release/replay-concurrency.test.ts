@@ -16,6 +16,11 @@ type CommandResult = {
   last_sequence?: number;
 };
 
+type AutomationCommandResult = {
+  result: "applied" | "duplicate" | "denied";
+  reason_code: string;
+};
+
 const repositoryRoot = path.resolve(__dirname, "../..");
 const projectId = "atomic-crm-demo";
 const expectedContainer = `supabase_db_${projectId}`;
@@ -182,6 +187,31 @@ async function countEffects(
   );
 }
 
+async function applyAutomationCommand(
+  container: string,
+  idempotencyKey: string,
+) {
+  assertIdentifier(idempotencyKey);
+  const output = await psql(
+    container,
+    `BEGIN;
+     SET LOCAL "request.jwt.claim.sub" = '21000000-0000-0000-0000-000000000006';
+     SET LOCAL ROLE authenticated;
+     SELECT public.execute_billing_automation_command(
+       '21000000-0000-0000-0000-000000000501',
+       '21000000-0000-0000-0000-000000000200',
+       'test.concurrent',
+       'provider-alpha-fixture',
+       'policy-fixture-v1',
+       'record.concurrent',
+       1.00,
+       '${idempotencyKey}'
+     )::text;
+     COMMIT;`,
+  );
+  return JSON.parse(output) as AutomationCommandResult;
+}
+
 describe("replay/concurrency fixture contracts", () => {
   it("resolves one exact project container with explicit Docker argv", async () => {
     const calls: string[][] = [];
@@ -317,5 +347,58 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
         await countEffects(container, { streamKey: "ordered-stream" }),
       ).toBe(1);
     });
+
+    it("atomically consumes one simultaneous automation grant unit", async () => {
+      const container = await resolveDatabaseContainer();
+      const idempotencyKey = "automation-last-unit";
+      const results = await Promise.all(
+        Array.from({ length: 32 }, () =>
+          applyAutomationCommand(container, idempotencyKey),
+        ),
+      );
+
+      expect(results).toHaveLength(32);
+      expect(results.filter((result) => result.result === "applied")).toHaveLength(
+        1,
+      );
+      expect(
+        results.filter((result) => result.result === "duplicate"),
+      ).toHaveLength(31);
+      expect(
+        Number(
+          await psql(
+            container,
+            `SELECT count(*) FROM public.billing_automation_executions
+             WHERE idempotency_key = '${idempotencyKey}'`,
+          ),
+        ),
+      ).toBe(1);
+      expect(
+        JSON.parse(
+          await psql(
+            container,
+            `SELECT jsonb_build_object(
+               'actions', actions_consumed,
+               'amount', total_amount_consumed::text,
+               'status', status
+             )::text
+             FROM public.billing_automation_grants
+             WHERE id = '21000000-0000-0000-0000-000000000501'`,
+          ),
+        ),
+      ).toEqual({ actions: 1, amount: "1.00", status: "exhausted" });
+      expect(
+        Number(
+          await psql(
+            container,
+            `SELECT count(*) FROM public.billing_audit_events
+             WHERE actor_id = '21000000-0000-0000-0000-000000000400'
+               AND action = 'automation.command'
+               AND subject_id = '${idempotencyKey}'
+               AND result = 'succeeded'`,
+          ),
+        ),
+      ).toBe(1);
+    }, 30000);
   },
 );

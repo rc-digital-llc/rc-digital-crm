@@ -111,6 +111,7 @@ function parseSyntheticFunctionEnv(text: string) {
       }),
   );
   const expectedKeys = [
+    "BILLING_EVIDENCE_PUBLIC_URL",
     "POSTMARK_WEBHOOK_AUTHORIZED_IPS",
     "POSTMARK_WEBHOOK_PASSWORD",
     "POSTMARK_WEBHOOK_USER",
@@ -121,6 +122,10 @@ function parseSyntheticFunctionEnv(text: string) {
     !entries.POSTMARK_WEBHOOK_PASSWORD?.startsWith("synthetic-")
   ) {
     throw new Error("function fixture credentials must be visibly synthetic");
+  }
+  const evidenceUrl = new URL(entries.BILLING_EVIDENCE_PUBLIC_URL);
+  if (!["127.0.0.1", "localhost"].includes(evidenceUrl.hostname)) {
+    throw new Error("billing evidence fixture URL must be loopback");
   }
   for (const ip of entries.POSTMARK_WEBHOOK_AUTHORIZED_IPS.split(",")) {
     if (ip !== "127.0.0.1" && !ip.startsWith("192.0.2.")) {
@@ -307,7 +312,8 @@ describe("Edge/provider fixtures", () => {
 
     expect(() =>
       parseSyntheticFunctionEnv(
-        "POSTMARK_WEBHOOK_USER=operator\n" +
+        "BILLING_EVIDENCE_PUBLIC_URL=http://127.0.0.1:54321\n" +
+          "POSTMARK_WEBHOOK_USER=operator\n" +
           "POSTMARK_WEBHOOK_PASSWORD=opaque-value\n" +
           "POSTMARK_WEBHOOK_AUTHORIZED_IPS=127.0.0.1\n",
       ),
