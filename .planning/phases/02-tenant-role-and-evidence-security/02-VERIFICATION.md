@@ -1,6 +1,6 @@
 ---
 phase: 02-tenant-role-and-evidence-security
-verified: 2026-09-02T01:31:00Z
+verified: 2026-09-02T01:50:00Z
 status: passed
 score: 5/5 must-haves verified
 ---
@@ -10,7 +10,7 @@ score: 5/5 must-haves verified
 **Phase Goal:** Operators, customer contacts, and automation can act only inside
 an explicit billing account boundary, while financial evidence remains private
 and privileged commands remain narrowly authorized.
-**Verified:** 2026-09-02T01:31:00Z
+**Verified:** 2026-09-02T01:50:00Z
 **Status:** passed
 
 ## Goal Achievement
@@ -35,7 +35,7 @@ and privileged commands remain narrowly authorized.
 | Live authorization contracts | Representative Auth, PostgREST, RPC, Storage, and Edge denials/effects | ✓ VERIFIED | Nine pgTAP files (262 assertions), 3 live Auth/HTTP tests, and 10 Edge/provider tests pass in isolated loopback stacks. |
 | Automation and contention contracts | Exact tuple authority, replay safety, limit consumption, restart behavior | ✓ VERIFIED | The fixture passes 18 assertions and the live PostgreSQL suite passes 8 tests, including 32 same-key claims and simultaneous one-unit consumption. |
 | Billing provider and UI surface | Safe CRUD/compound commands, responsive resources, no sensitive persistence | ✓ VERIFIED | The 48-test fast suite passes provider parity, redaction, UI behavior, static security, path classification, and lane coupling. |
-| Rendered source proof | Exact routes, freshness, canonical identity, reflow, target sizing, focus, and browser health | ✓ VERIFIED | Receipt `5c7c4bbaa5f636d3b04afe5394b1c3cbba1ec8416827c9d4b1cc22d26eea328e` passes 92/92 checks and retains four matching screenshots. |
+| Rendered source proof | Exact routes, freshness, canonical identity, reflow, target sizing, focus, and browser health | ✓ VERIFIED | Receipt `46d00daf4bb826148b908fce71072f59d0c40caeb1688841671b1b3d54272062` passes 92/92 checks and retains four matching screenshots. |
 
 **Artifacts:** 5/5 verified
 
@@ -69,10 +69,10 @@ and privileged commands remain narrowly authorized.
 
 ## Exact Execution Evidence
 
-The complete no-assertion-retry gate passed at implementation head `a5da6dd1`:
+The complete no-assertion-retry gate passed at integrated implementation head `68b013e4`:
 
 - 40-migration clean install and schema push
-- production-like upgrade with report SHA-256 `b9fdb61ffb012e926d536e89a059dbef4d19a7bec98d39bf8842cef3f126a66d`
+- PostgreSQL 17 production-like upgrade with report SHA-256 `2d3909b3e62cd23c295ab096fd524da9839d69a626fdd5aadd08534578f63347`
 - 262 pgTAP assertions; 3 Auth/HTTP, 10 Edge/provider, and 8 live contention tests
 - 18 deterministic contention fixture assertions and 48 billing fast tests
 - zero critical/high dependency findings and zero current/history scanner findings
@@ -110,5 +110,5 @@ evidence is explicitly pending and cannot be pre-satisfied by this report.
 
 ---
 
-_Verified: 2026-09-02T01:31:00Z_
+_Verified: 2026-09-02T01:50:00Z_
 _Verifier: Codex (inline phase verifier; no independent reviewer by owner decision)_

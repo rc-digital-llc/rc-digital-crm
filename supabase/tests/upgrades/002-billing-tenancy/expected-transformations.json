@@ -2,7 +2,7 @@
   "version": "1.0.0",
   "registry_id": "002-billing-tenancy",
   "sequence": 2,
-  "baseline_id": "001-pre-financial",
+  "baseline_id": "002-pre-financial-pg17",
   "migrations": [
     "20260901000001",
     "20260901000002",
@@ -25,8 +25,8 @@
     },
     "grant_matrix": {
       "migration": "20260901000007",
-      "before_sha256": "fa359d682025b08e8c6a27a7c82b828aeb70bf3bc7353dab67320cb6514d737a",
-      "after_sha256": "88ad6b0f33d0c822a469cab6241755bed03ccbdd073020eebbf7972edef6d2e8"
+      "before_sha256": "271750a1fdc9ef453ef689654f36a9cd1995fad5df9da421be361e6b837c9a1c",
+      "after_sha256": "452df1f7b5e97ef2879a734bcaf4d4778f6bb6363140e90e2f524a6c415a09f6"
     }
   },
   "semantic_invariants": [

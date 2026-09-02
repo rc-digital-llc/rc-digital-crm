@@ -91,7 +91,7 @@ security decisions:
   prevents billing changes from skipping them.
 - [Phase 02]: The accepted upgrade registry chains the full Phase 2 migration
   set and pins final constraint/grant transforms plus semantic invariants.
-- [Phase 02]: Source proof passed at implementation head `a5da6dd1`; immutable
+- [Phase 02]: Source proof passed at integrated implementation head `68b013e4`; immutable
   preview, canonical production, hosted backfill, screen-reader, and physical
   device evidence remain separate later gates.
 

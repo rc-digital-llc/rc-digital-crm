@@ -18,6 +18,10 @@ const transformationRegistryDirectory = path.join(
   repositoryRoot,
   "supabase/tests/upgrades",
 );
+const expectationDirectory = path.join(
+  repositoryRoot,
+  "supabase/tests/baselines/002-pre-financial-pg17",
+);
 const categoryNames = [
   "row_identity_counts",
   "ownership_foreign_keys",
@@ -369,6 +373,10 @@ function hashFingerprint(value) {
     .digest("hex");
 }
 
+function sha256(bytes) {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
 function assertFingerprintShape(fingerprints, label) {
   const received = Object.keys(fingerprints ?? {}).sort();
   if (JSON.stringify(received) !== JSON.stringify([...categoryNames].sort())) {
@@ -388,7 +396,10 @@ export function compareFingerprintSets({ before, after, expected }) {
   const results = {};
   for (const category of categoryNames) {
     if (before[category] !== expected.categories[category]) {
-      throw new Error(`upgrade fingerprint mismatch before: ${category}`);
+      throw new Error(
+        `upgrade fingerprint mismatch before: ${category} ` +
+          `(expected ${expected.categories[category]}, received ${before[category]})`,
+      );
     }
     const transformation = expected.transformations?.[category];
     const expectedAfter = transformation?.after_sha256 ?? before[category];
@@ -396,7 +407,10 @@ export function compareFingerprintSets({ before, after, expected }) {
       throw new Error(`upgrade transformation mismatch: ${category}`);
     }
     if (after[category] !== expectedAfter) {
-      throw new Error(`upgrade fingerprint mismatch after: ${category}`);
+      throw new Error(
+        `upgrade fingerprint mismatch after: ${category} ` +
+          `(expected ${expectedAfter}, received ${after[category]})`,
+      );
     }
     results[category] = {
       before: before[category],
@@ -604,6 +618,50 @@ export function loadTransformationRegistries({
     return JSON.parse(fs.readFileSync(registryPath, "utf8"));
   });
   return validateTransformationRegistries({ baselineExpected, registries });
+}
+
+export function loadUpgradeExpectation() {
+  const config = fs.readFileSync(
+    path.join(repositoryRoot, "supabase/config.toml"),
+    "utf8",
+  );
+  if (!/^major_version\s*=\s*17$/m.test(config)) {
+    throw new Error("PG17 upgrade expectation requires PostgreSQL 17");
+  }
+  const manifest = JSON.parse(
+    fs.readFileSync(path.join(expectationDirectory, "manifest.json"), "utf8"),
+  );
+  const expectedBytes = fs.readFileSync(
+    path.join(expectationDirectory, "expected-fingerprints.json"),
+  );
+  const expected = JSON.parse(expectedBytes.toString("utf8"));
+  const sourceManifestBytes = fs.readFileSync(
+    path.join(baselineDirectory, "manifest.json"),
+  );
+  if (
+    manifest.version !== "1.0.0" ||
+    manifest.baseline_id !== "002-pre-financial-pg17" ||
+    manifest.source_baseline !== "001-pre-financial" ||
+    manifest.postgres_major_version !== 17 ||
+    expected.version !== "1.0.0" ||
+    expected.baseline_id !== manifest.baseline_id
+  ) {
+    throw new Error("PG17 upgrade expectation identity is invalid");
+  }
+  if (manifest.source_manifest_sha256 !== sha256(sourceManifestBytes)) {
+    throw new Error("PG17 upgrade expectation source baseline differs");
+  }
+  if (manifest.expected_fingerprints_sha256 !== sha256(expectedBytes)) {
+    throw new Error("PG17 expected fingerprint file hash differs");
+  }
+  assertFingerprintShape(expected.categories, "expected");
+  if (
+    expected.categories_sha256 !==
+    sha256(Buffer.from(JSON.stringify(expected.categories), "utf8"))
+  ) {
+    throw new Error("PG17 expected fingerprint category hash differs");
+  }
+  return expected;
 }
 
 function assertLocalDatabase(databaseUrl) {
@@ -846,19 +904,17 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
   await prepareBaseline(container, execute);
   const before = await captureFingerprints(container, execute);
   const beforeSemantics = await captureInvoiceSemantics(container, execute);
-  const expected = JSON.parse(
-    fs.readFileSync(
-      path.join(baselineDirectory, "expected-fingerprints.json"),
-      "utf8",
-    ),
-  );
+  const expected = loadUpgradeExpectation();
   const expectedUpgrade = loadTransformationRegistries({
     baselineExpected: expected,
   });
   assertFingerprintShape(expectedUpgrade.categories, "expected");
   for (const category of categoryNames) {
     if (before[category] !== expectedUpgrade.categories[category]) {
-      throw new Error(`upgrade fingerprint mismatch before: ${category}`);
+      throw new Error(
+        `upgrade fingerprint mismatch before: ${category} ` +
+          `(expected ${expectedUpgrade.categories[category]}, received ${before[category]})`,
+      );
     }
   }
   await runChecked(

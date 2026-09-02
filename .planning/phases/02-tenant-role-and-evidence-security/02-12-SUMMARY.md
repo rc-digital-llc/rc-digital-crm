@@ -68,14 +68,15 @@ completed: 2026-09-01
 
 - Coupled all nine Phase 2 database suites, live Auth/HTTP tenancy tests, Edge/Storage evidence tests, contention tests, redaction, provider, UI, and static contracts to the existing six protected financial identities.
 - Expanded financial path classification across billing migrations, shared authorization, Edge functions, UI, provider, QA, and gate code without adding an optional job or alternate required context.
-- Passed clean install and schema push for 40 migrations, the production-like upgrade with nine semantic invariants, 262 pgTAP assertions, 3 live Auth/HTTP tests, 10 Edge/provider tests, 18 fixture contention assertions, and 8 live contention tests.
-- Passed 48 fast billing checks, dependency/security/bundle/coupling gates, typecheck, lint, and production build at implementation head `a5da6dd1`.
+- Passed PostgreSQL 17 clean install and schema push for 40 migrations, the production-like upgrade with nine semantic invariants, 262 pgTAP assertions, 3 live Auth/HTTP tests, 10 Edge/provider tests, 18 fixture contention assertions, and 8 live contention tests.
+- Passed 48 fast billing checks, dependency/security/bundle/coupling gates, typecheck, lint, and production build at integrated implementation head `68b013e4`.
 - Preserved a source receipt that passed 92 checks across two routes and two viewports with zero browser/page errors and four matching screenshot hashes.
 
 ## Task Commits
 
 1. **Task 1: Couple every Phase 2 contract into existing blocking lane identities** — `2d53a43a` (red test), `0e614506` (feature)
 2. **Task 2: Run the complete phase gate and retain source proof** — `cfab9fb6`, `d8bc7e3d` (red tests); `a56baea6`, `a5da6dd1` (fixes)
+3. **Release integration: Reconcile current protected main and refresh generated registry** — `efc1d367`, `68b013e4`
 
 ## Decisions Made
 
@@ -93,7 +94,7 @@ completed: 2026-09-01
 - **Found during:** First complete phase gate
 - **Issue:** The registry ended at migration 02, so the correct final constraint and grant transforms appeared as unexplained upgrade drift.
 - **Fix:** Added failing final-state coverage, chained migrations 03–07, and pinned the resulting constraint and grant fingerprints.
-- **Verification:** Upgrade passed all nine semantic invariants with report SHA-256 `b9fdb61ffb012e926d536e89a059dbef4d19a7bec98d39bf8842cef3f126a66d`.
+- **Verification:** The final PostgreSQL 17 upgrade passed all nine semantic invariants with report SHA-256 `2d3909b3e62cd23c295ab096fd524da9839d69a626fdd5aadd08534578f63347`.
 - **Committed in:** `a56baea6`
 
 **2. [Rule 3 - Blocking] Classified one historical documentation false positive exactly**
@@ -104,9 +105,17 @@ completed: 2026-09-01
 - **Verification:** Current and history scans both passed with zero findings; a synthetic broader exception still fails validation.
 - **Committed in:** `a5da6dd1`
 
+**3. [Rule 3 - Blocking] Reconciled the Phase 2 upgrade proof with current protected main**
+
+- **Found during:** Signed PR snapshot preparation
+- **Issue:** Protected `main` advanced to PostgreSQL 17 after Phase 2 branched. A tree comparison caught that the initial signed snapshot preserved newer release files but overwrote two overlapping upgrade-verification files.
+- **Fix:** Merged current `main` in a clean worktree, composed the PostgreSQL 17 additive expectation with the Phase 2 transformation registry and semantic invariants, pinned the version-specific final grant fingerprint, and refreshed `registry.json`.
+- **Verification:** The complete gate passed again at `68b013e4`; the PostgreSQL 17 upgrade report is `2d3909b3e62cd23c295ab096fd524da9839d69a626fdd5aadd08534578f63347` and the four rendered screenshot hashes remain unchanged.
+- **Committed in:** `efc1d367`, `68b013e4`
+
 ---
 
-**Total deviations:** 2 auto-fixed gate blockers. **Impact on plan:** Both fixes strengthened reproducibility and scan precision without weakening a release control.
+**Total deviations:** 3 auto-fixed gate blockers. **Impact on plan:** The fixes strengthened reproducibility, scan precision, and current-main integration without weakening a release control.
 
 ## Issues Encountered
 
@@ -131,7 +140,7 @@ None for implementation validation. Every Supabase check used a disposable loopb
 - `npm run lint`
 - `npm run build`
 - Source receipt: 92 checks, 0 failures, 4 matching screenshot hashes
-- Receipt SHA-256: `5c7c4bbaa5f636d3b04afe5394b1c3cbba1ec8416827c9d4b1cc22d26eea328e`
+- Receipt SHA-256: `46d00daf4bb826148b908fce71072f59d0c40caeb1688841671b1b3d54272062`
 
 ---
 *Phase: 02-tenant-role-and-evidence-security*

@@ -107,7 +107,7 @@ created: 2026-09-01
 - [x] Security assertions use live pgTAP/Auth/REST/RPC/Storage/Edge behavior,
   with source contracts only as a supplementary release-coupling gate.
 - [x] Wave 0 files exist and execute.
-- [x] Full phase command is green at implementation head `a5da6dd1`.
+- [x] Full phase command is green at integrated implementation head `68b013e4`.
 - [x] The source receipt is retained with exact screenshot hashes.
 - [ ] Preview and production receipts are retained at their later required gates.
 - [ ] Residual keyboard, assistive-technology, and physical-device coverage is recorded without claiming complete automation.
@@ -115,11 +115,11 @@ created: 2026-09-01
 
 ## Final Execution Evidence
 
-- **Implementation head:** `a5da6dd1`
-- **Observed:** 2026-09-02T01:19:51.636362Z
-- **Migrations:** clean install and schema push passed for 40 migrations; legacy
+- **Integrated implementation head:** `68b013e4`
+- **Observed:** 2026-09-02T01:49:13.064770Z
+- **Migrations:** PostgreSQL 17 clean install and schema push passed for 40 migrations; legacy
   upgrade passed all nine semantic invariants with report SHA-256
-  `b9fdb61ffb012e926d536e89a059dbef4d19a7bec98d39bf8842cef3f126a66d`.
+  `2d3909b3e62cd23c295ab096fd524da9839d69a626fdd5aadd08534578f63347`.
 - **Database:** nine pgTAP files and 262 assertions passed; live local Auth/HTTP
   tenancy passed 3 tests.
 - **Edge and contention:** evidence/provider passed 10 tests; replay fixtures
@@ -132,7 +132,7 @@ created: 2026-09-01
   checks across 2 routes × 2 viewports. Contract SHA-256 is
   `d2bbceda313d80dce383e74efdad57f851b12c8561bf4df7a2afb5a866e33b6e`;
   receipt SHA-256 is
-  `5c7c4bbaa5f636d3b04afe5394b1c3cbba1ec8416827c9d4b1cc22d26eea328e`.
+  `46d00daf4bb826148b908fce71072f59d0c40caeb1688841671b1b3d54272062`.
 - **Stage boundary:** immutable five-viewport preview, canonical production,
   protected hosted backfill, screen-reader, and physical-device proof remain
   pending at their explicitly named release/manual gates.

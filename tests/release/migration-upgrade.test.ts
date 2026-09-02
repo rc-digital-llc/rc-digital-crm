@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import {
   canonicalFingerprint,
   compareFingerprintSets,
+  loadTransformationRegistries,
+  loadUpgradeExpectation,
   validateTransformationRegistries,
 } from "../../scripts/release/fingerprint-upgrade.mjs";
 
@@ -57,6 +59,24 @@ function baselineExpected() {
 }
 
 describe("representative upgrade fingerprints", () => {
+  it("uses the additive PostgreSQL 17 expectation over the immutable source baseline", () => {
+    const expectation = loadUpgradeExpectation();
+    expect(expectation).toMatchObject({
+      version: "1.0.0",
+      baseline_id: "002-pre-financial-pg17",
+    });
+    expect(expectation.categories).toHaveProperty("grant_matrix");
+    expect(
+      loadTransformationRegistries({ baselineExpected: expectation }),
+    ).toMatchObject({
+      baseline_id: "002-pre-financial-pg17",
+      semantic_invariants: expect.arrayContaining([
+        "invoice_business_facts_preserved",
+        "billing_grants_least_privilege",
+      ]),
+    });
+  });
+
   it("accepts exact before/after preservation", () => {
     expect(
       compareFingerprintSets({
@@ -271,7 +291,7 @@ describe("representative upgrade fingerprints", () => {
       expect.objectContaining({
         migration: "20260901000007",
         after_sha256:
-          "88ad6b0f33d0c822a469cab6241755bed03ccbdd073020eebbf7972edef6d2e8",
+          "452df1f7b5e97ef2879a734bcaf4d4778f6bb6363140e90e2f524a6c415a09f6",
       }),
     );
   });

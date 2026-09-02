@@ -89,7 +89,7 @@
   },
   "stage": "source",
   "base_url": "http://127.0.0.1:4179",
-  "observed_at": "2026-09-02T01:19:51.636362Z",
+  "observed_at": "2026-09-02T01:49:13.064770Z",
   "verdict": "pass",
   "summary": {
     "checks": 92,
@@ -233,7 +233,7 @@
           "connection": "keep-alive",
           "content-encoding": "gzip",
           "content-type": "text/html",
-          "date": "Wed, 02 Sep 2026 01:19:52 GMT",
+          "date": "Wed, 02 Sep 2026 01:49:13 GMT",
           "etag": "W/\"c82-bHL3WJiTVugolVHeLyznJ3EUkMA\"",
           "keep-alive": "timeout=5",
           "transfer-encoding": "chunked",
@@ -241,7 +241,7 @@
         }
       },
       "screenshot": {
-        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2.XXZ6Rq/worktree/.planning/evidence/02/source/screenshots/billing_accounts--400a48f6ed67--small-320.png",
+        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2-integration.tULfi6/.planning/evidence/02/source/screenshots/billing_accounts--400a48f6ed67--small-320.png",
         "sha256": "a03e1bcdd7b8663057629b67542150c051f4ae9af965ae2df1ebfba0807dc847",
         "captured_scroll_y": 0
       },
@@ -394,7 +394,7 @@
           "connection": "keep-alive",
           "content-encoding": "gzip",
           "content-type": "text/html",
-          "date": "Wed, 02 Sep 2026 01:19:54 GMT",
+          "date": "Wed, 02 Sep 2026 01:49:15 GMT",
           "etag": "W/\"c82-bHL3WJiTVugolVHeLyznJ3EUkMA\"",
           "keep-alive": "timeout=5",
           "transfer-encoding": "chunked",
@@ -402,7 +402,7 @@
         }
       },
       "screenshot": {
-        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2.XXZ6Rq/worktree/.planning/evidence/02/source/screenshots/billing_accounts--400a48f6ed67--desktop-1280.png",
+        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2-integration.tULfi6/.planning/evidence/02/source/screenshots/billing_accounts--400a48f6ed67--desktop-1280.png",
         "sha256": "70496d385f98e7307513f7281a90dbe720c8e0960c7fd5ba0b3c834750f0aa48",
         "captured_scroll_y": 0
       },
@@ -555,7 +555,7 @@
           "connection": "keep-alive",
           "content-encoding": "gzip",
           "content-type": "text/html",
-          "date": "Wed, 02 Sep 2026 01:19:56 GMT",
+          "date": "Wed, 02 Sep 2026 01:49:18 GMT",
           "etag": "W/\"c82-bHL3WJiTVugolVHeLyznJ3EUkMA\"",
           "keep-alive": "timeout=5",
           "transfer-encoding": "chunked",
@@ -563,7 +563,7 @@
         }
       },
       "screenshot": {
-        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2.XXZ6Rq/worktree/.planning/evidence/02/source/screenshots/billing_accounts-create--8393cf4bc8d6--small-320.png",
+        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2-integration.tULfi6/.planning/evidence/02/source/screenshots/billing_accounts-create--8393cf4bc8d6--small-320.png",
         "sha256": "db54c5f4745587c161f9c34b97b82182724c6402de362df550b883b7eaee1187",
         "captured_scroll_y": 0
       },
@@ -716,7 +716,7 @@
           "connection": "keep-alive",
           "content-encoding": "gzip",
           "content-type": "text/html",
-          "date": "Wed, 02 Sep 2026 01:19:58 GMT",
+          "date": "Wed, 02 Sep 2026 01:49:19 GMT",
           "etag": "W/\"c82-bHL3WJiTVugolVHeLyznJ3EUkMA\"",
           "keep-alive": "timeout=5",
           "transfer-encoding": "chunked",
@@ -724,7 +724,7 @@
         }
       },
       "screenshot": {
-        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2.XXZ6Rq/worktree/.planning/evidence/02/source/screenshots/billing_accounts-create--8393cf4bc8d6--desktop-1280.png",
+        "path": "/Users/agenticmac/.codex/worktrees/rcd-phase2-integration.tULfi6/.planning/evidence/02/source/screenshots/billing_accounts-create--8393cf4bc8d6--desktop-1280.png",
         "sha256": "67e33f496cec3a7a67ef75dfe88cec12e8483bfa5bda1cb66caaef08c2307d02",
         "captured_scroll_y": 0
       },
@@ -743,6 +743,6 @@
       }
     }
   ],
-  "duration_seconds": 8.185,
-  "receipt_path": "/Users/agenticmac/.codex/worktrees/rcd-phase2.XXZ6Rq/worktree/.planning/evidence/02/source/receipt.json"
+  "duration_seconds": 8.245,
+  "receipt_path": "/Users/agenticmac/.codex/worktrees/rcd-phase2-integration.tULfi6/.planning/evidence/02/source/receipt.json"
 }
