@@ -1,8 +1,11 @@
 ---
 quick_id: 260902-dwd
-status: in_progress
+status: complete
 description: Fix production Supabase email confirmation redirect and add regression coverage
 created: 2026-09-02
+completed: 2026-09-02
+source_commit: 3260cb37261b3757dcbc8d84fea6de79bc0903d7
+production_url: https://atomic-crm-sigma-one.vercel.app
 ---
 
 # Quick Task 260902-dwd: Fix production email confirmation redirect
@@ -68,4 +71,3 @@ and both surface receipts to pass with the intended freshness marker.
 
 **Done:** New confirmation emails return to RC Digital CRM and the deployed
 hotfix is proven independently at source, preview, and production stages.
-
