@@ -1,7 +1,7 @@
 ---
 phase: 03-exact-money-and-rounding-contract
 reviewers: [gpt-5.6-terra, gpt-5.5, gpt-5.4]
-reviewed_at: 2026-09-03T02:15:57Z
+reviewed_at: 2026-09-03T02:33:34Z
 plans_reviewed:
   - 03-01-PLAN.md
   - 03-02-PLAN.md
@@ -10,8 +10,8 @@ plans_reviewed:
   - 03-05-PLAN.md
   - 03-06-PLAN.md
   - 03-07-PLAN.md
-status: revise
-current_high: 1
+status: green
+current_high: 0
 ---
 
 # Cross-Model Plan Review — Phase 3
@@ -223,6 +223,23 @@ Close C3-H1 without expanding Phase 3, close C3-M1 across Plans 03–05 plus the
 validation/source-audit contracts, preserve all prior closures, and re-review
 until the formal checker reports no BLOCKER/WARNING issues and
 `current_high=0`.
+
+## Cycle 4 Convergence
+
+Exact head reviewed: `a312ce1010286521b5aab0770b2e084e57c75cba`.
+
+- Formal GSD plan checker: `VERIFICATION PASSED`.
+- Independent `gpt-5.6-terra` lane: GREEN, HIGH 0, MEDIUM 0, LOW 0.
+- Independent `gpt-5.4` lane: GREEN, HIGH 0, MEDIUM 0, BLOCKER/WARNING 0.
+- C3-H1 closed: Phase 3 covers exact save success and invalid-input unchanged
+  effects only; invoice draft idempotency remains Phase 5 `INV-01` scope.
+- C3-M1 closed: legacy tax-rate compatibility is checked `numeric(12,9)`,
+  derived exactly from the canonical ratio, emitted at fixed nine-decimal
+  scale, and tested with `8.875000000` and `12.500000000` while submitted text
+  remains separate evidence.
+
+No HIGH, MEDIUM, BLOCKER, or WARNING planning concerns remain. Phase 3 planning
+is green; execution remains unstarted and separately gated.
 
 ## Cycle 3 Planning Revision Closure
 
