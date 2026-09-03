@@ -1,7 +1,7 @@
 # Phase 3: Exact Money and Rounding Contract - Pattern Map
 
 **Mapped:** 2026-09-02
-**Files classified:** 26 planned new/modified implementation/test files or file groups
+**Files classified:** 29 planned new/modified implementation/test files or file groups
 **Strong analogs:** 6 code/test/release families
 
 ## File Classification
@@ -21,11 +21,13 @@
 | `scripts/release/fingerprint-upgrade.mjs` | verifier | batch fingerprint | existing Phase 2 registry loader | exact extension; preserve earlier invariants |
 | `tests/release/migration-upgrade.test.ts` | verifier unit | registry rejection | current transformation tests | exact extension |
 | `tests/release/exact-money-boundaries.test.ts` | live boundary test | Auth/REST/RPC request-response | `billing-tenancy.test.ts` | live HTTP analog |
-| `tests/release/billing-tenancy.test.ts` | inherited live HTTP caller | exact invoice view + direct-table denial | current invoice-table tenant matrix | direct authority cutover |
+| `supabase/tests/database/40_billing_evidence.sql` | inherited pgTAP caller | exact zero inspection/replay/conflict | current evidence inspection contract | C2-H2 cutover target |
+| `tests/release/billing-evidence.test.ts` | inherited Edge/live caller | exact evidence inspection replay | current production-shaped Edge contract | C2-H2 cutover target |
+| `tests/release/billing-tenancy.test.ts` | inherited live HTTP caller | exact read RPC + direct-table denial | current invoice-table tenant matrix | direct authority cutover |
 | `tests/release/replay-concurrency.test.ts` | inherited concurrent caller | exact automation replay/fingerprint | current numeric same-key grant race | direct cutover target |
 | `src/components/atomic-crm/types.ts` | domain types | provider/browser | current billing automation types | direct conversion target |
 | `src/components/atomic-crm/providers/types.ts` | provider contract | request-response | current compound billing methods/resources | exact |
-| `providers/supabase/dataProvider.ts` | adapter | RPC/view request-response | billing role/evidence command methods | exact |
+| `providers/supabase/dataProvider.ts` | adapter | caller-bound RPC request-response | billing role/evidence command methods | exact |
 | `providers/fakerest/dataProvider.ts` | adapter | in-memory command | Supabase-parity billing methods | exact |
 | `providers/fakerest/dataGenerator/billingAccounts.ts` | fixture | generated records | current Phase 2 billing fixture | exact |
 | `src/components/atomic-crm/financial/exactProviderContract.test.ts` | parity test | two-provider matrix | `billing-accounts/billingDataProvider.test.ts` | exact |
@@ -136,9 +138,11 @@ return formatted strings but must accept validated money/BigInt values only.
 ```text
 03-01 TypeScript exact contract
    └──> 03-02 PostgreSQL catalogs/helpers (same golden semantics)
-          └──> 03-03 invoice + automation expand-contract conversion
-                 └──> 03-04 live boundary/provider/preview cutover
-                        └──> 03-05 protected lane coupling + integrated proof
+          └──> 03-03 upgrade verifier and immutable-history contract
+                 └──> 03-04 atomic invoice/automation/evidence database cutover
+                        └──> 03-05 live Supabase + React Admin RPC boundary
+                               └──> 03-06 FakeRest + invoice preview parity
+                                      └──> 03-07 final coupling audit + integrated proof
 ```
 
 The sequence is intentionally linear where schema or shared type files overlap.
@@ -151,14 +155,16 @@ financial gate wiring in the same wave.
   rolling static test while coupling those paths into fast/classifier surfaces.
 - Plan 02 owns the primitive policy/helper migration and pgTAP file and adds
   test 60 to the protected SQL target in the same wave.
-- Plan 03 owns the later billing expand migration, upgrade registry/runner,
-  conversion pgTAP, and every inherited invoice/automation numeric caller/test;
-  it adds test 65 and upgrade coverage to permanent targets without changing
-  accepted historical migrations.
-- Plan 04 owns public/provider types, both adapters, exact live boundary tests,
-  replacement invoice preview utilities, and their same-wave HTTP/fast/path
-  coupling.
-- Plan 05 owns the final closed coupling audit and validation results. It may
+- Plan 03 owns only the upgrade runner, its Vitest contract, and same-plan
+  upgrade/static coupling; it pins accepted migrations 00002/00003/00004.
+- Plan 04 owns the later billing expand migration, registry 003, conversion
+  pgTAP, inherited automation/evidence SQL and live callers, and same-plan
+  SQL/functions/replay/static coupling. Its ten-file boundary is exact.
+- Plan 05 owns shared/provider types, the Supabase adapter, exact live boundary
+  and inherited tenancy tests, plus their same-plan HTTP/path/static coupling.
+- Plan 06 owns FakeRest, deterministic exact fixtures, provider parity, invoice
+  preview, and their same-plan HTTP/fast/path/static coupling.
+- Plan 07 owns the final closed coupling audit and validation results. It may
   correct an omission but is not the first protection point for earlier paths.
 
 ## Patterns to Avoid

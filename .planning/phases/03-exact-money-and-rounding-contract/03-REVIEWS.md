@@ -8,8 +8,10 @@ plans_reviewed:
   - 03-03-PLAN.md
   - 03-04-PLAN.md
   - 03-05-PLAN.md
-status: revise
-current_high: 2
+  - 03-06-PLAN.md
+  - 03-07-PLAN.md
+status: revised
+current_high: 0
 ---
 
 # Cross-Model Plan Review — Phase 3
@@ -175,3 +177,16 @@ new money-bearing path and test.
 Close C2-H1 and C2-H2, reduce every plan to no more than ten unique files, and
 preserve the already closed H3/M1–M4/M6 contracts. Re-review must return no
 BLOCKER/WARNING findings and `current_high=0` before the branch is green.
+
+## Cycle 2 Planning Revision Closure
+
+| Finding | Revised contract |
+|---------|------------------|
+| C2-H1 | Plan 04 replaces both exact and retained compatibility reads with narrowly granted caller-bound SECURITY DEFINER RPCs, keeps authenticated table/sequence access revoked, and Plan 05 proves same-tenant success, cross-tenant/direct/unsafe denial, full-range string serialization, closed pagination/filtering, and unchanged effects. |
+| C2-H2 | Plan 03 pins `20260901000004_billing_evidence_security.sql` byte-identically. Plan 04 CREATE OR REPLACEs the surviving evidence helper/wrapper to consume canonical zero exact money and proves SQL/Edge success, identical replay, conflicting-key atomicity, old numeric signature absence, and protected membership. |
+| C2-W1 | Upgrade-runner work is isolated in Plan 03. Dependent Plan 04 owns the atomic database/inherited-caller/coupling cutover at exactly ten unique files. |
+| C2-W2 | Plan 05 owns live Supabase/types and Plan 06 owns FakeRest/preview, each at eight unique files in strict sequential waves. |
+
+Previously closed H3 and M1–M6 remain explicit in Plans 01–07. This entry records
+the targeted planning revision; execution and exact-head re-review remain
+separate gates.

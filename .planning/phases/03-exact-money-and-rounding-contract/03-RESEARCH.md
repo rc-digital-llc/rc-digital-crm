@@ -40,8 +40,9 @@
   a property-testing package.
 - Represent financially operative quantities in migrated line items as reduced
   exact ratios; represent unit and extended values as typed money objects.
-- Use public security-invoker projections and narrowly scoped RPCs for wire
-  shapes; do not expose authoritative `bigint` columns as untyped JSON numbers.
+- Use narrowly granted, caller-bound SECURITY DEFINER read/write RPCs for wire
+  shapes after base-table revocation; do not rely on a security-invoker view or
+  expose authoritative `bigint` columns as untyped JSON numbers.
 
 ### Deferred Ideas (OUT OF SCOPE)
 
@@ -108,7 +109,7 @@ financial lanes.
 | Persistence range and currency | PostgreSQL | migration tests | Checked `bigint` and USD constraints are the final stored authority. |
 | Percentage parsing | shared TypeScript codec + PostgreSQL RPC helper | provider tests | Browser ergonomics and server defense use the same grammar/golden fixtures. |
 | Exact calculation | PostgreSQL `numeric` intermediate / TypeScript `BigInt` ratio | pgTAP/Vitest | Both remain exact; only the named boundary rounds to `bigint`. |
-| JSON contract | security-invoker view/RPC | Supabase provider | Explicit `::text` projections prevent PostgREST from emitting unsafe integer tokens. |
+| JSON contract | caller-bound SECURITY DEFINER RPC | Supabase provider | Base-table access stays revoked; manual caller capability predicates and explicit `::text` output prevent privilege and numeric-token bypass. |
 | Demo contract | FakeRest provider | shared fixtures | FakeRest must reject and normalize exactly as production does. |
 | Legacy conversion | additive migrations | upgrade fingerprint runner | The migration blocks on ambiguity and fingerprints every intentional transform. |
 | Release authority | existing protected financial workflows | release receipts | Local proof never substitutes for exact-head checks or protected schema promotion. |
@@ -212,10 +213,12 @@ https://www.postgresql.org/docs/17/functions-math.html]
   `bigint` conversion, percentage parsing, and signed rational rounding helpers.
 - Empty `search_path`, fully qualified objects, explicit ACLs, and no generic
   browser execute on private helpers.
-- Security-invoker projections or narrowly scoped RPC results use `::text` for
-  every integer wire component. PostgREST exposes tables, views, and functions as
-  resources, so an explicit view/function is the appropriate representation
-  boundary. [CITED: https://docs.postgrest.org/en/stable/references/api.html]
+- Narrow caller-bound SECURITY DEFINER RPC results use `::text` for every
+  integer wire component. They use empty `search_path`, fully qualified objects,
+  locked owner/ACL, closed bounded list/get inputs, fixed query branches, and a
+  caller-derived capability predicate on every selected/count row. A
+  security-invoker view is not usable once authenticated base-table privilege is
+  revoked. [CITED: https://docs.postgrest.org/en/stable/references/api.html]
 - Live HTTP tests—not source inspection—must prove maximum/minimum `bigint` values
   arrive as JSON strings and numeric JSON request tokens are denied.
 
@@ -483,5 +486,5 @@ None required.
 ## Metadata
 
 **Research status:** complete
-**Recommended next step:** create Nyquist validation, pattern map, and five
-executable plans; no unresolved user decision remains.
+**Recommended next step:** execute the revised Nyquist validation and seven
+sequential plans; no unresolved user decision remains.

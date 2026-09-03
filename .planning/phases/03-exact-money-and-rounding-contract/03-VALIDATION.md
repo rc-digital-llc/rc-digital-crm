@@ -5,12 +5,13 @@ status: draft
 nyquist_compliant: true
 wave_0_complete: false
 created: 2026-09-02
+revised: 2026-09-02
 ---
 
 # Phase 3 — Validation Strategy
 
 > Per-phase validation contract for integer minor units, reduced rates, named
-> rounding, exact legacy conversion, and string-safe provider boundaries.
+> rounding, additive exact conversion, caller-bound reads, and provider parity.
 
 ## Test Infrastructure
 
@@ -22,94 +23,79 @@ created: 2026-09-02
 | **Database command** | `make test-financial-database-contracts` |
 | **Upgrade command** | `make test-financial-migration-upgrade && make test-financial-schema-push` |
 | **Full phase command** | `make financial-gate && npm run typecheck && npm run lint && npm run build` |
-| **Estimated runtime** | ~15 seconds quick; ~20 minutes full local gate |
 
 ## Sampling Rate
 
-- **After every task commit:** run its focused command below plus
-  `git diff --check`. Database commands may target only the isolated loopback
-  stack created by the release runner.
-- **After every wave:** run the affected financial lane; add `npm run typecheck`
-  for any TypeScript wave.
-- **Before PR readiness:** full phase command is green at the exact head. No UI
-  receipt is required unless implementation changes rendered invoice UI.
+- **After every task commit:** run its focused command plus `git diff --check`.
+- **After every wave:** run the affected protected lane; add typecheck for TypeScript.
+- **Before PR readiness:** run the full phase command once at the exact head.
 - **Before merge:** require exact-head owner approval and fresh merge-group checks.
-- **After authorized release:** require a successful build receipt and protected
-  schema-promotion post-state receipt before claiming the contract is live.
-- **Retry policy:** no assertion retry. The inherited classified local-stack
-  bootstrap retry is the only permitted infrastructure retry.
-- **Maximum focused feedback latency:** 90 seconds; live database tasks may use
-  their full bounded lane timeout.
+- **After authorized release:** require build receipt, protected schema promotion,
+  and provider post-state readback before claiming the contract live.
+- **Retry policy:** no assertion retry; only inherited classified local-stack
+  bootstrap retry is permitted.
 
 ## Per-Task Verification Map
 
-| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
-|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 01 | 1 | CALC-01 | T-03-01, T-03-02, T-03-04 | Money/rate JSON accepts only typed string components, enforces 64-byte integer/14-byte percentage limits before parsing, canonicalizes safely, and keeps D-10 submitted text as evidence without financial versioning | unit/property | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t 'money|rate|wire'` | ❌ W0 | ⬜ pending |
-| 03-01-02 | 01 | 1 | CALC-03 | T-03-03, T-03-04 | BigInt rational rounding is half away from zero, policy-bound, symmetric, and overflow checked | unit/property | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t rounding` | ❌ W0 | ⬜ pending |
-| 03-01-03 | 01 | 1 | CALC-01, CALC-03 | T-03-09 | First exact source/unit/static paths enter the financial classifier and protected fast list in their creation wave | static + protected fast | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-fast` | ❌ W0 + existing extended | ⬜ pending |
-| 03-02-01 | 02 | 2 | CALC-01, CALC-03 | T-03-03, T-03-04, T-03-05 | Immutable USD/rate/rounding catalogs and private helpers install with exact ACLs, pre-cast length bounds, and checked ranges | schema push | `make test-financial-schema-push` | ❌ W0 | ⬜ pending |
-| 03-02-02 | 02 | 2 | CALC-01, CALC-03 | T-03-01, T-03-03, T-03-05 | Independent PostgreSQL golden/property cases match the named exact policy and reject malformed JSON/numeric tokens | explicit isolated pgTAP | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/60_exact_financial_primitives.sql --local` | ❌ W0 | ⬜ pending |
-| 03-02-03 | 02 | 2 | CALC-01, CALC-03 | T-03-09 | Test 60 joins `FINANCIAL_DATABASE_SQL_TESTS` in Wave 2 and is both statically and behaviorally executed | static + pgTAP target | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-sql` | existing extended | ⬜ pending |
-| 03-03-01 | 03 | 3 | CALC-01, CALC-03 | T-03-06, T-03-07 | Upgrade registry authorizes only exact transforms and pins accepted baselines plus both Phase 2 migrations byte-identically | Vitest upgrade contract | `npm test -- --run tests/release/migration-upgrade.test.ts -t exact` | existing extended + ❌ W0 | ⬜ pending |
-| 03-03-02 | 03 | 3 | CALC-01, CALC-03 | T-03-06–T-03-08, T-03-10–T-03-12 | Later migration closes direct invoice authority, defines exact line items, preserves full-range compatibility, adds canonical automation fingerprints/non-negative checks, and bounds D-10 to submitted text plus existing audit | clean/upgrade/explicit pgTAP | `make test-financial-migration-upgrade && make test-financial-schema-push && node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/65_exact_billing_conversion.sql --local` | ❌ W0 | ⬜ pending |
-| 03-03-03 | 03 | 3 | CALC-01, CALC-03 | T-03-08–T-03-11 | All four inherited numeric/direct-table callers migrate; exact identical/conflicting replay and negative inputs are proven; test 65 and upgrade Vitest enter permanent protected targets | SQL/HTTP/replay/static | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-migration-upgrade && make test-financial-database-contracts && make test-financial-replay-concurrency` | existing extended | ⬜ pending |
-| 03-04-01 | 04 | 4 | CALC-01, CALC-03 | T-03-01, T-03-08, T-03-10, T-03-12 | Live HTTP denies direct invoice table access, uses exact view/RPC strings, rejects numeric/overlong tokens, and round-trips both signed endpoints through compatibility projection | live HTTP/RPC | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/exact-money-boundaries.test.ts` | ❌ W0 | ⬜ pending |
-| 03-04-02 | 04 | 4 | CALC-01, CALC-03 | T-03-01, T-03-02 | FakeRest/Supabase and preview share exact named line-item fields, D-10 evidence semantics, validation, errors, fixtures, and output | provider/live + unit | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run src/components/atomic-crm/financial/exactProviderContract.test.ts src/components/atomic-crm/invoices/invoiceCalculations.test.ts` | ❌ W0 + existing extended | ⬜ pending |
-| 03-04-03 | 04 | 4 | CALC-01, CALC-03 | T-03-09 | Boundary/provider tests enter protected HTTP and preview/unit tests enter protected fast in Wave 4; all source paths classify as financial | static + permanent targets | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-http && make test-financial-fast` | existing extended | ⬜ pending |
-| 03-05-01 | 05 | 5 | CALC-01, CALC-03 | T-03-09 | Final audit proves Plans 01–04 performed same-wave coupling and every exact path/test remains non-optional in the existing six identities | static release audit | `npm test -- --run tests/release/exact-money-release-static.test.ts` | ❌ W0 | ⬜ pending |
-| 03-05-02 | 05 | 5 | CALC-01, CALC-03 | T-03-01–T-03-09 | Full financial, type, lint, and build proof passes at the integrated implementation head | integrated | `make financial-gate && npm run typecheck && npm run lint && npm run build` | existing extended | ⬜ pending |
-
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Automated Command | Status |
+|---------|------|------|-------------|------------|-----------------|-------------------|--------|
+| 03-01-01 | 01 | 1 | CALC-01 | T-03-01/02/04 | String-only money/rate, 64/14 pre-parse limits, canonical zero, bounded D-10 evidence | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t 'money|rate|wire'` | ⬜ |
+| 03-01-02 | 01 | 1 | CALC-03 | T-03-03/04 | BigInt half-away signed rounding and checked persistence range | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t rounding` | ⬜ |
+| 03-01-03 | 01 | 1 | CALC-01/03 | T-03-09 | First exact source/unit/static paths enter protected fast/classifier contract | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-fast` | ⬜ |
+| 03-02-01 | 02 | 2 | CALC-01/03 | T-03-03/04/05 | Immutable catalogs/helpers install with exact ACLs, lengths, and ranges | `make test-financial-schema-push` | ⬜ |
+| 03-02-02 | 02 | 2 | CALC-01/03 | T-03-01/03/05 | Independent PostgreSQL golden/property/token proof | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/60_exact_financial_primitives.sql --local` | ⬜ |
+| 03-02-03 | 02 | 2 | CALC-01/03 | T-03-09 | Test 60 joins protected SQL target in Wave 2 | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-sql` | ⬜ |
+| 03-03-01 | 03 | 3 | CALC-01/03 | T-03-07/02 | Closed upgrade vocabulary, exact text, and immutable 00002/00003/00004 hashes | `npm test -- --run tests/release/migration-upgrade.test.ts -t exact` | ⬜ |
+| 03-03-02 | 03 | 3 | CALC-01/03 | T-03-09 | Runner Vitest/static checks join protected upgrade contract before cutover | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-migration-upgrade` | ⬜ |
+| 03-04-01 | 04 | 4 | CALC-01/03 | T-03-10/13/06/11/14/12 | Atomic cutover revokes table/sequence, installs closed caller-bound read/write RPCs, exact evidence wrapper, line items, range, fingerprints, and D-10 audit | `make test-financial-migration-upgrade && make test-financial-schema-push && node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/65_exact_billing_conversion.sql --local` | ⬜ |
+| 03-04-02 | 04 | 4 | CALC-01/03 | T-03-11/14 | Tests 35/40/65 and fixtures prove exact success, replay, conflict, ACL, canonical zero, and unchanged evidence/audit/grant/execution state | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/35_billing_automation.sql supabase/tests/database/40_billing_evidence.sql supabase/tests/database/65_exact_billing_conversion.sql --local` | ⬜ |
+| 03-04-03 | 04 | 4 | CALC-01/03 | T-03-09/14 | Replay/evidence live callers migrate and every Wave 4 path remains protected | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-migration-upgrade && make test-financial-database-sql && make test-financial-functions && make test-financial-replay-concurrency` | ⬜ |
+| 03-05-01 | 05 | 5 | CALC-01 | T-03-10/13/01 | React Admin/Supabase list/get/save use validated exact RPCs only | `npm run typecheck` | ⬜ |
+| 03-05-02 | 05 | 5 | CALC-01/03 | T-03-10/13/01/12 | Live same-tenant success, cross-tenant/direct denial, unsafe input, pagination, full-range strings, unchanged effects | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run tests/release/exact-money-boundaries.test.ts tests/release/billing-tenancy.test.ts` | ⬜ |
+| 03-05-03 | 05 | 5 | CALC-01/03 | T-03-09 | Supabase source/live tests enter protected HTTP/classifier/static contract | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-http` | ⬜ |
+| 03-06-01 | 06 | 6 | CALC-01/03 | T-03-01/15 | FakeRest matches closed Supabase requests/results/errors and canonical line items | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- npm test -- --run src/components/atomic-crm/financial/exactProviderContract.test.ts` | ⬜ |
+| 03-06-02 | 06 | 6 | CALC-01/03 | T-03-02/03 | Preview delegates to named BigInt exact arithmetic and rejects float authority | `npm test -- --run src/components/atomic-crm/invoices/invoiceCalculations.test.ts && npm run typecheck` | ⬜ |
+| 03-06-03 | 06 | 6 | CALC-01/03 | T-03-09 | Provider parity/preview paths enter protected HTTP/fast/classifier contracts | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-http && make test-financial-fast` | ⬜ |
+| 03-07-01 | 07 | 7 | CALC-01/03 | T-03-09/10/14 | Final audit proves rolling coupling and Cycle 2 security closure | `npm test -- --run tests/release/exact-money-release-static.test.ts` | ⬜ |
+| 03-07-02 | 07 | 7 | CALC-01/03 | all | Integrated exact-head financial/type/lint/build proof | `make financial-gate && npm run typecheck && npm run lint && npm run build` | ⬜ |
 
 ## Wave 0 Requirements
 
-- [ ] `src/components/atomic-crm/financial/exactFinancialFixtures.ts` — shared
-  golden wire/rate/rounding/boundary vectors.
-- [ ] `src/components/atomic-crm/financial/exactMoney.test.ts` — strict grammar,
-  canonicalization, exact-rate, rounding, range, and property tests.
-- [ ] `supabase/tests/database/60_exact_financial_primitives.sql` — catalog,
-  helper, ACL, signed-tie, and malformed-input contracts.
-- [ ] `supabase/tests/database/65_exact_billing_conversion.sql` — invoice,
-  direct-table denial, named line-item, full-range compatibility, automation
-  fingerprint/non-negative, D-10 audit, projection-only, and immutability contracts.
-- [ ] `supabase/tests/upgrades/003-exact-money/expected-transformations.json` —
-  append-only Phase 3 upgrade contract.
-- [ ] `tests/release/exact-money-boundaries.test.ts` — live HTTP/RPC string-token
-  direct invoice-table denial, pre-parse length limits, and full-`bigint`
-  exact/compatibility round-trip proof.
-- [ ] `src/components/atomic-crm/financial/exactProviderContract.test.ts` —
-  Supabase/FakeRest parity contract.
-- [ ] `tests/release/exact-money-release-static.test.ts` — protected path/lane,
-  rolling same-wave Make/classifier membership, float anti-pattern, legacy RPC,
-  immutable historical migration, and final coupling checks.
+- [ ] `src/components/atomic-crm/financial/exactFinancialFixtures.ts`
+- [ ] `src/components/atomic-crm/financial/exactMoney.test.ts`
+- [ ] `supabase/tests/database/60_exact_financial_primitives.sql`
+- [ ] `supabase/tests/database/65_exact_billing_conversion.sql`
+- [ ] `supabase/tests/upgrades/003-exact-money/expected-transformations.json`
+- [ ] `tests/release/exact-money-boundaries.test.ts`
+- [ ] `src/components/atomic-crm/financial/exactProviderContract.test.ts`
+- [ ] `tests/release/exact-money-release-static.test.ts`
+
+Inherited tests `35_billing_automation.sql`, `40_billing_evidence.sql`,
+`billing-tenancy.test.ts`, `billing-evidence.test.ts`, and
+`replay-concurrency.test.ts` are updated in Plans 04–05 and must remain in their
+existing protected targets.
 
 ## Owner-Controlled and Residual Verification
 
 | Behavior | Requirement | Method |
 |----------|-------------|--------|
-| Exact implementation head is authorized | CALC-01, CALC-03 | Owner approval names the PR and full head SHA after all reviews/checks. |
-| Hosted conversion has zero exceptions and exact before/after state | CALC-01 | Protected `release-promote` schema run and content-addressed post-state receipt. |
-| Production uses the merged exact contract | CALC-01, CALC-03 | Default-branch build receipt plus protected schema receipt; merge alone is insufficient. |
-| Rendered invoice presentation remains correct if touched | CALC-01 | Build-gate source/preview/production receipts only if implementation affects rendered UI. |
+| Exact implementation head is authorized | CALC-01/03 | Owner approval names PR and full head SHA after reviews/checks. |
+| Hosted conversion has zero exceptions | CALC-01 | Protected `release-promote` schema run plus content-addressed post-state receipt. |
+| Production uses merged exact contract | CALC-01/03 | Default-branch build receipt plus protected schema receipt; merge alone is insufficient. |
+| Rendered invoice presentation remains correct if touched | CALC-01 | Full source/preview/production surface loop only when rendered UI changes. |
 
 ## Validation Sign-Off
 
 - [x] Every planned task has a targeted non-watch automated command.
-- [x] No three consecutive tasks lack automated verification.
-- [x] Every missing Wave 0 file is named and assigned to a plan.
-- [x] Live PostgreSQL/HTTP behavior—not source strings—is authoritative for
-  database and wire acceptance.
-- [x] The full `bigint` range, signed ties, malformed numeric tokens, policy
-  mismatches, pre-parse length bounds, direct invoice denial, exact line-item
-  schema, compatibility capacity, replay fingerprints, non-negative automation,
-  legacy ambiguity, and provider parity are represented.
-- [x] Each Wave 1–4 plan adds its new money-bearing paths/tests to the protected
-  classifier and Make target in the same wave; Plan 05 is the final audit.
+- [x] Every plan owns no more than ten unique files; Plan 04 is the maximum at ten.
+- [x] C2-H1 is covered by caller-bound SECURITY DEFINER read RPCs plus pgTAP/live HTTP proof; no authenticated invoice base privilege or read view remains.
+- [x] C2-H2 is covered by later exact evidence-helper replacement, immutable `20260901000004`, SQL/Edge replay-conflict proof, and existing protected memberships.
+- [x] C2-W1/W2 are covered by seven strict sequential plans with upgrade, database, live Supabase, and FakeRest/preview boundaries split.
+- [x] Every new money-bearing path/test is coupled to classifier/Make/static protection in its introducing plan; Plan 07 is audit only.
+- [x] Full range, 64/14 limits, exact line items, fingerprint/non-negative rules, bounded D-10 audit, and historical immutability are explicit.
 - [ ] Wave 0 files exist and focused commands pass.
 - [ ] Full phase command is green at the integrated implementation head.
 - [ ] Exact-head merge-group checks and owner approval are retained.
 - [ ] Protected hosted schema-promotion receipt proves zero conversion exceptions.
 
-**Approval:** validation architecture approved for planning; execution evidence
-is pending.
+**Approval:** validation architecture revised for Cycle 2; execution evidence is pending.
