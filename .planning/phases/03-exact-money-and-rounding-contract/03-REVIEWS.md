@@ -1,7 +1,7 @@
 ---
 phase: 03-exact-money-and-rounding-contract
 reviewers: [gpt-5.6-terra, gpt-5.5, gpt-5.4]
-reviewed_at: 2026-09-03T01:18:14Z
+reviewed_at: 2026-09-03T01:44:00Z
 plans_reviewed:
   - 03-01-PLAN.md
   - 03-02-PLAN.md
@@ -9,7 +9,7 @@ plans_reviewed:
   - 03-04-PLAN.md
   - 03-05-PLAN.md
 status: revise
-current_high: 3
+current_high: 2
 ---
 
 # Cross-Model Plan Review — Phase 3
@@ -124,3 +124,54 @@ to Phase 4.
 Address H1–H3 and M1–M6 through planning artifacts only. A re-review is green
 only when no HIGH concerns remain and deterministic plan checks confirm every
 new money-bearing path and test is coupled in the same wave that introduces it.
+
+## Cycle 2 Re-review
+
+The first revision closed H3 and M1–M4/M6, but two repository-grounded HIGH
+concerns and two formal scope warnings remain.
+
+### C2-H1 — The proposed `security_invoker` views cannot read after base-table revoke
+
+PostgreSQL checks underlying-table privileges as the caller for a
+`security_invoker` view. The revised plan both revokes authenticated
+`public.invoices` `SELECT` and requires authenticated users to read that table
+through `security_invoker` views, so the authorized read path is impossible.
+Keep base-table access revoked and replace the views with narrowly granted
+`SECURITY DEFINER` read RPCs that use an empty `search_path`, fully qualified
+objects, caller-derived tenant/capability checks, string-only outputs, locked
+ownership, and explicit ACL tests. Live tests must prove legitimate same-tenant
+reads, cross-tenant denial, direct table denial, and safe string serialization.
+
+### C2-H2 — Evidence inspection still depends on the old numeric automation helper
+
+The accepted `20260901000004_billing_evidence_security.sql` migration defines
+`private.billing_finalize_evidence_inspection` with a call to the old numeric
+automation helper, and the Edge helper plus protected evidence tests exercise
+that API. Keep the historical migration byte-identical, but require the later
+Phase 3 migration to replace the surviving evidence-finalization definition so
+it calls the exact helper with canonical zero money. Include
+`supabase/tests/database/40_billing_evidence.sql`,
+`tests/release/billing-evidence.test.ts`, and, if the response contract changes,
+`supabase/functions/_shared/billingAuthorization.ts`. Prove success, identical
+replay, conflicting-key rejection with unchanged evidence/audit/grant/execution
+state, old-signature absence, and continued protected-target membership.
+
+### C2-W1 — Plan 03 exceeds the formal scope threshold
+
+Plan 03 owns 11 files and combines upgrade-runner changes with the atomic
+database cutover and inherited caller migration. Split upgrade-proof work into
+an earlier plan while keeping the migration, callers, and same-wave gate
+coupling together in a dependent plan at or below the checker threshold.
+
+### C2-W2 — Plan 04 exceeds the formal scope threshold
+
+Plan 04 owns 12 files across live Supabase boundaries, FakeRest/preview parity,
+and release coupling. Split the live Supabase boundary from FakeRest/preview
+parity, preserving strict dependency order and same-plan protection for every
+new money-bearing path and test.
+
+## Cycle 2 Required Revision Outcome
+
+Close C2-H1 and C2-H2, reduce every plan to no more than ten unique files, and
+preserve the already closed H3/M1–M4/M6 contracts. Re-review must return no
+BLOCKER/WARNING findings and `current_high=0` before the branch is green.
