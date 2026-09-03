@@ -133,7 +133,37 @@ Plans:
   2. Each supported currency and formula version names a rounding policy that deterministically handles fractional minor units, ties, negative adjustments, and currency boundaries.
   3. Boundary and property fixtures prove that JavaScript floating-point values cannot become authoritative financial amounts.
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Create the string-safe TypeScript money, rate, and named rounding authority.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Install immutable PostgreSQL policies and the hardened exact-arithmetic kernel.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-03-PLAN.md — Prepare and protect the closed immutable upgrade verifier before database cutover.
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-04-PLAN.md — Atomically convert invoices, automation, and evidence finalization behind caller-bound exact RPCs.
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 03-05-PLAN.md — Cut live Supabase and React Admin invoice reads/writes over to caller-bound exact RPCs.
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 03-06-PLAN.md — Match FakeRest and invoice preview to the proven exact production boundary.
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 03-07-PLAN.md — Audit rolling protection and record integrated exact-head release proof.
 
 ### Phase 4: Agreements, Revenue Evidence, and Calculation Close
 
@@ -259,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 0/TBD | Not started | - |
+| 3. Exact Money and Rounding Contract | 0/7 | Planned    |  |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
