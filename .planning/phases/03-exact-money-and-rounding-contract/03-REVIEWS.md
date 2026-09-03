@@ -223,3 +223,15 @@ Close C3-H1 without expanding Phase 3, close C3-M1 across Plans 03–05 plus the
 validation/source-audit contracts, preserve all prior closures, and re-review
 until the formal checker reports no BLOCKER/WARNING issues and
 `current_high=0`.
+
+## Cycle 3 Planning Revision Closure
+
+| Finding | Revised contract |
+|---------|------------------|
+| C3-H1 | Plans 04–06 now state that Phase 3 defines no invoice-save key or fingerprint. Supabase/FakeRest save coverage is exact valid success plus invalid-input rejection with unchanged invoice/audit effects; draft business idempotency and conflicting save reuse remain deferred to Phase 5 `INV-01`. |
+| C3-M1 | Plans 03–05 now require the later migration to widen only the non-authoritative legacy `tax_rate` compatibility column/projection from `numeric(5,2)` to checked `numeric(12,9)`, derive it exactly from the canonical ratio, preserve submitted percentage evidence separately, and return fixed-nine-decimal RPC text. Upgrade registry/fingerprint and live RPC assertions cover `8.875% -> 8.875000000` and `12.500% -> 1/8` with submitted `12.500%` retained and no new financial version. |
+
+All seven plans, waves, CALC-01/CALC-03 coverage, D-01–D-23 coverage, prior
+H1–H3/M1–M6 and C2 closures, same-wave coupling, historical migration
+immutability, and per-plan file limits remain unchanged. Exact-head Cycle 3
+re-review remains the authority for updating review status or `current_high`.

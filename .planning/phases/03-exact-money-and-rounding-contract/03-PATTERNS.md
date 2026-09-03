@@ -64,7 +64,11 @@ The current loader validates ordered registries, known categories, exact before
 and after hashes, named migrations, and allowlisted semantic invariants. Add a
 numbered registry and narrow new categories; do not edit baseline 001 or registry
 002. Preserve exact decimal text in the pre-fingerprint and add canonical exact
-wire values to the post-fingerprint.
+wire values to the post-fingerprint. Registry 003 must also fingerprint the
+legacy `tax_rate` widening from `numeric(5,2)` to checked `numeric(12,9)`, its
+canonical-ratio derivation, and fixed-nine-decimal compatibility output. Use
+`8.875% -> 8.875000000` and `12.500% -> 1/8` with preserved submitted text as
+semantic invariants; do not edit the historical migration.
 
 ### 3. Private helper hardening
 
@@ -104,6 +108,11 @@ then run the same fixture matrix against both implementations. Keep FakeRest dat
 generation in `dataGenerator/billingAccounts.ts` to avoid the documented circular
 import boundary.
 
+For invoice saves, parity means the same exact valid success and the same invalid-
+input rejection with unchanged effects. Phase 3 must not add or test an invoice-
+save idempotency key, request fingerprint, or conflicting-key behavior; those are
+deferred to Phase 5 `INV-01`.
+
 ### 6. Stable financial lane coupling
 
 **Analogs:** `makefile`, `.github/release/financial-paths.json`, and
@@ -115,6 +124,16 @@ audits that rolling coupling rather than introducing it.
 Preserve the six required workflow names, unconditional merge-group execution,
 timeouts, pinned actions/CLI, cleanup, and no assertion retry. Do not create a
 seventh optional exact-money check.
+
+### 7. Precision-safe legacy tax-rate compatibility
+
+Treat legacy `tax_rate` as a read-only compatibility projection distinct from
+authoritative ratio fields and from `submitted_percentage` evidence. The later
+Phase 3 migration widens it to checked `numeric(12,9)` for 0..100 inclusive,
+derives it exactly from the reduced ratio, and the caller-bound compatibility
+RPC emits exactly nine fractional digits. Upgrade and live tests pin
+`8.875000000`, plus `12.500000000` financial equality with preserved submitted
+text `12.500%`; no new financial version is introduced.
 
 ## New Pattern: Canonical Exact Codec
 
@@ -156,14 +175,18 @@ financial gate wiring in the same wave.
 - Plan 02 owns the primitive policy/helper migration and pgTAP file and adds
   test 60 to the protected SQL target in the same wave.
 - Plan 03 owns only the upgrade runner, its Vitest contract, and same-plan
-  upgrade/static coupling; it pins accepted migrations 00002/00003/00004.
+  upgrade/static coupling; it pins accepted migrations 00002/00003/00004 and
+  defines the tax-rate type/check/derivation/output fingerprint contract.
 - Plan 04 owns the later billing expand migration, registry 003, conversion
   pgTAP, inherited automation/evidence SQL and live callers, and same-plan
-  SQL/functions/replay/static coupling. Its ten-file boundary is exact.
+  SQL/functions/replay/static coupling, including `tax_rate numeric(12,9)` and
+  fixed-nine-decimal compatibility output. Its ten-file boundary is exact.
 - Plan 05 owns shared/provider types, the Supabase adapter, exact live boundary
-  and inherited tenancy tests, plus their same-plan HTTP/path/static coupling.
+  and inherited tenancy tests, including live 8.875/12.500 compatibility proof,
+  plus their same-plan HTTP/path/static coupling.
 - Plan 06 owns FakeRest, deterministic exact fixtures, provider parity, invoice
-  preview, and their same-plan HTTP/fast/path/static coupling.
+  preview, exact-save success/invalid rejection without save idempotency, and
+  their same-plan HTTP/fast/path/static coupling.
 - Plan 07 owns the final closed coupling audit and validation results. It may
   correct an omission but is not the first protection point for earlier paths.
 
@@ -177,6 +200,10 @@ financial gate wiring in the same wave.
 - Spreading unvalidated records into an RPC body or FakeRest response.
 - Replacing live pgTAP/HTTP proof with regex-only source tests.
 - Direct linked/remote schema push during implementation.
+- Leaving legacy `tax_rate` at two-decimal scale or formatting compatibility
+  output variably instead of at fixed nine decimals.
+- Pulling invoice-save idempotency keys/fingerprints or conflicting-save
+  behavior forward from Phase 5 `INV-01`.
 
 ## Pattern Mapping Result
 

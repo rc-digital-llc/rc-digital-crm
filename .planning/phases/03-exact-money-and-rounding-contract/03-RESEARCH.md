@@ -48,6 +48,10 @@
 
 - Agreement formulas, revenue periods, calculation snapshots, invoice issuance,
   payments, ledger facts, and multi-currency behavior remain in later phases.
+- Invoice-draft business idempotency, including save keys, request fingerprints,
+  and conflicting reuse semantics, remains Phase 5 `INV-01` scope. Phase 3
+  provider parity proves exact save success and invalid-input rejection with
+  unchanged effects only.
 - Removing legacy decimal columns is a later approved contract release.
 - Deal, project, and analytics values remain informational CRM data.
 
@@ -74,6 +78,15 @@ fractional cent. Separately, billing automation grants and executions store
 amount limits/counters/effects as `numeric(20,2)` and accept a `numeric` RPC
 argument. The latter is a real authorization boundary: an imprecise caller value
 could affect whether an action is allowed. [VERIFIED: codebase]
+
+The inherited `tax_rate numeric(5,2)` is too narrow for the locked nine-digit
+ordinary-percentage input contract and cannot represent `8.875%` exactly.
+The later Phase 3 migration must widen this non-authoritative compatibility
+column/projection to checked `numeric(12,9)`, derive it from the canonical
+reduced ratio, and return it from the compatibility read RPC as a fixed-nine-
+decimal string. Submitted text remains separate D-07/D-10 evidence, so
+`12.500%` stays available even though its financial value reduces to `1/8`.
+[VERIFIED: codebase and CONTEXT.md]
 
 PostgreSQL `bigint` is the correct persistence boundary for minor units because
 it is a signed eight-byte whole-number type and rejects overflow. PostgreSQL
@@ -227,7 +240,7 @@ https://www.postgresql.org/docs/17/functions-math.html]
 | Source | Exact additions | Legacy disposition |
 |--------|-----------------|--------------------|
 | `public.invoices.amount` | `amount_minor bigint`, `currency text` | Read-only decimal projection after cutover. |
-| `tax_rate` | reduced numerator/denominator, input evidence, rate-policy version | Read-only decimal projection. |
+| `tax_rate` | reduced numerator/denominator, `submitted_percentage`, rate-policy version | Widen the non-authoritative compatibility column/projection from `numeric(5,2)` to checked `numeric(12,9)` (0..100), derive it exactly from the canonical ratio, and emit fixed-nine-decimal RPC text (`8.875000000`). |
 | `tax_amount`, `total_amount` | `*_minor bigint` plus rounding-policy version | Read-only decimal projections derived from exact fields. |
 | `line_items` | exact JSON: reduced quantity ratio and typed money objects | Original JSON retained as compatibility evidence; malformed/ambiguous rows block. |
 | `billing_automation_grants.max_amount` | `max_amount_minor bigint`, currency/policy | Legacy numeric projection; exact field is authority. |
@@ -249,7 +262,9 @@ CONTEXT.md D-15]
 5. Backfill automation limits/counters/effects using the same USD rule.
 6. Add NOT NULL/check/reconciliation constraints; switch trigger/RPC/provider
    authority to exact fields; make legacy fields generated/trigger-maintained
-   read-only compatibility projections.
+   read-only compatibility projections. Widen only legacy `tax_rate` to
+   `numeric(12,9)` with a 0..100 constraint, derive it from the reduced ratio,
+   and format its compatibility RPC output at exactly nine decimal places.
 7. Fingerprint row count, stable IDs, exact pre-value text, exact post wire values,
    mappings, constraint definitions, and function/ACL identities.
 8. Keep old columns until a later approved removal after consumer and rollback
@@ -280,6 +295,13 @@ Exact fields drive inserts, updates, totals, limits, and responses. Legacy decim
 columns can be generated/maintained from exact fields for old readers, but legacy
 input is rejected after cutover. A trigger that accepts both old and new values
 would create ambiguous dual authority and is prohibited.
+
+Compatibility precision must cover the canonical contract. Money projections
+use the widened exact decimal capacity needed for the signed-`bigint` range;
+legacy `tax_rate` independently uses checked `numeric(12,9)` and fixed-nine-
+decimal RPC strings. Upgrade fingerprints and live RPC tests must prove
+`8.875% -> 8.875000000` and `12.500% -> 1/8` while preserving the original
+`12.500%` evidence and creating no new financial version.
 
 ### Pattern 4: Shared golden vectors plus independent implementations
 
@@ -375,6 +397,21 @@ If PostgREST accepts both `amount` and `amount_minor`, clients can submit
 contradictions. RLS alone does not solve this. Writes should go through one
 validated exact contract; compatibility columns are not writable inputs.
 
+### Legacy tax-rate scale can silently narrow accepted rates
+
+Leaving `tax_rate` at `numeric(5,2)` would round or reject canonical inputs such
+as `8.875%`. Fingerprint the type/check/derivation and assert the live fixed-nine-
+decimal compatibility output. Do not treat submitted percentage evidence as the
+derived compatibility value or introduce another financial version to preserve
+formatting.
+
+### Provider parity can accidentally pull Phase 5 idempotency forward
+
+The Phase 3 save boundary has no invoice-save key or request fingerprint.
+Supabase/FakeRest tests cover exact valid save success and invalid-input rejection
+with unchanged effects. Invoice draft business idempotency and conflicting-key
+semantics belong to Phase 5 `INV-01`.
+
 ### Full `bigint` range and negation
 
 The minimum signed value has no positive signed-`bigint` counterpart. TypeScript
@@ -423,8 +460,8 @@ These are diagnostic observations, not a substitute for committed tests.
 |--------|----------|-----------|-------------------|--------------|
 | CALC-01 | Strict money/rate grammar, canonical strings, range, reduction, JSON round trip | Vitest unit/property | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts` | Wave 0 |
 | CALC-01 | Checked exact PostgreSQL catalogs/helpers and no float authority | pgTAP | `make test-financial-database-sql` | Wave 0 |
-| CALC-01 | Invoice/line-item/automation expand-contract conversion and immutable fingerprints | clean/upgrade/schema push | `make test-financial-migration-upgrade && make test-financial-schema-push` | Extend existing + Wave 0 |
-| CALC-01 | Supabase/FakeRest string-only provider parity and numeric-token rejection | Vitest + live HTTP | `npm test -- --run src/components/atomic-crm/financial/exactProviderContract.test.ts tests/release/exact-money-boundaries.test.ts` through intended lanes | Wave 0 |
+| CALC-01 | Invoice/line-item/automation expand-contract conversion, `tax_rate numeric(12,9)` compatibility, and immutable fingerprints | clean/upgrade/schema push | `make test-financial-migration-upgrade && make test-financial-schema-push` | Extend existing + Wave 0 |
+| CALC-01 | Supabase/FakeRest string-only provider parity, exact-save success/invalid rejection, and numeric-token rejection without invoice-save idempotency | Vitest + live HTTP | `npm test -- --run src/components/atomic-crm/financial/exactProviderContract.test.ts tests/release/exact-money-boundaries.test.ts` through intended lanes | Wave 0 |
 | CALC-03 | Signed ties, non-ties, exact divisions, currency exponent, named policy | Vitest + pgTAP + live HTTP | `make test-financial-database-contracts && npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts` | Wave 0 |
 
 ### Sampling Rate
