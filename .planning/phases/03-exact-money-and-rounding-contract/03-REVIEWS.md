@@ -1,7 +1,7 @@
 ---
 phase: 03-exact-money-and-rounding-contract
 reviewers: [gpt-5.6-terra, gpt-5.5, gpt-5.4]
-reviewed_at: 2026-09-03T01:44:00Z
+reviewed_at: 2026-09-03T02:15:57Z
 plans_reviewed:
   - 03-01-PLAN.md
   - 03-02-PLAN.md
@@ -10,8 +10,8 @@ plans_reviewed:
   - 03-05-PLAN.md
   - 03-06-PLAN.md
   - 03-07-PLAN.md
-status: revised
-current_high: 0
+status: revise
+current_high: 1
 ---
 
 # Cross-Model Plan Review — Phase 3
@@ -190,3 +190,36 @@ BLOCKER/WARNING findings and `current_high=0` before the branch is green.
 Previously closed H3 and M1–M6 remain explicit in Plans 01–07. This entry records
 the targeted planning revision; execution and exact-head re-review remain
 separate gates.
+
+## Cycle 3 Re-review
+
+The security, inherited-caller, gate-coupling, and plan-size findings are
+closed. One formal BLOCKER and one independent MEDIUM compatibility finding
+remain.
+
+### C3-H1 — Invoice-save idempotency leaked in from Phase 5
+
+Plan 06 asks for provider-identical handling of `same-key conflicting saves`,
+but Plans 04–05 intentionally define no invoice-save idempotency key or request
+fingerprint. Invoice draft business idempotency belongs to Phase 5 (`INV-01`).
+Remove this behavior from Plan 06 and test only the already-defined exact save
+success/rejection cases with unchanged effects after invalid input. Do not add
+an invoice idempotency contract to Phase 3.
+
+### C3-M1 — Legacy tax-rate compatibility can narrow exact accepted rates
+
+The inherited `tax_rate numeric(5,2)` cannot represent the Phase 3 contract's
+nine fractional percentage digits or examples such as `8.875%`. Plan 04 must
+explicitly widen the non-authoritative legacy compatibility column/projection
+to `numeric(12,9)` (0 through 100 inclusive), derive it exactly from the
+canonical ratio, and have the compatibility read RPC emit a fixed-scale string.
+Keep the submitted percentage text separately as D-07/D-10 evidence. Add
+upgrade/registry/live RPC assertions for `8.875%` and `12.500%` without
+narrowing or financial-version creation.
+
+## Cycle 3 Required Revision Outcome
+
+Close C3-H1 without expanding Phase 3, close C3-M1 across Plans 03–05 plus the
+validation/source-audit contracts, preserve all prior closures, and re-review
+until the formal checker reports no BLOCKER/WARNING issues and
+`current_high=0`.
