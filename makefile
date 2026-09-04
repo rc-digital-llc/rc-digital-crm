@@ -18,6 +18,8 @@ FINANCIAL_FUNCTION_TESTS := \
 	tests/release/billing-evidence.test.ts
 
 FINANCIAL_FAST_TESTS := \
+	src/components/atomic-crm/financial/exactMoney.test.ts \
+	tests/release/exact-money-release-static.test.ts \
 	tests/release/billing-redaction.test.ts \
 	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
 	src/components/atomic-crm/billing-accounts/billingAccounts.test.ts \

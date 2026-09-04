@@ -39,9 +39,9 @@ revised: 2026-09-02
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Automated Command | Status |
 |---------|------|------|-------------|------------|-----------------|-------------------|--------|
-| 03-01-01 | 01 | 1 | CALC-01 | T-03-01/02/04 | String-only money/rate, 64/14 pre-parse limits, canonical zero, bounded D-10 evidence | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t 'money|rate|wire'` | ⬜ |
-| 03-01-02 | 01 | 1 | CALC-03 | T-03-03/04 | BigInt half-away signed rounding and checked persistence range | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t rounding` | ⬜ |
-| 03-01-03 | 01 | 1 | CALC-01/03 | T-03-09 | First exact source/unit/static paths enter protected fast/classifier contract | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-fast` | ⬜ |
+| 03-01-01 | 01 | 1 | CALC-01 | T-03-01/02/04 | String-only money/rate, 64/14 pre-parse limits, canonical zero, bounded D-10 evidence | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t 'money|rate|wire'` | ✅ |
+| 03-01-02 | 01 | 1 | CALC-03 | T-03-03/04 | BigInt half-away signed rounding and checked persistence range | `npm test -- --run src/components/atomic-crm/financial/exactMoney.test.ts -t rounding` | ✅ |
+| 03-01-03 | 01 | 1 | CALC-01/03 | T-03-09 | First exact source/unit/static paths enter protected fast/classifier contract | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-fast` | ✅ |
 | 03-02-01 | 02 | 2 | CALC-01/03 | T-03-03/04/05 | Immutable catalogs/helpers install with exact ACLs, lengths, and ranges | `make test-financial-schema-push` | ⬜ |
 | 03-02-02 | 02 | 2 | CALC-01/03 | T-03-01/03/05 | Independent PostgreSQL golden/property/token proof | `node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db supabase/tests/database/60_exact_financial_primitives.sql --local` | ⬜ |
 | 03-02-03 | 02 | 2 | CALC-01/03 | T-03-09 | Test 60 joins protected SQL target in Wave 2 | `npm test -- --run tests/release/exact-money-release-static.test.ts && make test-financial-database-sql` | ⬜ |
@@ -61,14 +61,14 @@ revised: 2026-09-02
 
 ## Wave 0 Requirements
 
-- [ ] `src/components/atomic-crm/financial/exactFinancialFixtures.ts`
-- [ ] `src/components/atomic-crm/financial/exactMoney.test.ts`
+- [x] `src/components/atomic-crm/financial/exactFinancialFixtures.ts`
+- [x] `src/components/atomic-crm/financial/exactMoney.test.ts`
 - [ ] `supabase/tests/database/60_exact_financial_primitives.sql`
 - [ ] `supabase/tests/database/65_exact_billing_conversion.sql`
 - [ ] `supabase/tests/upgrades/003-exact-money/expected-transformations.json`
 - [ ] `tests/release/exact-money-boundaries.test.ts`
 - [ ] `src/components/atomic-crm/financial/exactProviderContract.test.ts`
-- [ ] `tests/release/exact-money-release-static.test.ts`
+- [x] `tests/release/exact-money-release-static.test.ts`
 
 Inherited tests `35_billing_automation.sql`, `40_billing_evidence.sql`,
 `billing-tenancy.test.ts`, `billing-evidence.test.ts`, and
