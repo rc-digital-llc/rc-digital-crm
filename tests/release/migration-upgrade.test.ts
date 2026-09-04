@@ -422,7 +422,9 @@ describe("representative upgrade fingerprints", () => {
     });
 
     expect(Object.keys(result.transformations).sort()).toEqual(
-      ["row_payload_hashes", ...PHASE3_REQUIRED_TRANSFORMATIONS].sort(),
+      [
+        ...new Set(["row_payload_hashes", ...PHASE3_REQUIRED_TRANSFORMATIONS]),
+      ].sort(),
     );
     expect(result.semantic_invariants).toEqual(
       expect.arrayContaining(PHASE3_EXACT_INVARIANTS),
@@ -495,10 +497,7 @@ describe("representative upgrade fingerprints", () => {
   it("rejects stale exact hashes, missing invariants, and new financial versions", () => {
     const stale = exactTransformationRegistry();
     (
-      stale.transformations as Record<
-        string,
-        { before_sha256: string }
-      >
+      stale.transformations as Record<string, { before_sha256: string }>
     ).row_payload_hashes.before_sha256 = HASH_A;
     expect(() =>
       validateTransformationRegistries({

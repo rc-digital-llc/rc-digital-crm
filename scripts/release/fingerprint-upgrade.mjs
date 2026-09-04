@@ -22,7 +22,7 @@ const expectationDirectory = path.join(
   repositoryRoot,
   "supabase/tests/baselines/002-pre-financial-pg17",
 );
-const categoryNames = [
+const coreCategoryNames = [
   "row_identity_counts",
   "ownership_foreign_keys",
   "invoice_numeric_text",
@@ -31,6 +31,66 @@ const categoryNames = [
   "grant_matrix",
   "queryability",
 ];
+export const PHASE3_CATEGORY_NAMES = Object.freeze([
+  "exact_invoice_values",
+  "exact_invoice_line_items",
+  "exact_automation_contract",
+  "exact_evidence_finalization",
+  "exact_invoice_rpcs",
+  "exact_invoice_acl",
+  "exact_tax_rate_compatibility",
+  "unrelated_crm_payloads",
+]);
+export const PHASE3_REQUIRED_TRANSFORMATIONS = Object.freeze([
+  "invoice_numeric_text",
+  "row_payload_hashes",
+  "constraint_definitions",
+  "grant_matrix",
+  "exact_invoice_values",
+  "exact_invoice_line_items",
+  "exact_automation_contract",
+  "exact_evidence_finalization",
+  "exact_invoice_rpcs",
+  "exact_invoice_acl",
+  "exact_tax_rate_compatibility",
+]);
+export const PHASE3_EXACT_INVARIANTS = Object.freeze([
+  "exact_invoice_values_canonical",
+  "exact_line_items_canonical",
+  "exact_automation_state_canonical",
+  "exact_evidence_finalization_replaced",
+  "exact_invoice_rpcs_locked",
+  "exact_invoice_acl_least_privilege",
+  "tax_rate_compatibility_exact",
+  "unrelated_crm_payloads_preserved",
+]);
+const phase3RepeatedCoreCategories = new Set([
+  "invoice_numeric_text",
+  "row_payload_hashes",
+  "constraint_definitions",
+  "grant_matrix",
+]);
+// These are fingerprints of the immutable 001 baseline under the Phase 3-only
+// queries. They are kept outside the accepted baseline files so those inputs
+// remain byte-identical while a future sequence-003 registry can be validated.
+export const PHASE3_BASELINE_CATEGORY_HASHES = Object.freeze({
+  exact_invoice_values:
+    "4b53a9ecb1db34f69f0e362b0bb698735923a9a166732c98c6408b0a08c61882",
+  exact_invoice_line_items:
+    "9982234fe4183a271d3b189598b72d4c8fc1f6bdb9694e9b1cdda48dbb7dcba6",
+  exact_automation_contract:
+    "aa7033d9a8fa8f062a85b219133af2a6cdb85669a331f9fa2e9c5e6535d9398a",
+  exact_evidence_finalization:
+    "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  exact_invoice_rpcs:
+    "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  exact_invoice_acl:
+    "643db11d1dcc0fbb22a879394a0f356fe1836010e161cf85d61414feac002bc6",
+  exact_tax_rate_compatibility:
+    "887c4782b2929597ebcad451e3758924f401060f2a2cdba5823f8a0ce1635fff",
+  unrelated_crm_payloads:
+    "8fa44e2d8d7dd37160a8680e7be0f167662802a1740cfe8b12d4473f3040e65d",
+});
 const fixtureUserIds = [
   "10000000-0000-0000-0000-000000000001",
   "10000000-0000-0000-0000-000000000002",
@@ -45,6 +105,7 @@ const allowedSemanticInvariants = new Set([
   "invoice_provider_text_preserved",
   "invoice_tenant_foreign_keys_valid",
   "invoice_tenant_keys_complete",
+  ...PHASE3_EXACT_INVARIANTS,
 ]);
 const registryFields = [
   "baseline_id",
@@ -56,6 +117,18 @@ const registryFields = [
   "version",
 ];
 const transformationFields = ["after_sha256", "before_sha256", "migration"];
+const immutableUpgradeInputHashes = Object.freeze({
+  "supabase/tests/baselines/001-pre-financial/manifest.json":
+    "eb1f2e2cdee134e72f45664a11557dcecce66cec1011cfdfaf99bd5dfd100e93",
+  "supabase/tests/upgrades/002-billing-tenancy/expected-transformations.json":
+    "dea0df2f23c11c7292e01996fa32e9a0a0e7b6741260de741fee8e76d375211a",
+  "supabase/migrations/20260901000002_billing_invoice_boundary.sql":
+    "811947e5391aedbbbb452daee5a41302a35d610122845b909b7c53e21ff57817",
+  "supabase/migrations/20260901000003_billing_automation_grants.sql":
+    "d1c27c260561131037712aab783b90101a7949b41e0528052c9f764666cc92fd",
+  "supabase/migrations/20260901000004_billing_evidence_security.sql":
+    "740ac8cc9c5955c3e64c837082402f0d7f94e5fe2f145d88489d22b010dc48c0",
+});
 
 const fingerprintQueries = {
   row_identity_counts: `
@@ -185,6 +258,294 @@ const fingerprintQueries = {
         'EXECUTE'
       )
     )`,
+  exact_invoice_values: `
+    WITH invoice_rows AS (
+      SELECT id, pg_catalog.to_jsonb(invoice) AS row_value
+      FROM public.invoices AS invoice
+    )
+    SELECT pg_catalog.jsonb_build_object(
+      'columns', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'name', column_name,
+              'data_type', data_type,
+              'udt_name', udt_name,
+              'nullable', is_nullable
+            ) ORDER BY ordinal_position
+          ),
+          '[]'::jsonb
+        )
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND column_name IN (
+            'amount_minor', 'currency', 'tax_rate_numerator',
+            'tax_rate_denominator', 'submitted_percentage',
+            'rate_policy_version', 'tax_amount_minor', 'total_amount_minor',
+            'currency_policy_version', 'rounding_policy_version'
+          )
+      ),
+      'rows', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'id', id::text,
+              'amount_minor', row_value->>'amount_minor',
+              'currency', row_value->>'currency',
+              'tax_rate_numerator', row_value->>'tax_rate_numerator',
+              'tax_rate_denominator', row_value->>'tax_rate_denominator',
+              'submitted_percentage', row_value->>'submitted_percentage',
+              'rate_policy_version', row_value->>'rate_policy_version',
+              'tax_amount_minor', row_value->>'tax_amount_minor',
+              'total_amount_minor', row_value->>'total_amount_minor',
+              'currency_policy_version', row_value->>'currency_policy_version',
+              'rounding_policy_version', row_value->>'rounding_policy_version'
+            ) ORDER BY id
+          ),
+          '[]'::jsonb
+        )
+        FROM invoice_rows
+      )
+    )`,
+  exact_invoice_line_items: `
+    SELECT COALESCE(
+      pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'id', id::text,
+          'line_items_exact', pg_catalog.to_jsonb(invoice)->'line_items_exact',
+          'line_items_legacy_evidence',
+            pg_catalog.to_jsonb(invoice)->'line_items_legacy_evidence'
+        ) ORDER BY id
+      ),
+      '[]'::jsonb
+    )
+    FROM public.invoices AS invoice`,
+  exact_automation_contract: `
+    SELECT pg_catalog.jsonb_build_object(
+      'columns', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'table', table_name,
+              'name', column_name,
+              'type', udt_name,
+              'nullable', is_nullable
+            ) ORDER BY table_name, ordinal_position
+          ),
+          '[]'::jsonb
+        )
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name IN (
+            'billing_automation_grants', 'billing_automation_executions'
+          )
+          AND column_name IN (
+            'amount_limit_minor', 'amount_consumed_minor', 'amount_minor',
+            'currency', 'request_fingerprint', 'effect_fingerprint',
+            'effect_discriminator'
+          )
+      ),
+      'functions', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'schema', namespace.nspname,
+              'name', procedure_record.proname,
+              'arguments', pg_catalog.pg_get_function_identity_arguments(procedure_record.oid),
+              'definition', pg_catalog.pg_get_functiondef(procedure_record.oid)
+            ) ORDER BY namespace.nspname, procedure_record.proname,
+              pg_catalog.pg_get_function_identity_arguments(procedure_record.oid)
+          ),
+          '[]'::jsonb
+        )
+        FROM pg_catalog.pg_proc AS procedure_record
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = procedure_record.pronamespace
+        WHERE namespace.nspname IN ('private', 'public')
+          AND procedure_record.proname IN (
+            'billing_consume_automation_grant',
+            'billing_execute_automation_command'
+          )
+      )
+    )`,
+  exact_evidence_finalization: `
+    SELECT COALESCE(
+      pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'schema', namespace.nspname,
+          'name', procedure_record.proname,
+          'arguments', pg_catalog.pg_get_function_identity_arguments(procedure_record.oid),
+          'security_definer', procedure_record.prosecdef,
+          'config', procedure_record.proconfig,
+          'definition', pg_catalog.pg_get_functiondef(procedure_record.oid)
+        ) ORDER BY namespace.nspname,
+          pg_catalog.pg_get_function_identity_arguments(procedure_record.oid)
+      ),
+      '[]'::jsonb
+    )
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure_record.pronamespace
+    WHERE namespace.nspname IN ('private', 'public')
+      AND procedure_record.proname = 'billing_finalize_evidence_inspection'`,
+  exact_invoice_rpcs: `
+    SELECT COALESCE(
+      pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'name', procedure_record.proname,
+          'arguments', pg_catalog.pg_get_function_identity_arguments(procedure_record.oid),
+          'security_definer', procedure_record.prosecdef,
+          'config', procedure_record.proconfig,
+          'owner', owner_role.rolname,
+          'definition', pg_catalog.pg_get_functiondef(procedure_record.oid)
+        ) ORDER BY procedure_record.proname
+      ),
+      '[]'::jsonb
+    )
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure_record.pronamespace
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid = procedure_record.proowner
+    WHERE namespace.nspname = 'public'
+      AND procedure_record.proname IN (
+        'read_billing_invoices_exact',
+        'read_billing_invoices_legacy_compat',
+        'save_billing_invoice_exact'
+      )`,
+  exact_invoice_acl: `
+    SELECT pg_catalog.jsonb_build_object(
+      'table', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'grantee', grantee,
+              'privilege', privilege_type
+            ) ORDER BY grantee, privilege_type
+          ),
+          '[]'::jsonb
+        )
+        FROM information_schema.table_privileges
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND grantee IN ('anon', 'authenticated', 'service_role', 'PUBLIC')
+      ),
+      'sequence', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'grantee', grantee,
+              'privilege', privilege_type
+            ) ORDER BY grantee, privilege_type
+          ),
+          '[]'::jsonb
+        )
+        FROM information_schema.usage_privileges
+        WHERE object_schema = 'public'
+          AND object_name = 'invoices_id_seq'
+          AND grantee IN ('anon', 'authenticated', 'service_role', 'PUBLIC')
+      ),
+      'routines', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'name', routine_name,
+              'grantee', grantee,
+              'privilege', privilege_type
+            ) ORDER BY routine_name, grantee, privilege_type
+          ),
+          '[]'::jsonb
+        )
+        FROM information_schema.routine_privileges
+        WHERE routine_schema = 'public'
+          AND routine_name IN (
+            'read_billing_invoices_exact',
+            'read_billing_invoices_legacy_compat',
+            'save_billing_invoice_exact'
+          )
+          AND grantee IN ('anon', 'authenticated', 'service_role', 'PUBLIC')
+      )
+    )`,
+  exact_tax_rate_compatibility: `
+    SELECT pg_catalog.jsonb_build_object(
+      'column', (
+        SELECT pg_catalog.jsonb_build_object(
+          'data_type', data_type,
+          'numeric_precision', numeric_precision::text,
+          'numeric_scale', numeric_scale::text,
+          'nullable', is_nullable
+        )
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND column_name = 'tax_rate'
+      ),
+      'constraints', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'name', constraint_record.conname,
+              'definition', pg_catalog.pg_get_constraintdef(constraint_record.oid, true)
+            ) ORDER BY constraint_record.conname
+          ),
+          '[]'::jsonb
+        )
+        FROM pg_catalog.pg_constraint AS constraint_record
+        WHERE constraint_record.conrelid = 'public.invoices'::regclass
+          AND pg_catalog.pg_get_constraintdef(constraint_record.oid, true) ILIKE '%tax_rate%'
+      ),
+      'rows', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.jsonb_build_object(
+              'id', id::text,
+              'tax_rate', tax_rate::text,
+              'tax_rate_numerator', pg_catalog.to_jsonb(invoice)->>'tax_rate_numerator',
+              'tax_rate_denominator', pg_catalog.to_jsonb(invoice)->>'tax_rate_denominator',
+              'submitted_percentage', pg_catalog.to_jsonb(invoice)->>'submitted_percentage'
+            ) ORDER BY id
+          ),
+          '[]'::jsonb
+        )
+        FROM public.invoices AS invoice
+      ),
+      'compatibility_rpc', (
+        SELECT COALESCE(
+          pg_catalog.jsonb_agg(
+            pg_catalog.pg_get_functiondef(procedure_record.oid)
+            ORDER BY procedure_record.oid
+          ),
+          '[]'::jsonb
+        )
+        FROM pg_catalog.pg_proc AS procedure_record
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = procedure_record.pronamespace
+        WHERE namespace.nspname = 'public'
+          AND procedure_record.proname = 'read_billing_invoices_legacy_compat'
+      )
+    )`,
+  unrelated_crm_payloads: `
+    SELECT COALESCE(
+      pg_catalog.jsonb_agg(
+        pg_catalog.jsonb_build_object(
+          'entity', entity,
+          'id', id::text,
+          'payload', payload
+        ) ORDER BY entity, id
+      ),
+      '[]'::jsonb
+    )
+    FROM (
+      SELECT 'deals' AS entity, id, pg_catalog.to_jsonb(row_value)::text AS payload
+      FROM public.deals AS row_value
+      UNION ALL
+      SELECT 'project_analytics', id, pg_catalog.to_jsonb(row_value)::text
+      FROM public.project_analytics AS row_value
+      UNION ALL
+      SELECT 'projects', id, pg_catalog.to_jsonb(row_value)::text
+      FROM public.projects AS row_value
+    ) AS unrelated_rows`,
 };
 
 const invoiceSemanticQuery = `
@@ -314,6 +675,204 @@ const postUpgradeSemanticQuery = `
     )
   )`;
 
+const exactPostUpgradeSemanticQuery = `
+  WITH exact_functions AS (
+    SELECT procedure_record.*
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure_record.pronamespace
+    WHERE namespace.nspname = 'public'
+      AND procedure_record.proname IN (
+        'read_billing_invoices_exact',
+        'read_billing_invoices_legacy_compat',
+        'save_billing_invoice_exact'
+      )
+  ),
+  evidence_function AS (
+    SELECT pg_catalog.pg_get_functiondef(procedure_record.oid) AS definition
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace
+      ON namespace.oid = procedure_record.pronamespace
+    WHERE namespace.nspname = 'private'
+      AND procedure_record.proname = 'billing_finalize_evidence_inspection'
+      AND pg_catalog.pg_get_function_identity_arguments(procedure_record.oid) =
+        'p_grant_id uuid, p_evidence_id uuid, p_decision text, p_reason_code text, p_provider_reference text, p_policy_version text, p_idempotency_key text'
+  ),
+  rate_samples(submitted_percentage) AS (
+    VALUES ('8.875%'), ('12.500%')
+  ),
+  parsed_rates AS (
+    SELECT
+      submitted_percentage,
+      public.financial_parse_ordinary_percentage(
+        pg_catalog.to_jsonb(submitted_percentage),
+        'ordinary-percentage-v1'
+      ) AS rate
+    FROM rate_samples
+  )
+  SELECT pg_catalog.jsonb_build_object(
+    'invoice_values', (
+      SELECT COALESCE(
+        pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'id', id::text,
+            'amount_minor', amount_minor::text,
+            'currency', currency,
+            'tax_rate_numerator', tax_rate_numerator::text,
+            'tax_rate_denominator', tax_rate_denominator::text,
+            'submitted_percentage', submitted_percentage,
+            'rate_policy_version', rate_policy_version,
+            'tax_amount_minor', tax_amount_minor::text,
+            'total_amount_minor', total_amount_minor::text,
+            'rounding_policy_version', rounding_policy_version
+          ) ORDER BY id
+        ),
+        '[]'::jsonb
+      )
+      FROM public.invoices
+    ),
+    'line_items', (
+      SELECT COALESCE(
+        pg_catalog.jsonb_agg(
+          item || pg_catalog.jsonb_build_object('invoice_id', invoice.id::text)
+          ORDER BY invoice.id, item_index
+        ),
+        '[]'::jsonb
+      )
+      FROM public.invoices AS invoice
+      CROSS JOIN LATERAL pg_catalog.jsonb_array_elements(invoice.line_items_exact)
+        WITH ORDINALITY AS exact_item(item, item_index)
+    ),
+    'automation', pg_catalog.jsonb_build_object(
+      'negative_amount_count', (
+        SELECT count(*)::text
+        FROM public.billing_automation_executions
+        WHERE amount_minor < 0
+      ),
+      'invalid_request_fingerprint_count', (
+        SELECT count(*)::text
+        FROM public.billing_automation_executions
+        WHERE request_fingerprint !~ '^[0-9a-f]{64}$'
+      ),
+      'invalid_effect_fingerprint_count', (
+        SELECT count(*)::text
+        FROM public.billing_automation_executions
+        WHERE effect_fingerprint !~ '^[0-9a-f]{64}$'
+      )
+    ),
+    'evidence', pg_catalog.jsonb_build_object(
+      'exact_helper_dependency', COALESCE((
+        SELECT definition LIKE '%billing_consume_automation_grant%'
+          AND definition LIKE '%amount_minor%'
+        FROM evidence_function
+      ), false),
+      'canonical_zero_dependency', COALESCE((
+        SELECT definition LIKE '%amount_minor%0%currency%USD%'
+        FROM evidence_function
+      ), false),
+      'old_numeric_signature_count', (
+        SELECT count(*)::text
+        FROM pg_catalog.pg_proc AS procedure_record
+        JOIN pg_catalog.pg_namespace AS namespace
+          ON namespace.oid = procedure_record.pronamespace
+        WHERE namespace.nspname = 'private'
+          AND procedure_record.proname = 'billing_consume_automation_grant'
+          AND pg_catalog.pg_get_function_identity_arguments(procedure_record.oid)
+            LIKE '%p_amount numeric%'
+      )
+    ),
+    'invoice_rpcs', pg_catalog.jsonb_build_object(
+      'locked_function_count', (
+        SELECT count(*)::text
+        FROM exact_functions
+        JOIN pg_catalog.pg_roles AS owner_role
+          ON owner_role.oid = exact_functions.proowner
+        WHERE exact_functions.prosecdef
+          AND owner_role.rolname = 'postgres'
+          AND COALESCE(
+            pg_catalog.array_to_string(exact_functions.proconfig, ','),
+            ''
+          ) IN ('search_path=', 'search_path=""')
+      ),
+      'dynamic_sql_function_count', (
+        SELECT count(*)::text
+        FROM exact_functions
+        WHERE pg_catalog.pg_get_functiondef(oid) ~* '\\mEXECUTE\\M'
+      )
+    ),
+    'invoice_acl', pg_catalog.jsonb_build_object(
+      'authenticated_table_privilege_count', (
+        SELECT count(*)::text
+        FROM information_schema.table_privileges
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND grantee = 'authenticated'
+      ),
+      'authenticated_sequence_privilege_count', (
+        SELECT count(*)::text
+        FROM information_schema.usage_privileges
+        WHERE object_schema = 'public'
+          AND object_name = 'invoices_id_seq'
+          AND grantee = 'authenticated'
+      ),
+      'anonymous_table_privilege_count', (
+        SELECT count(*)::text
+        FROM information_schema.table_privileges
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND grantee = 'anon'
+      )
+    ),
+    'tax_rate_compatibility', pg_catalog.jsonb_build_object(
+      'data_type', (
+        SELECT data_type
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND column_name = 'tax_rate'
+      ),
+      'numeric_precision', (
+        SELECT numeric_precision::text
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND column_name = 'tax_rate'
+      ),
+      'numeric_scale', (
+        SELECT numeric_scale::text
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'invoices'
+          AND column_name = 'tax_rate'
+      ),
+      'out_of_bounds_count', (
+        SELECT count(*)::text FROM public.invoices
+        WHERE tax_rate < 0 OR tax_rate > 100
+      ),
+      'derived_mismatch_count', (
+        SELECT count(*)::text FROM public.invoices
+        WHERE tax_rate <> (
+          tax_rate_numerator::numeric * 100 / tax_rate_denominator::numeric
+        )
+      ),
+      'samples', (
+        SELECT pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'submitted_percentage', submitted_percentage,
+            'numerator', rate->>'numerator',
+            'denominator', rate->>'denominator',
+            'compatibility', pg_catalog.to_char(
+              (rate->>'numerator')::numeric * 100 /
+                (rate->>'denominator')::numeric,
+              'FM990.000000000'
+            )
+          ) ORDER BY submitted_percentage
+        )
+        FROM parsed_rates
+      )
+    )
+  )`;
+
 function executeProcess(command, args, options = {}) {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
@@ -377,9 +936,220 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-function assertFingerprintShape(fingerprints, label) {
+export function verifyImmutableUpgradeInputs({
+  readFile = fs.readFileSync,
+} = {}) {
+  for (const [relativePath, expectedHash] of Object.entries(
+    immutableUpgradeInputHashes,
+  )) {
+    const actualHash = sha256(
+      readFile(path.join(repositoryRoot, relativePath)),
+    );
+    if (actualHash !== expectedHash) {
+      throw new Error(`immutable upgrade input differs: ${relativePath}`);
+    }
+  }
+  return true;
+}
+
+function assertCanonicalIntegerToken(value, label) {
+  if (typeof value !== "string" || !/^-?(?:0|[1-9][0-9]*)$/.test(value)) {
+    throw new Error(
+      `exact snapshot has invalid string financial token: ${label}`,
+    );
+  }
+  return BigInt(value);
+}
+
+function greatestCommonDivisor(left, right) {
+  let a = left < 0n ? -left : left;
+  let b = right < 0n ? -right : right;
+  while (b !== 0n) {
+    const remainder = a % b;
+    a = b;
+    b = remainder;
+  }
+  return a;
+}
+
+function fixedNinePercentage(numerator, denominator) {
+  const scale = 1000000000n;
+  const scaledNumerator = numerator * 100n * scale;
+  if (denominator <= 0n || scaledNumerator % denominator !== 0n) {
+    throw new Error("tax compatibility lacks exact canonical ratio derivation");
+  }
+  const scaledPercentage = scaledNumerator / denominator;
+  const whole = scaledPercentage / scale;
+  const fraction = (scaledPercentage % scale).toString().padStart(9, "0");
+  return `${whole}.${fraction}`;
+}
+
+export function validateExactUpgradeSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("exact upgrade snapshot must be an object");
+  }
+
+  const invoiceIntegerFields = [
+    "amount_minor",
+    "tax_rate_numerator",
+    "tax_rate_denominator",
+    "tax_amount_minor",
+    "total_amount_minor",
+  ];
+  if (
+    !Array.isArray(snapshot.invoice_values) ||
+    snapshot.invoice_values.length === 0
+  ) {
+    throw new Error("exact invoice values are missing");
+  }
+  for (const [index, invoice] of snapshot.invoice_values.entries()) {
+    for (const field of invoiceIntegerFields) {
+      assertCanonicalIntegerToken(
+        invoice?.[field],
+        `invoice_values.${index}.${field}`,
+      );
+    }
+    if (
+      invoice.currency !== "USD" ||
+      invoice.rate_policy_version !== "ordinary-percentage-v1" ||
+      invoice.rounding_policy_version !== "half-away-from-zero-v1" ||
+      typeof invoice.submitted_percentage !== "string"
+    ) {
+      throw new Error("exact invoice policy identity is invalid");
+    }
+  }
+
+  if (!Array.isArray(snapshot.line_items) || snapshot.line_items.length === 0) {
+    throw new Error("exact line items are missing");
+  }
+  for (const [index, item] of snapshot.line_items.entries()) {
+    const numerator = assertCanonicalIntegerToken(
+      item?.quantity_ratio?.numerator,
+      `line_items.${index}.quantity_ratio.numerator`,
+    );
+    const denominator = assertCanonicalIntegerToken(
+      item?.quantity_ratio?.denominator,
+      `line_items.${index}.quantity_ratio.denominator`,
+    );
+    if (
+      denominator <= 0n ||
+      greatestCommonDivisor(numerator, denominator) !== 1n
+    ) {
+      throw new Error("exact line item ratio is not canonical");
+    }
+    assertCanonicalIntegerToken(
+      item?.unit_price?.amount_minor,
+      `line_items.${index}.unit_price.amount_minor`,
+    );
+    assertCanonicalIntegerToken(
+      item?.extended_amount?.amount_minor,
+      `line_items.${index}.extended_amount.amount_minor`,
+    );
+    if (
+      item?.unit_price?.currency !== "USD" ||
+      item?.extended_amount?.currency !== "USD" ||
+      item.currency_policy_version !== "usd-v1" ||
+      item.rounding_policy_version !== "half-away-from-zero-v1"
+    ) {
+      throw new Error("exact line item policy identity is invalid");
+    }
+  }
+
+  for (const field of [
+    "negative_amount_count",
+    "invalid_request_fingerprint_count",
+    "invalid_effect_fingerprint_count",
+  ]) {
+    if (snapshot.automation?.[field] !== "0") {
+      throw new Error(`exact automation invariant failed: ${field}`);
+    }
+  }
+  if (
+    snapshot.evidence?.exact_helper_dependency !== true ||
+    snapshot.evidence?.canonical_zero_dependency !== true ||
+    snapshot.evidence?.old_numeric_signature_count !== "0"
+  ) {
+    throw new Error("exact evidence finalization invariant failed");
+  }
+  if (
+    snapshot.invoice_rpcs?.locked_function_count !== "3" ||
+    snapshot.invoice_rpcs?.dynamic_sql_function_count !== "0"
+  ) {
+    throw new Error("exact invoice RPC invariant failed");
+  }
+  if (
+    snapshot.invoice_acl?.authenticated_table_privilege_count !== "0" ||
+    snapshot.invoice_acl?.authenticated_sequence_privilege_count !== "0" ||
+    snapshot.invoice_acl?.anonymous_table_privilege_count !== "0"
+  ) {
+    throw new Error("exact invoice ACL invariant failed");
+  }
+
+  const compatibility = snapshot.tax_rate_compatibility;
+  if (
+    compatibility?.data_type !== "numeric" ||
+    compatibility?.numeric_precision !== "12" ||
+    compatibility?.numeric_scale !== "9" ||
+    compatibility?.out_of_bounds_count !== "0" ||
+    compatibility?.derived_mismatch_count !== "0" ||
+    !Array.isArray(compatibility.samples)
+  ) {
+    throw new Error("exact tax-rate compatibility metadata is invalid");
+  }
+  const expectedSamples = new Map([
+    ["8.875%", ["71", "800", "8.875000000"]],
+    ["12.500%", ["1", "8", "12.500000000"]],
+  ]);
+  for (const [submitted, expected] of expectedSamples) {
+    const sample = compatibility.samples.find(
+      (candidate) => candidate?.submitted_percentage === submitted,
+    );
+    if (!sample)
+      throw new Error(`exact tax-rate sample is missing: ${submitted}`);
+    const numerator = assertCanonicalIntegerToken(
+      sample.numerator,
+      `${submitted}.numerator`,
+    );
+    const denominator = assertCanonicalIntegerToken(
+      sample.denominator,
+      `${submitted}.denominator`,
+    );
+    if (!/^(?:0|[1-9][0-9]*)\.[0-9]{9}$/.test(sample.compatibility)) {
+      throw new Error("tax compatibility is not fixed nine-decimal text");
+    }
+    if (
+      sample.numerator !== expected[0] ||
+      sample.denominator !== expected[1] ||
+      greatestCommonDivisor(numerator, denominator) !== 1n ||
+      fixedNinePercentage(numerator, denominator) !== sample.compatibility
+    ) {
+      throw new Error(
+        "tax compatibility lacks exact canonical ratio derivation",
+      );
+    }
+    if (sample.compatibility !== expected[2]) {
+      throw new Error("tax compatibility is not fixed nine-decimal text");
+    }
+  }
+  if (
+    snapshot.unrelated_crm?.before_sha256 !==
+    snapshot.unrelated_crm?.after_sha256
+  ) {
+    throw new Error("unrelated CRM payloads changed during exact upgrade");
+  }
+
+  return true;
+}
+
+function assertFingerprintShape(
+  fingerprints,
+  label,
+  expectedCategories = coreCategoryNames,
+) {
   const received = Object.keys(fingerprints ?? {}).sort();
-  if (JSON.stringify(received) !== JSON.stringify([...categoryNames].sort())) {
+  if (
+    JSON.stringify(received) !== JSON.stringify([...expectedCategories].sort())
+  ) {
     throw new Error(`${label} fingerprint categories are incomplete`);
   }
   for (const [category, digest] of Object.entries(fingerprints)) {
@@ -390,11 +1160,12 @@ function assertFingerprintShape(fingerprints, label) {
 }
 
 export function compareFingerprintSets({ before, after, expected }) {
-  assertFingerprintShape(before, "before");
-  assertFingerprintShape(after, "after");
-  assertFingerprintShape(expected?.categories, "expected");
+  const expectedCategories = Object.keys(expected?.categories ?? {});
+  assertFingerprintShape(before, "before", expectedCategories);
+  assertFingerprintShape(after, "after", expectedCategories);
+  assertFingerprintShape(expected?.categories, "expected", expectedCategories);
   const results = {};
-  for (const category of categoryNames) {
+  for (const category of expectedCategories) {
     if (before[category] !== expected.categories[category]) {
       throw new Error(
         `upgrade fingerprint mismatch before: ${category} ` +
@@ -452,7 +1223,11 @@ export function validateTransformationRegistries({
   baselineExpected,
   registries,
 }) {
-  assertFingerprintShape(baselineExpected?.categories, "expected");
+  assertFingerprintShape(
+    baselineExpected?.categories,
+    "expected",
+    coreCategoryNames,
+  );
   if (typeof baselineExpected?.baseline_id !== "string") {
     throw new Error("baseline expected identity is missing");
   }
@@ -460,12 +1235,14 @@ export function validateTransformationRegistries({
     throw new Error("transformation registries must be ordered");
   }
 
-  const current = { ...baselineExpected.categories };
+  const baselineCategories = { ...baselineExpected.categories };
+  const current = { ...baselineCategories };
   const combined = {};
+  const migrations = [];
   for (const [category, transformation] of Object.entries(
     baselineExpected.transformations ?? {},
   )) {
-    if (!categoryNames.includes(category)) {
+    if (!coreCategoryNames.includes(category)) {
       throw new Error(
         `baseline has unknown transformation category: ${category}`,
       );
@@ -475,6 +1252,17 @@ export function validateTransformationRegistries({
     if (transformation.before_sha256 !== current[category]) {
       throw new Error(`baseline transformation is stale: ${category}`);
     }
+    if (
+      typeof transformation.migration !== "string" ||
+      !/^\d{14}$/.test(transformation.migration)
+    ) {
+      throw new Error(
+        `baseline transformation migration is invalid: ${category}`,
+      );
+    }
+    if (!migrations.includes(transformation.migration)) {
+      migrations.push(transformation.migration);
+    }
     current[category] = transformation.after_sha256;
     combined[category] = {
       migration: transformation.migration,
@@ -483,7 +1271,7 @@ export function validateTransformationRegistries({
     };
   }
 
-  const transformedCategories = new Set();
+  const transformedCategories = new Map();
   const semanticInvariants = [];
   const seenInvariants = new Set();
   for (const [index, registry] of registries.entries()) {
@@ -522,6 +1310,24 @@ export function validateTransformationRegistries({
       throw new Error(`${registry.registry_id} migrations are not ordered`);
     }
     if (
+      migrations.length > 0 &&
+      registry.migrations[0] <= migrations[migrations.length - 1]
+    ) {
+      throw new Error("transformation registry migrations overlap or reorder");
+    }
+    migrations.push(...registry.migrations);
+
+    if (registry.sequence === 3 && registry.registry_id === "003-exact-money") {
+      if (
+        JSON.stringify(registry.migrations) !==
+        JSON.stringify(["20260902000001", "20260902000002"])
+      ) {
+        throw new Error("sequence 003 exact migration set is invalid");
+      }
+      Object.assign(baselineCategories, PHASE3_BASELINE_CATEGORY_HASHES);
+      Object.assign(current, PHASE3_BASELINE_CATEGORY_HASHES);
+    }
+    if (
       !registry.transformations ||
       typeof registry.transformations !== "object" ||
       Array.isArray(registry.transformations) ||
@@ -533,10 +1339,16 @@ export function validateTransformationRegistries({
     for (const [category, transformation] of Object.entries(
       registry.transformations,
     )) {
-      if (!categoryNames.includes(category)) {
+      if (!Object.hasOwn(current, category)) {
         throw new Error(`unknown transformation category: ${category}`);
       }
-      if (transformedCategories.has(category)) {
+      const previousSequence = transformedCategories.get(category);
+      const isAllowedPhase3Repeat =
+        registry.sequence === 3 &&
+        registry.registry_id === "003-exact-money" &&
+        previousSequence === 2 &&
+        phase3RepeatedCoreCategories.has(category);
+      if (previousSequence !== undefined && !isAllowedPhase3Repeat) {
         throw new Error(`overlapping transformation category: ${category}`);
       }
       assertExactFields(
@@ -555,13 +1367,19 @@ export function validateTransformationRegistries({
       if (transformation.after_sha256 === transformation.before_sha256) {
         throw new Error(`overbroad unchanged transformation: ${category}`);
       }
-      transformedCategories.add(category);
+      transformedCategories.set(category, registry.sequence);
       current[category] = transformation.after_sha256;
-      combined[category] = {
-        migration: transformation.migration,
-        before_sha256: baselineExpected.categories[category],
-        after_sha256: transformation.after_sha256,
-      };
+      combined[category] = combined[category]
+        ? {
+            ...combined[category],
+            migration: transformation.migration,
+            after_sha256: transformation.after_sha256,
+          }
+        : {
+            migration: transformation.migration,
+            before_sha256: baselineCategories[category],
+            after_sha256: transformation.after_sha256,
+          };
     }
 
     if (
@@ -582,13 +1400,53 @@ export function validateTransformationRegistries({
       seenInvariants.add(invariant);
       semanticInvariants.push(invariant);
     }
+
+    if (registry.sequence === 3) {
+      if (registry.registry_id !== "003-exact-money") {
+        throw new Error("sequence 003 exact registry identity is invalid");
+      }
+      const receivedTransformations = Object.keys(registry.transformations);
+      const missingTransformation = PHASE3_REQUIRED_TRANSFORMATIONS.find(
+        (category) => !receivedTransformations.includes(category),
+      );
+      if (missingTransformation) {
+        throw new Error(
+          `missing exact transformation: ${missingTransformation}`,
+        );
+      }
+      const unexpectedTransformation = receivedTransformations.find(
+        (category) => !PHASE3_REQUIRED_TRANSFORMATIONS.includes(category),
+      );
+      if (unexpectedTransformation) {
+        throw new Error(
+          `unexpected exact transformation: ${unexpectedTransformation}`,
+        );
+      }
+      const missingInvariant = PHASE3_EXACT_INVARIANTS.find(
+        (invariant) => !registry.semantic_invariants.includes(invariant),
+      );
+      if (missingInvariant) {
+        throw new Error(
+          `missing exact semantic invariant: ${missingInvariant}`,
+        );
+      }
+      const unexpectedInvariant = registry.semantic_invariants.find(
+        (invariant) => !PHASE3_EXACT_INVARIANTS.includes(invariant),
+      );
+      if (unexpectedInvariant) {
+        throw new Error(
+          `unexpected exact semantic invariant: ${unexpectedInvariant}`,
+        );
+      }
+    }
   }
 
   return {
     baseline_id: baselineExpected.baseline_id,
-    categories: { ...baselineExpected.categories },
+    categories: baselineCategories,
     transformations: combined,
     semantic_invariants: semanticInvariants,
+    migrations,
   };
 }
 
@@ -733,7 +1591,7 @@ async function runChecked(
   return result;
 }
 
-async function prepareBaseline(container, execute) {
+export async function prepareBaseline(container, execute = executeProcess) {
   const files = ["schema.sql", "migration-history.sql", "fixtures.sql"];
   for (const filename of files) {
     await runChecked(
@@ -763,7 +1621,7 @@ async function prepareBaseline(container, execute) {
       "-v",
       "ON_ERROR_STOP=1",
       "-c",
-      `${deleteUsers}; DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION pg_database_owner;`,
+      `${deleteUsers}; DROP SCHEMA IF EXISTS private CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public AUTHORIZATION pg_database_owner;`,
     ],
     "disposable baseline initialization",
   );
@@ -785,6 +1643,54 @@ async function prepareBaseline(container, execute) {
         `/tmp/rc-${filename}`,
       ],
       `baseline load ${filename}`,
+    );
+  }
+}
+
+async function applyRegisteredMigrations(container, migrations, execute) {
+  const migrationFiles = fs
+    .readdirSync(path.join(repositoryRoot, "supabase/migrations"))
+    .filter((filename) => filename.endsWith(".sql"));
+  for (const version of migrations) {
+    const matches = migrationFiles.filter((filename) =>
+      filename.startsWith(`${version}_`),
+    );
+    if (matches.length !== 1) {
+      throw new Error(
+        `registered migration file resolution failed: ${version}`,
+      );
+    }
+    const filename = matches[0];
+    const containerPath = `/tmp/rc-registered-${filename}`;
+    await runChecked(
+      execute,
+      "docker",
+      [
+        "cp",
+        path.join(repositoryRoot, "supabase/migrations", filename),
+        `${container}:${containerPath}`,
+      ],
+      `registered migration copy ${version}`,
+      60000,
+    );
+    await runChecked(
+      execute,
+      "docker",
+      [
+        "exec",
+        container,
+        "psql",
+        "-X",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "--file",
+        containerPath,
+      ],
+      `registered migration application ${version}`,
     );
   }
 }
@@ -818,9 +1724,13 @@ async function queryJson(container, query, category, execute) {
   }
 }
 
-export async function captureFingerprints(container, execute = executeProcess) {
+export async function captureFingerprints(
+  container,
+  execute = executeProcess,
+  categories = coreCategoryNames,
+) {
   const fingerprints = {};
-  for (const category of categoryNames) {
+  for (const category of categories) {
     fingerprints[category] = hashFingerprint(
       await queryJson(
         container,
@@ -849,8 +1759,21 @@ async function captureInvoiceSemantics(container, execute) {
   };
 }
 
-function assertSemanticInvariants({ before, after, postUpgrade, invariants }) {
+function assertSemanticInvariants({
+  before,
+  after,
+  postUpgrade,
+  exactSnapshot,
+  invariants,
+}) {
   const results = {};
+  let exactSnapshotValidated;
+  const exactSnapshotIsValid = () => {
+    if (exactSnapshotValidated === undefined) {
+      exactSnapshotValidated = validateExactUpgradeSnapshot(exactSnapshot);
+    }
+    return exactSnapshotValidated;
+  };
   const assertions = {
     invoice_count_preserved: () => before.invoice_count === after.invoice_count,
     invoice_numeric_text_preserved: () =>
@@ -871,6 +1794,14 @@ function assertSemanticInvariants({ before, after, postUpgrade, invariants }) {
     billing_grants_least_privilege: () =>
       postUpgrade.anonymous_invoice_privilege_count === "0" &&
       postUpgrade.authenticated_delete === false,
+    exact_invoice_values_canonical: exactSnapshotIsValid,
+    exact_line_items_canonical: exactSnapshotIsValid,
+    exact_automation_state_canonical: exactSnapshotIsValid,
+    exact_evidence_finalization_replaced: exactSnapshotIsValid,
+    exact_invoice_rpcs_locked: exactSnapshotIsValid,
+    exact_invoice_acl_least_privilege: exactSnapshotIsValid,
+    tax_rate_compatibility_exact: exactSnapshotIsValid,
+    unrelated_crm_payloads_preserved: exactSnapshotIsValid,
   };
   for (const invariant of invariants) {
     const assertion = assertions[invariant];
@@ -884,7 +1815,7 @@ function assertSemanticInvariants({ before, after, postUpgrade, invariants }) {
 
 function fingerprintMismatches({ before, after, expected }) {
   const mismatches = {};
-  for (const category of categoryNames) {
+  for (const category of Object.keys(expected.categories)) {
     const expectedAfter =
       expected.transformations?.[category]?.after_sha256 ?? before[category];
     if (after[category] !== expectedAfter) {
@@ -899,17 +1830,27 @@ function fingerprintMismatches({ before, after, expected }) {
 
 async function runUpgradeProof({ execute = executeProcess } = {}) {
   assertLocalDatabase(process.env.SUPABASE_DB_URL);
+  verifyImmutableUpgradeInputs();
   await verifyBaseline({ baselineDirectory });
   const container = await resolveDatabaseContainer(execute);
-  await prepareBaseline(container, execute);
-  const before = await captureFingerprints(container, execute);
-  const beforeSemantics = await captureInvoiceSemantics(container, execute);
   const expected = loadUpgradeExpectation();
   const expectedUpgrade = loadTransformationRegistries({
     baselineExpected: expected,
   });
-  assertFingerprintShape(expectedUpgrade.categories, "expected");
-  for (const category of categoryNames) {
+  const activeCategories = Object.keys(expectedUpgrade.categories);
+  assertFingerprintShape(
+    expectedUpgrade.categories,
+    "expected",
+    activeCategories,
+  );
+  await prepareBaseline(container, execute);
+  const before = await captureFingerprints(
+    container,
+    execute,
+    activeCategories,
+  );
+  const beforeSemantics = await captureInvoiceSemantics(container, execute);
+  for (const category of activeCategories) {
     if (before[category] !== expectedUpgrade.categories[category]) {
       throw new Error(
         `upgrade fingerprint mismatch before: ${category} ` +
@@ -917,13 +1858,12 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
       );
     }
   }
-  await runChecked(
+  await applyRegisteredMigrations(
+    container,
+    expectedUpgrade.migrations,
     execute,
-    "supabase",
-    ["migration", "up", "--local"],
-    "pending migration application",
   );
-  const after = await captureFingerprints(container, execute);
+  const after = await captureFingerprints(container, execute, activeCategories);
   const afterSemantics = await captureInvoiceSemantics(container, execute);
   const postUpgradeSemantics = await queryJson(
     container,
@@ -931,6 +1871,23 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
     "post_upgrade_semantics",
     execute,
   );
+  let exactSnapshot;
+  if (
+    expectedUpgrade.semantic_invariants.some((invariant) =>
+      PHASE3_EXACT_INVARIANTS.includes(invariant),
+    )
+  ) {
+    exactSnapshot = await queryJson(
+      container,
+      exactPostUpgradeSemanticQuery,
+      "exact_post_upgrade_semantics",
+      execute,
+    );
+    exactSnapshot.unrelated_crm = {
+      before_sha256: before.unrelated_crm_payloads,
+      after_sha256: after.unrelated_crm_payloads,
+    };
+  }
   const mismatches = fingerprintMismatches({
     before,
     after,
@@ -950,6 +1907,7 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
     before: beforeSemantics,
     after: afterSemantics,
     postUpgrade: postUpgradeSemantics,
+    exactSnapshot,
     invariants: expectedUpgrade.semantic_invariants,
   });
   return {
