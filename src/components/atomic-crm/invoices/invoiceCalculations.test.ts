@@ -60,11 +60,7 @@ describe("exact invoice preview", () => {
   it("rounds 8.875 percent once to minor units", () => {
     const rate = parseOrdinaryPercentage("8.875%");
     expect(
-      calculateTaxAmount(
-        money("10000"),
-        rate,
-        USD_HALF_AWAY_ROUNDING_POLICY,
-      ),
+      calculateTaxAmount(money("10000"), rate, USD_HALF_AWAY_ROUNDING_POLICY),
     ).toEqual(money("888"));
     expect(
       calculateInvoiceTotal(
@@ -108,20 +104,14 @@ describe("exact invoice preview", () => {
 
   it("rejects line-item mismatch, bad policies, zero denominators, and overflow", () => {
     expect(() =>
-      calculateLineItemsTotal([
-        lineItem("Mismatch", "2", "1", "400", "799"),
-      ]),
+      calculateLineItemsTotal([lineItem("Mismatch", "2", "1", "400", "799")]),
     ).toThrowError("INVOICE_PREVIEW_LINE_ITEM_MISMATCH");
 
     expect(() =>
-      calculateInvoiceTotal(
-        money("1"),
-        parseOrdinaryPercentage("0%"),
-        {
-          ...USD_HALF_AWAY_ROUNDING_POLICY,
-          rounding_policy_version: "bankers-v1",
-        },
-      ),
+      calculateInvoiceTotal(money("1"), parseOrdinaryPercentage("0%"), {
+        ...USD_HALF_AWAY_ROUNDING_POLICY,
+        rounding_policy_version: "bankers-v1",
+      }),
     ).toThrowError("FINANCIAL_POLICY_MISMATCH");
 
     expect(() =>
