@@ -556,7 +556,7 @@ const invoiceSemanticQuery = `
         jsonb_build_object(
           'id', id::text,
           'amount', amount::text,
-          'tax_rate', tax_rate::text,
+          'tax_rate', pg_catalog.trim_scale(tax_rate)::text,
           'tax_amount', tax_amount::text,
           'total_amount', total_amount::text
         ) ORDER BY id
@@ -597,7 +597,7 @@ const invoiceSemanticQuery = `
           'invoice_number', invoice_number,
           'description', description,
           'amount', amount::text,
-          'tax_rate', tax_rate::text,
+          'tax_rate', pg_catalog.trim_scale(tax_rate)::text,
           'tax_amount', tax_amount::text,
           'total_amount', total_amount::text,
           'line_items', line_items,
