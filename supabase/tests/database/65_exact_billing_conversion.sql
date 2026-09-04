@@ -26,38 +26,36 @@ SELECT is(
 );
 SELECT is(
   (
-    SELECT jsonb_build_object(
-      'amount_minor', amount_minor::text,
-      'currency', currency,
-      'rate', jsonb_build_array(tax_rate_numerator::text, tax_rate_denominator::text),
-      'submitted', submitted_percentage,
-      'tax_minor', tax_amount_minor::text,
-      'total_minor', total_amount_minor::text
-    )
-    FROM public.invoices WHERE id = 6002
+    SELECT count(*) FROM public.invoices
+    WHERE amount_minor IS NULL OR currency <> 'USD'
+      OR tax_rate_denominator <= 0
+      OR total_amount_minor::numeric <> amount_minor::numeric + tax_amount_minor::numeric
   ),
-  '{"amount_minor":"1234567","currency":"USD","rate":["33","400"],"submitted":"8.25%","tax_minor":"101852","total_minor":"1336419"}'::jsonb,
-  'accepted invoice values convert without guessing or rounding'
+  0::bigint,
+  'every existing invoice is converted and reconciled atomically'
 );
 SELECT is(
-  (SELECT line_items_exact->0->'quantity_ratio' FROM public.invoices WHERE id = 6001),
+  private.billing_validate_exact_line_items('[{"description":"Synthetic unit","quantity_ratio":{"numerator":"1","denominator":"1"},"unit_price":{"amount_minor":"1","currency":"USD"},"extended_amount":{"amount_minor":"1","currency":"USD"},"currency_policy_version":"usd-v1","rounding_policy_version":"half-away-from-zero-v1"}]'::jsonb)->0->'quantity_ratio',
   '{"numerator":"1","denominator":"1"}'::jsonb,
-  'legacy quantity maps to one canonical ratio'
+  'exact quantity accepts one canonical ratio'
 );
 SELECT is(
-  (SELECT line_items_exact->0->'unit_price' FROM public.invoices WHERE id = 6001),
+  private.billing_validate_exact_line_items('[{"description":"Synthetic unit","quantity_ratio":{"numerator":"1","denominator":"1"},"unit_price":{"amount_minor":"1","currency":"USD"},"extended_amount":{"amount_minor":"1","currency":"USD"},"currency_policy_version":"usd-v1","rounding_policy_version":"half-away-from-zero-v1"}]'::jsonb)->0->'unit_price',
   '{"amount_minor":"1","currency":"USD"}'::jsonb,
-  'legacy rate maps only to exact unit price'
+  'exact unit price remains typed string money'
 );
 SELECT is(
-  (SELECT line_items_exact->0->'extended_amount' FROM public.invoices WHERE id = 6001),
+  private.billing_validate_exact_line_items('[{"description":"Synthetic unit","quantity_ratio":{"numerator":"1","denominator":"1"},"unit_price":{"amount_minor":"1","currency":"USD"},"extended_amount":{"amount_minor":"1","currency":"USD"},"currency_policy_version":"usd-v1","rounding_policy_version":"half-away-from-zero-v1"}]'::jsonb)->0->'extended_amount',
   '{"amount_minor":"1","currency":"USD"}'::jsonb,
-  'legacy amount maps only to exact extended amount'
+  'exact extended amount remains typed string money'
 );
 SELECT is(
-  (SELECT line_items_legacy_evidence FROM public.invoices WHERE id = 6001),
-  (SELECT line_items FROM public.invoices WHERE id = 6001),
-  'the accepted original line-item payload remains immutable evidence'
+  jsonb_build_array(
+    private.billing_format_usd_minor('-9223372036854775808'::bigint),
+    private.billing_format_usd_minor('9223372036854775807'::bigint)
+  ),
+  '["-92233720368547758.08","92233720368547758.07"]'::jsonb,
+  'compatibility money preserves both signed-bigint endpoints exactly'
 );
 
 SELECT has_function('public', 'read_billing_invoices_exact', ARRAY['jsonb'], 'exact invoice read RPC exists');
@@ -103,22 +101,60 @@ SELECT ok(has_function_privilege('authenticated', 'public.read_billing_invoices_
 SELECT ok(has_function_privilege('authenticated', 'public.save_billing_invoice_exact(jsonb)', 'EXECUTE'), 'authenticated can call exact saves');
 SELECT ok(NOT has_function_privilege('anon', 'public.read_billing_invoices_exact(jsonb)', 'EXECUTE'), 'anonymous cannot call exact reads');
 
-SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
-SELECT set_config('request.jwt.claims', '{"sub":"10000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+CREATE TEMP TABLE test_exact_invoice_results (label text PRIMARY KEY, payload jsonb) ON COMMIT DROP;
+GRANT SELECT, INSERT ON test_exact_invoice_results TO authenticated;
+
+SELECT set_config('request.jwt.claim.sub', '22000000-0000-0000-0000-000000000002', true);
+SELECT set_config('request.jwt.claims', '{"sub":"22000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
+INSERT INTO test_exact_invoice_results
+VALUES (
+  'bravo',
+  public.save_billing_invoice_exact('{
+    "billing_account_id":"22000000-0000-0000-0000-000000000200",
+    "invoice_number":"EXACT-BRAVO-1",
+    "amount":{"amount_minor":"9223372036854775807","currency":"USD"},
+    "tax_rate":{"kind":"ordinary_percentage","numerator":"0","denominator":"1","submitted_percentage":"0%","rate_policy_version":"ordinary-percentage-v1"},
+    "line_items":[],
+    "status":"Draft"
+  }'::jsonb)
+);
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000002', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+INSERT INTO test_exact_invoice_results
+VALUES (
+  'alpha',
+  public.save_billing_invoice_exact('{
+    "billing_account_id":"21000000-0000-0000-0000-000000000200",
+    "invoice_number":"EXACT-ALPHA-1",
+    "amount":{"amount_minor":"1","currency":"USD"},
+    "tax_rate":{"kind":"ordinary_percentage","numerator":"71","denominator":"800","submitted_percentage":"8.875%","rate_policy_version":"ordinary-percentage-v1"},
+    "line_items":[{"description":"Synthetic unit","quantity_ratio":{"numerator":"1","denominator":"1"},"unit_price":{"amount_minor":"1","currency":"USD"},"extended_amount":{"amount_minor":"1","currency":"USD"},"currency_policy_version":"usd-v1","rounding_policy_version":"half-away-from-zero-v1"}],
+    "status":"Draft"
+  }'::jsonb)
+);
 SELECT is(
-  public.read_billing_invoices_exact('{"mode":"get","invoice_id":"6001"}'::jsonb)->'data'->>'amount_minor',
+  public.read_billing_invoices_exact(jsonb_build_object(
+    'mode', 'get', 'invoice_id', (SELECT payload->'data'->>'id' FROM test_exact_invoice_results WHERE label = 'alpha')
+  ))->'data'->>'amount_minor',
   '1',
   'same-account exact get returns canonical string money'
 );
 SELECT is(
-  public.read_billing_invoices_legacy_compat('{"mode":"get","invoice_id":"6002"}'::jsonb)->'data'->>'tax_rate',
-  '8.250000000',
+  public.read_billing_invoices_legacy_compat(jsonb_build_object(
+    'mode', 'get', 'invoice_id', (SELECT payload->'data'->>'id' FROM test_exact_invoice_results WHERE label = 'alpha')
+  ))->'data'->>'tax_rate',
+  '8.875000000',
   'compatibility get returns a fixed-nine-decimal bare percentage string'
 );
 SELECT is(
-  public.read_billing_invoices_exact('{"mode":"get","invoice_id":"6003"}'::jsonb)->'data',
-  NULL::jsonb,
+  public.read_billing_invoices_exact(jsonb_build_object(
+    'mode', 'get', 'invoice_id', (SELECT payload->'data'->>'id' FROM test_exact_invoice_results WHERE label = 'bravo')
+  ))->'data',
+  'null'::jsonb,
   'a caller cannot enumerate another account invoice'
 );
 SELECT throws_ok(
