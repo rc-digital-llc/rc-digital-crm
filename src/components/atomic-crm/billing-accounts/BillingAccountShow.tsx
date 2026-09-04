@@ -29,6 +29,7 @@ import type {
 } from "../types";
 import { BillingAccountAccessPanels } from "./BillingAccountAccessPanels";
 import { BillingAccountEvidencePanel } from "./BillingAccountEvidencePanel";
+import { BillingAgreementPanel } from "./BillingAgreementPanel";
 
 const statusLabels: Record<BillingAccount["billing_status"], string> = {
   active: "Active",
@@ -148,6 +149,7 @@ const BillingAccountDetailGrid = ({
     <ResponsibleOwnerCard record={record} />
     <AuthorizedContactsCard record={record} />
     <ScopedAccessSlot account={record} />
+    <BillingAgreementPanel account={record} />
     <EvidenceSecuritySlot account={record} />
   </div>
 );
