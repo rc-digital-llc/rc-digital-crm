@@ -30,6 +30,12 @@ describe("Phase 3 exact-money release coupling", () => {
     "supabase/tests/support/billing-security-fixtures.sql",
     "tests/release/replay-concurrency.test.ts",
     "tests/release/billing-evidence.test.ts",
+    "src/components/atomic-crm/types.ts",
+    "src/components/atomic-crm/providers/types.ts",
+    "src/components/atomic-crm/providers/supabase/dataProvider.ts",
+    "tests/release/exact-money-boundaries.test.ts",
+    "tests/release/billing-tenancy.test.ts",
+    "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql",
   ];
 
   it("classifies every protected exact-money source and test as financial", () => {
@@ -164,6 +170,49 @@ describe("Phase 3 exact-money release coupling", () => {
     expect(provider).toContain("parseExactBillingInvoiceResponse");
     expect(provider).not.toMatch(/\.from\(["']invoices["']\)/);
     expect(provider).not.toContain("execute_billing_automation_command");
+  });
+
+  it("protects the Wave 5 live invoice boundary in the permanent HTTP lane", () => {
+    const makefile = readSource("makefile");
+    const financialTargets = makefile.slice(0, makefile.indexOf("\ninstall:"));
+    const httpTests = financialTargets.match(
+      /FINANCIAL_DATABASE_HTTP_TESTS := \\\n([\s\S]*?)\n\nFINANCIAL_FUNCTION_TESTS/,
+    )?.[1];
+    const provider = readSource(
+      "src/components/atomic-crm/providers/supabase/dataProvider.ts",
+    );
+    const exactMigration = readSource(
+      "supabase/migrations/20260902000002_exact_billing_expand.sql",
+    );
+    const errorContractMigration = readSource(
+      "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql",
+    );
+
+    expect(httpTests).toBeDefined();
+    expect(httpTests).toContain("tests/release/billing-tenancy.test.ts");
+    expect(httpTests).toContain("tests/release/exact-money-boundaries.test.ts");
+    expect(financialTargets).toMatch(
+      /test-financial-database-http:[\s\S]*?run-supabase-lane\.mjs run --lane database-contracts -- npm test -- --run \$\(FINANCIAL_DATABASE_HTTP_TESTS\)/,
+    );
+    expect(provider).not.toMatch(/\.from\(["']invoices["']\)/);
+    expect(`${exactMigration}\n${errorContractMigration}`).not.toMatch(
+      /CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+[^;]*invoice/i,
+    );
+    expect(exactMigration).toContain(
+      "REVOKE ALL ON TABLE public.invoices FROM anon, authenticated",
+    );
+    expect(exactMigration).toContain(
+      "REVOKE ALL ON SEQUENCE public.invoices_id_seq FROM anon, authenticated",
+    );
+    expect(`${exactMigration}\n${errorContractMigration}`).not.toMatch(
+      /GRANT\s+(?:SELECT|INSERT|UPDATE|DELETE|ALL)[^;]*public\.invoices[^;]*authenticated/i,
+    );
+    expect(`${exactMigration}\n${errorContractMigration}`).not.toMatch(
+      /GRANT\s+(?:USAGE|ALL)[^;]*public\.invoices_id_seq[^;]*authenticated/i,
+    );
+    expect(errorContractMigration).toContain(
+      "MESSAGE = 'INVOICE_SAVE_INVALID_REQUEST'",
+    );
   });
 
   it("protects the closed exact upgrade verifier and immutable history pins", () => {
