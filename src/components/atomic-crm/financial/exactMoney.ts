@@ -1,4 +1,5 @@
 const canonicalIntegerBrand: unique symbol = Symbol("CanonicalIntegerText");
+const exactRatioBrand: unique symbol = Symbol("ExactRatio");
 
 export type CanonicalIntegerText = string & {
   readonly [canonicalIntegerBrand]: true;
@@ -17,11 +18,25 @@ export type OrdinaryPercentageRate = Readonly<{
   rate_policy_version: "ordinary-percentage-v1";
 }>;
 
+export type ExactRatio = Readonly<{
+  numerator: CanonicalIntegerText;
+  denominator: CanonicalIntegerText;
+  readonly [exactRatioBrand]: true;
+}>;
+
+export type UsdRoundingPolicy = Readonly<{
+  currency: "USD";
+  currency_exponent: "2";
+  currency_policy_version: "usd-v1";
+  rounding_policy_version: "half-away-from-zero-v1";
+}>;
+
 export type FinancialErrorCode =
   | "FINANCIAL_DIVISION_BY_ZERO"
   | "FINANCIAL_INPUT_TOO_LONG"
   | "FINANCIAL_INVALID_INTEGER"
   | "FINANCIAL_INVALID_MONEY"
+  | "FINANCIAL_INVALID_RATIO"
   | "FINANCIAL_INVALID_RATE"
   | "FINANCIAL_OVERFLOW"
   | "FINANCIAL_POLICY_MISMATCH"
@@ -51,6 +66,20 @@ const RATE_WIRE_KEYS = Object.freeze([
   "rate_policy_version",
   "submitted_percentage",
 ]);
+const EXACT_RATIO_KEYS = Object.freeze(["denominator", "numerator"]);
+const USD_ROUNDING_KEYS = Object.freeze([
+  "currency",
+  "currency_exponent",
+  "currency_policy_version",
+  "rounding_policy_version",
+]);
+
+export const USD_HALF_AWAY_ROUNDING_POLICY: UsdRoundingPolicy = Object.freeze({
+  currency: "USD",
+  currency_exponent: "2",
+  currency_policy_version: "usd-v1",
+  rounding_policy_version: "half-away-from-zero-v1",
+});
 
 function fail(code: FinancialErrorCode): never {
   throw new FinancialContractError(code);
@@ -135,6 +164,52 @@ function greatestCommonDivisor(left: bigint, right: bigint): bigint {
     b = remainder;
   }
   return a;
+}
+
+export function parseExactRatio(value: unknown): ExactRatio {
+  if (
+    !isPlainRecord(value) ||
+    Object.keys(value).sort().join("\0") !== EXACT_RATIO_KEYS.join("\0")
+  ) {
+    fail("FINANCIAL_INVALID_RATIO");
+  }
+
+  let numerator: CanonicalIntegerText;
+  let denominator: CanonicalIntegerText;
+  try {
+    numerator = parseCanonicalIntegerText(value.numerator);
+    denominator = parseCanonicalIntegerText(value.denominator);
+  } catch (error) {
+    if (
+      error instanceof FinancialContractError &&
+      error.code === "FINANCIAL_INPUT_TOO_LONG"
+    ) {
+      throw error;
+    }
+    fail("FINANCIAL_INVALID_RATIO");
+  }
+
+  const numeratorValue = BigInt(numerator);
+  const denominatorValue = BigInt(denominator);
+  if (denominatorValue === 0n) {
+    fail("FINANCIAL_DIVISION_BY_ZERO");
+  }
+  if (denominatorValue < 0n) {
+    fail("FINANCIAL_INVALID_RATIO");
+  }
+
+  const divisor = greatestCommonDivisor(numeratorValue, denominatorValue);
+  const reducedNumerator =
+    numeratorValue === 0n ? 0n : numeratorValue / divisor;
+  const reducedDenominator =
+    numeratorValue === 0n ? 1n : denominatorValue / divisor;
+
+  return Object.freeze({
+    numerator: canonicalTextFromBigInt(assertPersistedBigInt(reducedNumerator)),
+    denominator: canonicalTextFromBigInt(
+      assertPersistedBigInt(reducedDenominator),
+    ),
+  }) as ExactRatio;
 }
 
 function makeOrdinaryPercentageRate(
@@ -251,4 +326,121 @@ export function areRatesFinanciallyEqual(
     left.numerator === right.numerator &&
     left.denominator === right.denominator
   );
+}
+
+export function areRatiosEqual(left: ExactRatio, right: ExactRatio): boolean {
+  return (
+    left.numerator === right.numerator && left.denominator === right.denominator
+  );
+}
+
+function parseUsdRoundingPolicy(value: unknown): UsdRoundingPolicy {
+  if (!isPlainRecord(value)) {
+    fail("FINANCIAL_POLICY_MISMATCH");
+  }
+  if (!("currency" in value) || value.currency !== "USD") {
+    fail("FINANCIAL_UNSUPPORTED_CURRENCY");
+  }
+  if (Object.keys(value).sort().join("\0") !== USD_ROUNDING_KEYS.join("\0")) {
+    fail("FINANCIAL_POLICY_MISMATCH");
+  }
+  if (
+    value.currency_exponent !== "2" ||
+    value.currency_policy_version !== "usd-v1" ||
+    value.rounding_policy_version !== "half-away-from-zero-v1"
+  ) {
+    fail("FINANCIAL_POLICY_MISMATCH");
+  }
+  return USD_HALF_AWAY_ROUNDING_POLICY;
+}
+
+function roundSignedFraction(numerator: bigint, denominator: bigint): bigint {
+  if (denominator === 0n) {
+    fail("FINANCIAL_DIVISION_BY_ZERO");
+  }
+  if (denominator < 0n) {
+    fail("FINANCIAL_INVALID_RATIO");
+  }
+
+  const isNegative = numerator < 0n;
+  const absoluteNumerator = isNegative ? -numerator : numerator;
+  let absoluteResult = absoluteNumerator / denominator;
+  const remainder = absoluteNumerator % denominator;
+  if (remainder * 2n >= denominator) {
+    absoluteResult += 1n;
+  }
+
+  if (absoluteResult === 0n) {
+    return 0n;
+  }
+  return isNegative ? -absoluteResult : absoluteResult;
+}
+
+function usdMoneyFromBigInt(value: bigint): UsdMoney {
+  return Object.freeze({
+    amount_minor: canonicalTextFromBigInt(assertPersistedBigInt(value)),
+    currency: "USD",
+  });
+}
+
+export function roundExactRatioToUsdMoney(value: unknown): UsdMoney {
+  if (!isPlainRecord(value)) {
+    fail("FINANCIAL_INVALID_RATIO");
+  }
+  const policy = parseUsdRoundingPolicy({
+    currency: value.currency,
+    currency_exponent: value.currency_exponent,
+    currency_policy_version: value.currency_policy_version,
+    rounding_policy_version: value.rounding_policy_version,
+  });
+  const ratio = parseExactRatio({
+    numerator: value.numerator,
+    denominator: value.denominator,
+  });
+  parseUsdRoundingPolicy(policy);
+
+  return usdMoneyFromBigInt(
+    roundSignedFraction(BigInt(ratio.numerator), BigInt(ratio.denominator)),
+  );
+}
+
+export function multiplyUsdMoneyByExactRatio(
+  moneyValue: unknown,
+  ratioValue: unknown,
+  policyValue: unknown,
+): UsdMoney {
+  const money = parseUsdMoney(moneyValue);
+  const ratio = parseExactRatio(ratioValue);
+  parseUsdRoundingPolicy(policyValue);
+
+  const intermediateNumerator =
+    BigInt(money.amount_minor) * BigInt(ratio.numerator);
+  return usdMoneyFromBigInt(
+    roundSignedFraction(intermediateNumerator, BigInt(ratio.denominator)),
+  );
+}
+
+export function multiplyUsdMoneyByRate(
+  moneyValue: unknown,
+  rateValue: unknown,
+  policyValue: unknown,
+): UsdMoney {
+  const rate = parseOrdinaryPercentageRate(rateValue);
+  return multiplyUsdMoneyByExactRatio(
+    moneyValue,
+    { numerator: rate.numerator, denominator: rate.denominator },
+    policyValue,
+  );
+}
+
+export function formatUsdMoney(value: unknown): string {
+  const money = parseUsdMoney(value);
+  const amount = BigInt(money.amount_minor);
+  const isNegative = amount < 0n;
+  const absolute = isNegative ? -amount : amount;
+  const dollars = (absolute / 100n)
+    .toString(10)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const cents = (absolute % 100n).toString(10).padStart(2, "0");
+  return `${isNegative ? "-" : ""}$${dollars}.${cents}`;
 }
