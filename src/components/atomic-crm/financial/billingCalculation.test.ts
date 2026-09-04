@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   BILLING_CALCULATION_ERROR_VECTORS,
   BILLING_CALCULATION_GOLDEN_VECTORS,
+  BILLING_ADJUSTMENT_GOLDEN_VECTORS,
   BILLING_SIGNED_ADJUSTMENT_ROUNDING_VECTORS,
   BillingCalculationContractError,
   calculateBillingFormula,
+  classifyBillingAdjustment,
 } from "./billingCalculationFixtures";
 import {
   roundExactRatioToUsdMoney,
@@ -42,6 +44,24 @@ describe("exact billing calculation golden vectors", () => {
     },
   );
 
+  it.each(BILLING_ADJUSTMENT_GOLDEN_VECTORS)(
+    "$name",
+    ({
+      original_amount_minor,
+      actual_amount_minor,
+      true_up_policy,
+      expected,
+    }) => {
+      expect(
+        classifyBillingAdjustment({
+          original_amount_minor,
+          actual_amount_minor,
+          true_up_policy,
+        }),
+      ).toEqual(expected);
+    },
+  );
+
   it("never uses number-valued financial authority in the shared vectors", () => {
     const visit = (value: unknown): void => {
       expect(typeof value).not.toBe("number");
@@ -53,5 +73,6 @@ describe("exact billing calculation golden vectors", () => {
     visit(BILLING_CALCULATION_GOLDEN_VECTORS);
     visit(BILLING_CALCULATION_ERROR_VECTORS);
     visit(BILLING_SIGNED_ADJUSTMENT_ROUNDING_VECTORS);
+    visit(BILLING_ADJUSTMENT_GOLDEN_VECTORS);
   });
 });

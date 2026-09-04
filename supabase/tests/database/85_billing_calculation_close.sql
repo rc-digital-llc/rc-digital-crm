@@ -73,5 +73,80 @@ SELECT ok(
   'calculation lineage validation creates no invoice, payment, or ledger effect'
 );
 
+SELECT has_table(
+  'public', 'billing_adjustment_calculations',
+  'append-only late-evidence adjustment calculations exist'
+);
+SELECT has_table(
+  'public', 'billing_calculation_links',
+  'acyclic original-to-adjustment links exist'
+);
+SELECT has_table(
+  'public', 'billing_adjustment_exceptions',
+  'prohibited negative deltas have a durable held exception'
+);
+SELECT has_function(
+  'public', 'create_billing_adjustment_calculation', ARRAY['jsonb'],
+  'late-evidence adjustment command exists'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM pg_catalog.pg_class AS relation
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND relation.relname IN (
+        'billing_adjustment_calculations', 'billing_calculation_links',
+        'billing_adjustment_exceptions'
+      )
+      AND relation.relrowsecurity
+      AND relation.relforcerowsecurity
+  ),
+  3::bigint,
+  'all adjustment facts force row security'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'billing_adjustment_calculations'
+      AND column_name IN (
+        'original_amount_minor', 'actual_amount_minor', 'delta_minor',
+        'intermediate_numerator', 'intermediate_denominator',
+        'minimum_candidate_minor', 'percentage_candidate_minor'
+      )
+      AND data_type IN ('bigint', 'numeric')
+  ),
+  7::bigint,
+  'adjustment reconciliation uses exact typed columns'
+);
+
+SELECT ok(
+  NOT has_table_privilege(
+    'authenticated', 'public.billing_adjustment_calculations', 'INSERT'
+  )
+    AND NOT has_table_privilege(
+      'authenticated', 'public.billing_calculation_links', 'UPDATE'
+    )
+    AND has_function_privilege(
+      'authenticated', 'public.create_billing_adjustment_calculation(jsonb)',
+      'EXECUTE'
+    )
+    AND NOT has_function_privilege(
+      'anon', 'public.create_billing_adjustment_calculation(jsonb)', 'EXECUTE'
+    ),
+  'adjustment writes are RPC-only and anonymous callers are denied'
+);
+
+SELECT ok(
+  pg_get_functiondef(
+    'public.create_billing_adjustment_calculation(jsonb)'::regprocedure
+  ) !~* '(insert\s+into|update)\s+public\.(invoices|payments|ledger)',
+  'adjustment command creates no invoice, payment, or ledger effect'
+);
+
 SELECT * FROM finish();
 ROLLBACK;

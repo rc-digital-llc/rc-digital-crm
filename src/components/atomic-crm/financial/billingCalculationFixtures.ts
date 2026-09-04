@@ -40,6 +40,20 @@ export type BillingFormulaOutput = Readonly<{
   currency: "USD";
 }>;
 
+export type BillingAdjustmentInput = Readonly<{
+  original_amount_minor: string;
+  actual_amount_minor: string;
+  true_up_policy: "next_period_adjustment" | "credit_candidate" | string;
+}>;
+
+export type BillingAdjustmentOutput = Readonly<{
+  original_amount_minor: string;
+  actual_amount_minor: string;
+  delta_minor: string;
+  treatment: "true_up" | "no_adjustment" | "credit_candidate" | "held";
+  status: "approved" | "no_adjustment" | "held";
+}>;
+
 export type BillingCalculationErrorCode =
   | "BILLING_CALCULATION_DIVISION_BY_ZERO"
   | "BILLING_CALCULATION_INVALID"
@@ -224,6 +238,54 @@ export function calculateBillingFormula(value: unknown): BillingFormulaOutput {
       selected_branch: selectedBranch,
       final_amount_minor: finalAmount,
       currency: "USD",
+    });
+  } catch (error) {
+    mapFinancialError(error);
+  }
+}
+
+export function classifyBillingAdjustment(
+  value: BillingAdjustmentInput,
+): BillingAdjustmentOutput {
+  if (
+    value.true_up_policy !== "next_period_adjustment" &&
+    value.true_up_policy !== "credit_candidate"
+  ) {
+    calculationFail("BILLING_CALCULATION_POLICY_MISMATCH");
+  }
+  try {
+    const original = parseUsdMoney({
+      amount_minor: value.original_amount_minor,
+      currency: "USD",
+    }).amount_minor;
+    const actual = parseUsdMoney({
+      amount_minor: value.actual_amount_minor,
+      currency: "USD",
+    }).amount_minor;
+    if (BigInt(original) < 0n || BigInt(actual) < 0n) {
+      calculationFail("BILLING_CALCULATION_INVALID");
+    }
+    const delta = BigInt(actual) - BigInt(original);
+    const treatment =
+      delta > 0n
+        ? "true_up"
+        : delta === 0n
+          ? "no_adjustment"
+          : value.true_up_policy === "credit_candidate"
+            ? "credit_candidate"
+            : "held";
+    const status =
+      treatment === "held"
+        ? "held"
+        : treatment === "no_adjustment"
+          ? "no_adjustment"
+          : "approved";
+    return Object.freeze({
+      original_amount_minor: original,
+      actual_amount_minor: actual,
+      delta_minor: delta.toString(10),
+      treatment,
+      status,
     });
   } catch (error) {
     mapFinancialError(error);
@@ -510,6 +572,67 @@ export const BILLING_SIGNED_ADJUSTMENT_ROUNDING_VECTORS = Object.freeze([
   Object.freeze({ numerator: "1", denominator: "2", expected: "1" }),
   Object.freeze({ numerator: "-1", denominator: "2", expected: "-1" }),
 ]);
+
+export const BILLING_ADJUSTMENT_GOLDEN_VECTORS = Object.freeze([
+  Object.freeze({
+    name: "late evidence positive true-up",
+    original_amount_minor: "125000",
+    actual_amount_minor: "175000",
+    true_up_policy: "next_period_adjustment",
+    expected: Object.freeze({
+      original_amount_minor: "125000",
+      actual_amount_minor: "175000",
+      delta_minor: "50000",
+      treatment: "true_up",
+      status: "approved",
+    }),
+  }),
+  Object.freeze({
+    name: "late evidence exact no-adjustment",
+    original_amount_minor: "125000",
+    actual_amount_minor: "125000",
+    true_up_policy: "next_period_adjustment",
+    expected: Object.freeze({
+      original_amount_minor: "125000",
+      actual_amount_minor: "125000",
+      delta_minor: "0",
+      treatment: "no_adjustment",
+      status: "no_adjustment",
+    }),
+  }),
+  Object.freeze({
+    name: "contract-permitted negative credit candidate",
+    original_amount_minor: "125000",
+    actual_amount_minor: "100000",
+    true_up_policy: "credit_candidate",
+    expected: Object.freeze({
+      original_amount_minor: "125000",
+      actual_amount_minor: "100000",
+      delta_minor: "-25000",
+      treatment: "credit_candidate",
+      status: "approved",
+    }),
+  }),
+  Object.freeze({
+    name: "contract-prohibited negative held for review",
+    original_amount_minor: "125000",
+    actual_amount_minor: "100000",
+    true_up_policy: "next_period_adjustment",
+    expected: Object.freeze({
+      original_amount_minor: "125000",
+      actual_amount_minor: "100000",
+      delta_minor: "-25000",
+      treatment: "held",
+      status: "held",
+    }),
+  }),
+] satisfies ReadonlyArray<{
+  name: string;
+  original_amount_minor: string;
+  actual_amount_minor: string;
+  true_up_policy: "next_period_adjustment" | "credit_candidate";
+  expected: BillingAdjustmentOutput;
+}>);
 import {
   FinancialContractError,
   multiplyUsdMoneyByRate,
