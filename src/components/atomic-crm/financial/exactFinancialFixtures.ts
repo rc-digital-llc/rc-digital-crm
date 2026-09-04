@@ -19,8 +19,14 @@ export const MONEY_WIRE_FIXTURES = Object.freeze([
   Object.freeze({ amount_minor: "0", currency: "USD" as const }),
   Object.freeze({ amount_minor: "-0", currency: "USD" as const }),
   Object.freeze({ amount_minor: "00010888", currency: "USD" as const }),
-  Object.freeze({ amount_minor: POSTGRES_BIGINT_TEXT.min, currency: "USD" as const }),
-  Object.freeze({ amount_minor: POSTGRES_BIGINT_TEXT.max, currency: "USD" as const }),
+  Object.freeze({
+    amount_minor: POSTGRES_BIGINT_TEXT.min,
+    currency: "USD" as const,
+  }),
+  Object.freeze({
+    amount_minor: POSTGRES_BIGINT_TEXT.max,
+    currency: "USD" as const,
+  }),
 ]);
 
 export const ORDINARY_PERCENTAGE_FIXTURES = Object.freeze([

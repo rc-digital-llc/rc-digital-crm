@@ -38,8 +38,14 @@ function expectFinancialCode(
 
 describe("exact money wire contract", () => {
   it("accepts both signed bigint endpoints and returns immutable string-only objects", () => {
-    for (const amountMinor of [POSTGRES_BIGINT_TEXT.min, POSTGRES_BIGINT_TEXT.max]) {
-      const money = parseUsdMoney({ amount_minor: amountMinor, currency: "USD" });
+    for (const amountMinor of [
+      POSTGRES_BIGINT_TEXT.min,
+      POSTGRES_BIGINT_TEXT.max,
+    ]) {
+      const money = parseUsdMoney({
+        amount_minor: amountMinor,
+        currency: "USD",
+      });
 
       expect(money).toEqual({ amount_minor: amountMinor, currency: "USD" });
       expect(Object.isFrozen(money)).toBe(true);
@@ -61,9 +67,9 @@ describe("exact money wire contract", () => {
       amount_minor: "10888",
       currency: "USD",
     });
-    expect(parseCanonicalIntegerText(INTEGER_LENGTH_BOUNDARIES.sixtyFourByteZero)).toBe(
-      "0",
-    );
+    expect(
+      parseCanonicalIntegerText(INTEGER_LENGTH_BOUNDARIES.sixtyFourByteZero),
+    ).toBe("0");
   });
 
   it("rejects non-string JSON numbers, malformed money, and unsupported currency", () => {
@@ -94,7 +100,8 @@ describe("exact money wire contract", () => {
 
   it("checks input length before parsing and range without leaking submitted tokens", () => {
     expectFinancialCode(
-      () => parseCanonicalIntegerText(INTEGER_LENGTH_BOUNDARIES.sixtyFiveByteZero),
+      () =>
+        parseCanonicalIntegerText(INTEGER_LENGTH_BOUNDARIES.sixtyFiveByteZero),
       "FINANCIAL_INPUT_TOO_LONG",
     );
     expectFinancialCode(
@@ -172,11 +179,12 @@ describe("ordinary percentage rate contract", () => {
       );
     }
 
-    expect(parseOrdinaryPercentage(PERCENTAGE_LENGTH_BOUNDARIES.fourteenByteMaximum)).toEqual(
-      expect.objectContaining({ numerator: "1", denominator: "1" }),
-    );
+    expect(
+      parseOrdinaryPercentage(PERCENTAGE_LENGTH_BOUNDARIES.fourteenByteMaximum),
+    ).toEqual(expect.objectContaining({ numerator: "1", denominator: "1" }));
     expectFinancialCode(
-      () => parseOrdinaryPercentage(PERCENTAGE_LENGTH_BOUNDARIES.fifteenByteValue),
+      () =>
+        parseOrdinaryPercentage(PERCENTAGE_LENGTH_BOUNDARIES.fifteenByteValue),
       "FINANCIAL_INPUT_TOO_LONG",
     );
     expectFinancialCode(
@@ -187,13 +195,17 @@ describe("ordinary percentage rate contract", () => {
 
   it("validates canonical rate wire objects and proves bigint never leaks into JSON", () => {
     const original = parseOrdinaryPercentage("8.875%");
-    const roundTrip = parseOrdinaryPercentageRate(JSON.parse(JSON.stringify(original)));
+    const roundTrip = parseOrdinaryPercentageRate(
+      JSON.parse(JSON.stringify(original)),
+    );
 
     expect(roundTrip).toEqual(original);
     expect(JSON.stringify(roundTrip)).toBe(
       '{"kind":"ordinary_percentage","numerator":"71","denominator":"800","submitted_percentage":"8.875%","rate_policy_version":"ordinary-percentage-v1"}',
     );
-    expect(Object.values(roundTrip).some((value) => typeof value === "bigint")).toBe(false);
+    expect(
+      Object.values(roundTrip).some((value) => typeof value === "bigint"),
+    ).toBe(false);
   });
 
   it("rejects tampered, numeric, or policy-mismatched rate wire objects", () => {
