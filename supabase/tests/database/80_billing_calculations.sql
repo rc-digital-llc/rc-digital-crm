@@ -9,6 +9,160 @@ SELECT has_function(
   'private exact billing formula kernel exists'
 );
 
+SELECT has_table(
+  'public', 'billing_calculations',
+  'immutable billing calculation identity exists'
+);
+SELECT has_table(
+  'public', 'billing_calculation_snapshots',
+  'typed exact calculation snapshot exists'
+);
+SELECT has_table(
+  'public', 'billing_calculation_events',
+  'append-only calculation event history exists'
+);
+SELECT has_table(
+  'public', 'billing_close_policies',
+  'versioned close policy authority exists'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM pg_catalog.pg_class AS relation
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND relation.relname IN (
+        'billing_calculations', 'billing_calculation_snapshots',
+        'billing_calculation_events', 'billing_close_policies'
+      )
+      AND relation.relrowsecurity
+      AND relation.relforcerowsecurity
+  ),
+  4::bigint,
+  'all calculation and policy facts force row security'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN ('billing_calculations', 'billing_calculation_snapshots')
+      AND column_name IN (
+        'organization_id', 'account_id', 'agreement_id',
+        'agreement_version_id', 'period_id', 'close_snapshot_id'
+      )
+      AND is_nullable = 'NO'
+  ),
+  12::bigint,
+  'calculation identity and snapshot both require complete tenant lineage'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'billing_calculation_snapshots'
+      AND column_name IN (
+        'intermediate_numerator', 'intermediate_denominator',
+        'fixed_candidate_minor', 'minimum_candidate_minor',
+        'percentage_candidate_minor', 'result_amount_minor', 'delta_minor'
+      )
+      AND data_type IN ('bigint', 'numeric')
+  ),
+  7::bigint,
+  'all intermediates, candidates, result, and delta have exact typed authority'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'billing_calculations', 'billing_calculation_snapshots',
+        'billing_calculation_events', 'billing_close_policies'
+      )
+      AND data_type IN ('real', 'double precision', 'money')
+  ),
+  0::bigint,
+  'calculation authority contains no floating-point or locale money columns'
+);
+
+SELECT is(
+  (
+    SELECT policy_mode || ':' || active::text
+    FROM public.billing_close_policies
+    WHERE policy_version = 'billing-manual-v1'
+  ),
+  'manual:true',
+  'the pinned default close policy is active and manual'
+);
+
+SELECT throws_ok(
+  $$UPDATE public.billing_close_policies
+    SET active = false
+    WHERE policy_version = 'billing-manual-v1'$$,
+  'P0001', 'BILLING_CALCULATION_FACT_IMMUTABLE',
+  'close policy versions cannot be updated'
+);
+SELECT throws_ok(
+  $$DELETE FROM public.billing_close_policies
+    WHERE policy_version = 'billing-manual-v1'$$,
+  'P0001', 'BILLING_CALCULATION_FACT_IMMUTABLE',
+  'close policy versions cannot be deleted'
+);
+
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.billing_close_policies', 'INSERT')
+    AND NOT has_table_privilege('authenticated', 'public.billing_close_policies', 'UPDATE')
+    AND NOT has_table_privilege('authenticated', 'public.billing_close_policies', 'DELETE'),
+  'authenticated users have no generic close-policy mutation access'
+);
+SELECT ok(
+  NOT has_table_privilege('authenticated', 'public.billing_calculations', 'INSERT')
+    AND NOT has_table_privilege('authenticated', 'public.billing_calculation_snapshots', 'INSERT')
+    AND NOT has_table_privilege('authenticated', 'public.billing_calculation_events', 'INSERT'),
+  'authenticated users have no generic calculation fact insertion access'
+);
+
+SELECT throws_ok(
+  $$INSERT INTO public.billing_calculations (
+      organization_id, account_id, agreement_id, agreement_version_id,
+      period_id, close_snapshot_id, business_key, request_fingerprint,
+      close_input_fingerprint, terms_fingerprint, formula_kind,
+      formula_version, rounding_policy_version, close_policy_version,
+      explanation_version, selected_branch, result_amount_minor, currency,
+      created_by, created_by_role
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      '00000000-0000-0000-0000-000000000003',
+      '00000000-0000-0000-0000-000000000004',
+      '00000000-0000-0000-0000-000000000005',
+      '00000000-0000-0000-0000-000000000006',
+      repeat('a', 64), repeat('b', 64), repeat('c', 64), repeat('d', 64),
+      'fixed', 'billing-agreement-formula-v1', 'half-away-from-zero-v1',
+      'billing-manual-v1', 'billing-agreement-explanation-v1',
+      'fixed', 1, 'USD',
+      '00000000-0000-0000-0000-000000000007', 'administrator'
+    )$$,
+  '23503',
+  NULL,
+  'calculation identity rejects nonexistent scoped lineage'
+);
+
+SELECT ok(
+  (
+    SELECT pg_get_constraintdef(constraint_record.oid)
+    FROM pg_catalog.pg_constraint AS constraint_record
+    WHERE constraint_record.conname = 'billing_calculation_snapshots_comparison_check'
+  ) LIKE '%comparison_status%not_available%previous_calculation_id%IS NULL%delta_minor%IS NULL%',
+  'missing previous period is explicitly not_available with null comparison authority'
+);
+
 CREATE FUNCTION pg_temp.formula_input(
   p_kind text,
   p_commissionable text,
