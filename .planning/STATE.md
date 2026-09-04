@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-09-04T20:45:25.002Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-09-04T21:10:49.233Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 37
-  completed_plans: 30
+  completed_plans: 31
   percent: 30
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
-Plan: 2 of 8
+Plan: 3 of 8
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [████████░░] 81%
+Progress: [████████░░] 84%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [████████░░] 81%
 | Phase 03 P06 | 14 min | 3 tasks | 10 files |
 | Phase 03 P07 | 66 min | 2 tasks | 11 files |
 | Phase 04 P01 | 22 min | 3 tasks | 4 files |
+| Phase 04 P02 | 23 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ security decisions:
 - [Phase 04]: Agreement activation uses an advisory lock plus GiST exclusion; active ranges are never truncated. — This preserves signed historical terms while making concurrent non-overlap a database invariant.
 - [Phase 04]: Pause and termination are append-only events instead of edits to activated versions. — Operational lifecycle changes must not rewrite calculation authority.
 - [Phase 04]: Agreement approval is human-only and same-person approval is explicitly marked. — Automation cannot become commercial authority, while the accepted single-owner risk remains visible.
+- [Phase 04]: Revenue corrections append immutable linked revisions, and one acceptance event is the sole close authority. — Historical source amounts and reviewer causation must remain reproducible.
+- [Phase 04]: Minimum-only close freezes null revenue inputs and retains an open missing-evidence exception. — The system must never turn missing evidence into an estimate.
 
 ### Pending Todos
 
@@ -172,6 +175,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T20:45:24.996Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-09-04T21:10:38.748Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

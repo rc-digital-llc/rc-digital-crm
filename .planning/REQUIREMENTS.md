@@ -106,21 +106,21 @@ history.
 
 ### Revenue Evidence and Monthly Close
 
-- [ ] **REV-01**: The system creates one idempotent monthly revenue period for
+- [x] **REV-01**: The system creates one idempotent monthly revenue period for
   each applicable account and agreement version.
-- [ ] **REV-02**: An operator can register evidence provenance through the
+- [x] **REV-02**: An operator can register evidence provenance through the
   controlled ladder of authorized read-only source, automated export, customer
   portal submission, or contract-permitted minimum exception.
 - [ ] **REV-03**: A customer billing contact can submit commissionable revenue
   for an open period, attest to its accuracy, and upload supporting evidence.
-- [ ] **REV-04**: Every submission records source, submitter, timestamps,
+- [x] **REV-04**: Every submission records source, submitter, timestamps,
   currency, gross and excluded amounts, evidence hashes, and immutable revision
   history.
-- [ ] **REV-05**: An authorized reviewer can accept, reject, request correction,
+- [x] **REV-05**: An authorized reviewer can accept, reject, request correction,
   or place a hold on a submission with a reason and complete audit history.
-- [ ] **REV-06**: Missing, conflicting, late, anomalous, or unverified revenue
+- [x] **REV-06**: Missing, conflicting, late, anomalous, or unverified revenue
   creates a visible exception and never causes the system to estimate revenue.
-- [ ] **REV-07**: When the active agreement explicitly permits it, an authorized
+- [x] **REV-07**: When the active agreement explicitly permits it, an authorized
   reviewer can approve a minimum-only invoice draft for a missed reporting
   deadline while preserving the unresolved evidence exception.
 - [ ] **REV-08**: Late accepted evidence produces a linked compensating true-up
@@ -449,13 +449,13 @@ A v1 requirement is complete only when:
 | AGR-03 | Phase 4 | Complete |
 | AGR-04 | Phase 4 | Complete |
 | AGR-05 | Phase 4 | Complete |
-| REV-01 | Phase 4 | Pending |
-| REV-02 | Phase 4 | Pending |
+| REV-01 | Phase 4 | Complete |
+| REV-02 | Phase 4 | Complete |
 | REV-03 | Phase 8 | Pending |
-| REV-04 | Phase 4 | Pending |
-| REV-05 | Phase 4 | Pending |
-| REV-06 | Phase 4 | Pending |
-| REV-07 | Phase 4 | Pending |
+| REV-04 | Phase 4 | Complete |
+| REV-05 | Phase 4 | Complete |
+| REV-06 | Phase 4 | Complete |
+| REV-07 | Phase 4 | Complete |
 | REV-08 | Phase 4 | Pending |
 | REV-09 | Phase 4 | Pending |
 | CALC-01 | Phase 3 | Complete |
