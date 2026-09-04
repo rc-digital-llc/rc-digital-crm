@@ -6,6 +6,7 @@ import {
   cleanupSchemaPushTarget,
   parseMigrationFilenames,
   parseMigrationListOutput,
+  rewriteSchemaPushConfig,
   verifyCleanMigrationChain,
   verifySchemaPushTarget,
 } from "../../scripts/release/verify-migration-chain.mjs";
@@ -181,6 +182,39 @@ describe("schema push verifier", () => {
     projectId: "rc-digital-schema-push-1234-a1b2c3d4",
     workdir: "/tmp/rc-digital-schema-push-1234-a1b2c3d4",
   };
+
+  it("isolates schema-push from any valid primary local port set", () => {
+    const alternatePrimaryConfig = `
+project_id = "atomic-crm-demo"
+[api]
+port = 55321
+[db]
+port = 55322
+shadow_port = 55320
+[db.pooler]
+port = 55329
+[studio]
+port = 55323
+[inbucket]
+port = 55324
+[analytics]
+port = 55327
+vector_port = 55328
+`;
+    const isolated = rewriteSchemaPushConfig({
+      source: alternatePrimaryConfig,
+      projectId: target.projectId,
+      ports: [56001, 56002, 56003, 56004, 56005, 56006, 56007, 56008],
+    });
+
+    expect(isolated).toContain(`project_id = "${target.projectId}"`);
+    for (const port of [
+      56001, 56002, 56003, 56004, 56005, 56006, 56007, 56008,
+    ]) {
+      expect(isolated).toContain(String(port));
+    }
+    expect(isolated).not.toMatch(/5532[0-9]/);
+  });
 
   it.each([
     {
