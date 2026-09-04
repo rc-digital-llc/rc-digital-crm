@@ -154,6 +154,7 @@ SELECT is(
       'timezone', min(timezone)
     )
     FROM public.billing_revenue_periods
+    WHERE agreement_version_id = '21000000-0000-0000-0000-000000000801'
   ),
   '{"count":1,"start":"2026-10-01","end":"2026-11-01","timezone":"America/Los_Angeles"}'::jsonb,
   'period identity is stable and carries the immutable agreement timezone'
@@ -264,9 +265,16 @@ SELECT is(
       'revisions', count(*),
       'min_gross', min(gross_amount_minor)::text,
       'max_gross', max(gross_amount_minor)::text,
-      'evidence_links', (SELECT count(*) FROM public.billing_revenue_submission_evidence)
+      'evidence_links', (
+        SELECT count(*) FROM public.billing_revenue_submission_evidence AS link
+        WHERE link.submission_id IN (
+          SELECT id FROM public.billing_revenue_submissions
+          WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+        )
+      )
     )
     FROM public.billing_revenue_submissions
+    WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
   ),
   '{"revisions":2,"min_gross":"1000000","max_gross":"1100000","evidence_links":2}'::jsonb,
   'both immutable revision values and evidence hashes remain present'
