@@ -2,6 +2,7 @@ import type { Identifier, RaRecord } from "ra-core";
 import type { ComponentType } from "react";
 
 import type {
+  CanonicalIntegerText,
   ExactRatio,
   OrdinaryPercentageRate,
   UsdMoney,
@@ -508,6 +509,327 @@ export type BillingEvidenceAccessEvent = {
   capability_expires_at: string | null;
   created_at: string;
 };
+
+export type BillingAgreementFormulaKind =
+  | "fixed"
+  | "percentage"
+  | "minimum_support"
+  | "hybrid";
+export type BillingAgreementLifecycleState =
+  | "draft"
+  | "pending_review"
+  | "active"
+  | "paused"
+  | "superseded"
+  | "terminated";
+export type BillingAgreementEventType =
+  | "draft_saved"
+  | "submitted"
+  | "activated"
+  | "paused"
+  | "terminated";
+export type BillingRevenueProvenance = "api" | "statement" | "portal";
+export type BillingRevenueReviewOutcome =
+  | "accept"
+  | "reject"
+  | "request_correction"
+  | "hold";
+export type BillingRevenueExceptionReason =
+  | "MISSING_EVIDENCE"
+  | "CONFLICTING_EVIDENCE"
+  | "LATE_EVIDENCE"
+  | "ANOMALOUS_REVENUE"
+  | "HELD_EVIDENCE"
+  | "UNVERIFIED_EVIDENCE";
+export type BillingRevenueCloseMode = "accepted_evidence" | "minimum_only";
+export type BillingCalculationSelectedBranch =
+  | "fixed"
+  | "percentage"
+  | "minimum"
+  | "minimum_equal";
+export type BillingAdjustmentTreatment =
+  | "true_up"
+  | "no_adjustment"
+  | "credit_candidate"
+  | "held";
+
+export type BillingAgreementRevenueRules = Readonly<{
+  timezone: string;
+  timing_basis: "cash" | "accrual";
+  included_amounts: readonly string[];
+  excluded_amounts: readonly string[];
+  tax_treatment: "include" | "exclude";
+  refund_chargeback_policy: "deduct_in_period" | "next_period_adjustment";
+  cutoff_day: number;
+  dispute_policy: "hold_close" | "exclude_disputed";
+  missing_report_policy: "hold_close" | "minimum_only";
+  true_up_policy: "next_period_adjustment" | "credit_candidate";
+  evidence_priority: readonly BillingRevenueProvenance[];
+}>;
+
+export type BillingAgreementVersion = Readonly<{
+  agreement_id: string;
+  version_id: string;
+  agreement_family: string;
+  cadence: "monthly";
+  state: BillingAgreementLifecycleState;
+  latest_event: BillingAgreementEventType;
+  version_number: number;
+  effective_start: string;
+  effective_end: string;
+  formula_kind: BillingAgreementFormulaKind;
+  fixed_amount: UsdMoney | null;
+  minimum_amount: UsdMoney | null;
+  rate: OrdinaryPercentageRate | null;
+  currency_policy_version: "usd-v1";
+  rate_policy_version: "ordinary-percentage-v1";
+  rounding_policy_version: "half-away-from-zero-v1";
+  formula_version: "billing-agreement-formula-v1";
+  explanation_version: "billing-agreement-explanation-v1";
+  signed_evidence_id: string;
+  signed_evidence_sha256: string;
+  terms_fingerprint: string;
+  self_approved: boolean;
+  rules: BillingAgreementRevenueRules;
+}>;
+
+export type BillingRevenuePeriod = Readonly<{
+  id: string;
+  organization_id: string;
+  account_id: string;
+  agreement_id: string;
+  agreement_version_id: string;
+  period_start: string;
+  period_end: string;
+  timezone: string;
+  submission_deadline_at: string;
+  state: "open" | "closed";
+  created_at: string;
+}>;
+
+export type BillingRevenueEvidenceLink = Readonly<{
+  evidence_id: string;
+  captured_sha256: string;
+  ordinal: number;
+}>;
+
+export type BillingRevenueSubmission = Readonly<{
+  id: string;
+  organization_id: string;
+  account_id: string;
+  period_id: string;
+  revision_number: number;
+  previous_submission_id: string | null;
+  gross_amount: UsdMoney;
+  excluded_amount: UsdMoney;
+  commissionable_amount: UsdMoney;
+  provenance_kind: BillingRevenueProvenance;
+  provenance_source_id: string;
+  submitter_id: string;
+  submitter_role: BillingRoleName;
+  attestation_text: string;
+  request_fingerprint: string;
+  submitted_at: string;
+  evidence: readonly BillingRevenueEvidenceLink[];
+}>;
+
+export type BillingRevenueReview = Readonly<{
+  id: string;
+  period_id: string;
+  submission_id: string | null;
+  outcome: BillingRevenueReviewOutcome;
+  reason_code: BillingRevenueExceptionReason | "REVENUE_ACCEPTED";
+  reviewer_id: string;
+  reviewer_role: BillingRoleName;
+  reason: string;
+  input_fingerprint: string;
+  evidence_fingerprint: string;
+  review_policy_version: "revenue-review-v1";
+  created_at: string;
+}>;
+
+export type BillingCloseException = Readonly<{
+  id: string;
+  period_id: string;
+  submission_id: string | null;
+  reason_code: BillingRevenueExceptionReason;
+  amount_at_risk: UsdMoney | null;
+  owner_id: string;
+  next_action: string;
+  due_at: string;
+  status: "open" | "resolved";
+  caused_by_review_event_id: string;
+  opened_at: string;
+  resolved_at: string | null;
+  resolution_reason: string | null;
+}>;
+
+export type BillingRevenueCloseSnapshot = Readonly<{
+  id: string;
+  period_id: string;
+  agreement_id: string;
+  agreement_version_id: string;
+  close_mode: BillingRevenueCloseMode;
+  submission_id: string | null;
+  review_event_id: string;
+  exception_id: string | null;
+  gross_amount: UsdMoney | null;
+  excluded_amount: UsdMoney | null;
+  commissionable_amount: UsdMoney | null;
+  provenance_kind: BillingRevenueProvenance | null;
+  provenance_source_id: string | null;
+  evidence: readonly BillingRevenueEvidenceLink[];
+  agreement_fingerprint: string;
+  input_fingerprint: string;
+  evidence_fingerprint: string;
+  close_input_fingerprint: string;
+  review_policy_version: "revenue-review-v1";
+  close_policy_version: "revenue-close-v1";
+  closed_at: string;
+}>;
+
+export type BillingCalculationAnomaly = Readonly<{
+  code: string;
+  status: "pass" | "fail";
+  blocking: boolean;
+}>;
+
+export type BillingCalculationComparison = Readonly<{
+  status: "available" | "unavailable";
+  previous_calculation_id: string | null;
+  previous_amount: UsdMoney | null;
+  delta: UsdMoney | null;
+  delta_rate: ExactRatio | null;
+}>;
+
+export type BillingCalculationExplanation = Readonly<{
+  kind: BillingAgreementFormulaKind | "late_evidence_adjustment";
+  selected_branch?: BillingCalculationSelectedBranch;
+  final_amount?: UsdMoney;
+  original_amount?: UsdMoney;
+  actual_amount?: UsdMoney;
+  delta?: UsdMoney;
+  treatment?: BillingAdjustmentTreatment;
+}>;
+
+export type BillingCalculation = Readonly<{
+  id: string;
+  account_id: string;
+  agreement_id: string;
+  agreement_version_id: string;
+  period_id: string;
+  close_snapshot_id: string;
+  formula_kind: BillingAgreementFormulaKind;
+  selected_branch: BillingCalculationSelectedBranch;
+  final_amount: UsdMoney;
+  close_policy_version: "billing-manual-v1" | "billing-auto-v1";
+  snapshot_hash: string;
+  explanation_hash: string;
+  comparison: BillingCalculationComparison;
+  status: "created" | "approved";
+}>;
+
+export type BillingCalculationEvent = Readonly<{
+  id: string;
+  calculation_id: string;
+  event_type: "created" | "approved";
+  actor_type: "human" | "automation";
+  actor_id: string;
+  actor_role: string;
+  approval_mode: "manual" | "auto" | null;
+  reason: string;
+  preview_fingerprint: string;
+  close_policy_version: "billing-manual-v1" | "billing-auto-v1";
+  created_at: string;
+}>;
+
+export type BillingCalculationLineage = Readonly<{
+  calculation: Readonly<{
+    id: string;
+    formula_kind: BillingAgreementFormulaKind;
+    selected_branch: BillingCalculationSelectedBranch;
+    result: UsdMoney;
+    snapshot_hash_prefix: string;
+    explanation_hash_prefix: string;
+  }>;
+  agreement: Readonly<{
+    id: string;
+    version_id: string;
+    signed_evidence_id: string;
+    terms_hash_prefix: string;
+    effective_start: string;
+    effective_end: string;
+  }>;
+  period: Readonly<{
+    id: string;
+    period_start: string;
+    period_end: string;
+    timezone: string;
+  }>;
+  evidence_review: Readonly<{
+    submission_id: string | null;
+    review_event_id: string;
+    outcome: BillingRevenueReviewOutcome;
+    exception_id: string | null;
+    evidence: readonly Readonly<{
+      evidence_id: string;
+      sha256_prefix: string;
+      ordinal: number;
+    }>[];
+    evidence_hash_prefix: string;
+  }>;
+  close: Readonly<{
+    id: string;
+    mode: BillingRevenueCloseMode;
+    input_hash_prefix: string;
+  }>;
+  formula: Readonly<{
+    calculation_base: UsdMoney;
+    intermediate_numerator: CanonicalIntegerText;
+    intermediate_denominator: CanonicalIntegerText;
+    fixed_candidate: UsdMoney | null;
+    minimum_candidate: UsdMoney | null;
+    percentage_candidate: UsdMoney | null;
+  }>;
+  policies: Readonly<{
+    currency: "usd-v1";
+    rate: "ordinary-percentage-v1";
+    rounding: "half-away-from-zero-v1";
+    formula: "billing-agreement-formula-v1";
+    revenue_close: "revenue-close-v1";
+    calculation_close: "billing-manual-v1" | "billing-auto-v1";
+    explanation: "billing-agreement-explanation-v1";
+  }>;
+  approval: Readonly<{
+    event_id: string;
+    mode: "manual" | "auto";
+    actor_type: "human" | "automation";
+  }>;
+}>;
+
+export type BillingAdjustmentCalculation = Readonly<{
+  id: string;
+  original_calculation_id: string;
+  late_submission_id: string;
+  original_amount: UsdMoney;
+  actual_amount: UsdMoney;
+  delta: UsdMoney;
+  treatment: BillingAdjustmentTreatment;
+  status: "approved" | "no_adjustment" | "held";
+  snapshot_hash: string;
+  relationship_hash: string;
+}>;
+
+export type BillingCalculationLink = Readonly<{
+  original_calculation_id: string;
+  adjustment_calculation_id: string;
+  late_submission_id: string;
+  late_review_event_id: string;
+  link_type: "late_evidence";
+  delta: UsdMoney;
+  treatment: BillingAdjustmentTreatment;
+  relationship_hash: string;
+}>;
 
 export type InvoiceStatus =
   | "Draft"
