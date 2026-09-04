@@ -266,6 +266,16 @@ function assertSafeCommand(command) {
   }
 }
 
+function commandProvidesDisposableStack(lane, command) {
+  return (
+    lane === "migration-clean" &&
+    command.length === 3 &&
+    path.basename(command[0]) === "node" &&
+    command[1] === "scripts/release/verify-migration-chain.mjs" &&
+    command[2] === "schema-push"
+  );
+}
+
 function parseStatus(stdout) {
   let status;
   try {
@@ -352,69 +362,81 @@ export async function runLane({ lane, command, execute = executeProcess }) {
   let cleanupResult;
   let assertionAttempts = 0;
   let functionRuntime;
+  const commandOwnsStack = commandProvidesDisposableStack(lane, command);
   try {
-    await stopStack(execute);
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      const boot = await bootstrap(execute, attempt);
-      bootstrapAttempts.push({
-        attempt: boot.attempt,
-        started_at: boot.startedAt,
-        finished_at: boot.finishedAt,
-        classification: boot.ok ? "success" : boot.classification,
+    if (commandOwnsStack) {
+      assertionAttempts = 1;
+      result = await execute(command[0], command.slice(1), {
+        cwd: repositoryRoot,
+        env: process.env,
       });
-      if (boot.ok) {
-        secrets = boot.secrets;
-        if (lane === "database-contracts") {
-          const fixtures = await loadDatabaseContractFixtures(execute);
-          if (fixtures.code !== 0) {
-            result = fixtures;
-            break;
-          }
-        }
-        if (lane === "replay-concurrency") {
-          const billingFixtures = await loadDatabaseContractFixtures(execute);
-          if (billingFixtures.code !== 0) {
-            result = billingFixtures;
-            break;
-          }
-          const fixture = await loadReplayConcurrencyFixture(execute);
-          if (fixture.code !== 0) {
-            result = fixture;
-            break;
-          }
-        }
-        if (lane === "edge-provider-contracts") {
-          const billingFixtures = await loadDatabaseContractFixtures(execute);
-          if (billingFixtures.code !== 0) {
-            result = billingFixtures;
-            break;
-          }
-          functionRuntime = startFunctionRuntime();
-          const runtimeReady = await functionRuntime.ready;
-          if (runtimeReady.code !== 0) {
-            result = runtimeReady;
-            break;
-          }
-        }
-        assertionAttempts = 1;
-        result = await execute(command[0], command.slice(1), {
-          cwd: repositoryRoot,
-          env: { ...process.env, ...boot.environment },
-        });
-        break;
-      }
-      if (
-        boot.classification !== "classified_environment_bootstrap" ||
-        attempt === 2
-      ) {
-        result = boot.result;
-        break;
-      }
+      cleanupResult = { code: 0, stdout: "", stderr: "" };
+    } else {
       await stopStack(execute);
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        const boot = await bootstrap(execute, attempt);
+        bootstrapAttempts.push({
+          attempt: boot.attempt,
+          started_at: boot.startedAt,
+          finished_at: boot.finishedAt,
+          classification: boot.ok ? "success" : boot.classification,
+        });
+        if (boot.ok) {
+          secrets = boot.secrets;
+          if (lane === "database-contracts") {
+            const fixtures = await loadDatabaseContractFixtures(execute);
+            if (fixtures.code !== 0) {
+              result = fixtures;
+              break;
+            }
+          }
+          if (lane === "replay-concurrency") {
+            const billingFixtures = await loadDatabaseContractFixtures(execute);
+            if (billingFixtures.code !== 0) {
+              result = billingFixtures;
+              break;
+            }
+            const fixture = await loadReplayConcurrencyFixture(execute);
+            if (fixture.code !== 0) {
+              result = fixture;
+              break;
+            }
+          }
+          if (lane === "edge-provider-contracts") {
+            const billingFixtures = await loadDatabaseContractFixtures(execute);
+            if (billingFixtures.code !== 0) {
+              result = billingFixtures;
+              break;
+            }
+            functionRuntime = startFunctionRuntime();
+            const runtimeReady = await functionRuntime.ready;
+            if (runtimeReady.code !== 0) {
+              result = runtimeReady;
+              break;
+            }
+          }
+          assertionAttempts = 1;
+          result = await execute(command[0], command.slice(1), {
+            cwd: repositoryRoot,
+            env: { ...process.env, ...boot.environment },
+          });
+          break;
+        }
+        if (
+          boot.classification !== "classified_environment_bootstrap" ||
+          attempt === 2
+        ) {
+          result = boot.result;
+          break;
+        }
+        await stopStack(execute);
+      }
     }
   } finally {
-    await stopFunctionRuntime(functionRuntime);
-    cleanupResult = await stopStack(execute);
+    if (!commandOwnsStack) {
+      await stopFunctionRuntime(functionRuntime);
+      cleanupResult = await stopStack(execute);
+    }
   }
 
   const metadata = {
