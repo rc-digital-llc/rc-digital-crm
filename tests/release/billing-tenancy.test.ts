@@ -380,10 +380,14 @@ function fixtureSql(principals: Map<string, Principal>) {
 
     INSERT INTO public.invoices
       (id, company_id, sales_id, invoice_number, amount, total_amount, status,
-       organization_id, billing_account_id)
+       organization_id, billing_account_id, amount_minor, currency,
+       currency_policy_version, tax_rate_numerator, tax_rate_denominator,
+       submitted_percentage, rate_policy_version, tax_amount_minor,
+       total_amount_minor, rounding_policy_version, line_items_exact,
+       line_items_legacy_evidence)
     VALUES
-      (210001, 210001, ${assertSalesId(alphaOperator.salesId)}, 'HTTP-ALPHA', 100.00, 100.00, 'Draft', '${tenants.alpha.organizationId}', '${tenants.alpha.accountId}'),
-      (220001, 220001, ${assertSalesId(bravoOperator.salesId)}, 'HTTP-BRAVO', 200.00, 200.00, 'Draft', '${tenants.bravo.organizationId}', '${tenants.bravo.accountId}');
+      (210001, 210001, ${assertSalesId(alphaOperator.salesId)}, 'HTTP-ALPHA', 100.00, 100.00, 'Draft', '${tenants.alpha.organizationId}', '${tenants.alpha.accountId}', 10000, 'USD', 'usd-v1', 0, 1, '0%', 'ordinary-percentage-v1', 0, 10000, 'half-away-from-zero-v1', '[]'::jsonb, '[]'::jsonb),
+      (220001, 220001, ${assertSalesId(bravoOperator.salesId)}, 'HTTP-BRAVO', 200.00, 200.00, 'Draft', '${tenants.bravo.organizationId}', '${tenants.bravo.accountId}', 20000, 'USD', 'usd-v1', 0, 1, '0%', 'ordinary-percentage-v1', 0, 20000, 'half-away-from-zero-v1', '[]'::jsonb, '[]'::jsonb);
   COMMIT;`;
 }
 
@@ -420,13 +424,41 @@ async function setupHumanWorld(): Promise<Map<string, Principal>> {
 }
 
 function resourceQuery(resource: BillingResource, accountId: string) {
-  const key =
-    resource === "billing_accounts"
-      ? "id"
-      : resource === "invoices"
-        ? "billing_account_id"
-        : "account_id";
+  if (resource === "invoices") {
+    throw new Error("invoice reads must use the caller-bound exact RPC");
+  }
+  const key = resource === "billing_accounts" ? "id" : "account_id";
   return `${resource}?select=id&${key}=eq.${encodeURIComponent(accountId)}`;
+}
+
+async function readBillingResource(
+  resource: BillingResource,
+  accountId: string,
+  token?: string,
+) {
+  if (resource === "invoices") {
+    return restRequest("rpc/read_billing_invoices_exact", token, {
+      method: "POST",
+      body: JSON.stringify({
+        p_request: {
+          mode: "list",
+          filters: { billing_account_id: accountId },
+        },
+      }),
+    });
+  }
+  return restRequest(resourceQuery(resource, accountId), token);
+}
+
+function resourceRows(resource: BillingResource, body: unknown) {
+  if (resource !== "invoices") return body as Record<string, unknown>[];
+  expect(body).toEqual(
+    expect.objectContaining({
+      data: expect.any(Array),
+      total: expect.any(Number),
+    }),
+  );
+  return (body as { data: Record<string, unknown>[] }).data;
 }
 
 function expectSafePublicFailure(response: Response, body: unknown) {
@@ -590,24 +622,26 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
       for (const testCase of registry) {
         const principal = principals.get(testCase.principal);
         expect(principal).toBeDefined();
-        const response = await restRequest(
-          resourceQuery(testCase.resource, testCase.account),
+        const response = await readBillingResource(
+          testCase.resource,
+          testCase.account,
           principal!.accessToken,
         );
         expect(
           response.status,
           `${testCase.principal} ${testCase.resource} ${testCase.operation}`,
         ).toBe(200);
-        const rows = (await responseJson(response)) as Record<
-          string,
-          unknown
-        >[];
+        const rows = resourceRows(
+          testCase.resource,
+          await responseJson(response),
+        );
         expect(rows.length > 0).toBe(testCase.expectedVisibility);
       }
 
       for (const resource of resources) {
-        const response = await restRequest(
-          resourceQuery(resource, tenants.alpha.accountId),
+        const response = await readBillingResource(
+          resource,
+          tenants.alpha.accountId,
         );
         expectSafePublicFailure(response, await responseJson(response));
       }
