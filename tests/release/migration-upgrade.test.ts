@@ -3,11 +3,16 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  PHASE3_BASELINE_CATEGORY_HASHES,
+  PHASE3_EXACT_INVARIANTS,
+  PHASE3_REQUIRED_TRANSFORMATIONS,
   canonicalFingerprint,
   compareFingerprintSets,
   loadTransformationRegistries,
   loadUpgradeExpectation,
+  validateExactUpgradeSnapshot,
   validateTransformationRegistries,
+  verifyImmutableUpgradeInputs,
 } from "../../scripts/release/fingerprint-upgrade.mjs";
 
 const categories = [
@@ -21,6 +26,7 @@ const categories = [
 ];
 const HASH_A = "a".repeat(64);
 const HASH_B = "b".repeat(64);
+const HASH_C = "c".repeat(64);
 
 function fingerprintSet(hash = HASH_A) {
   return Object.fromEntries(categories.map((category) => [category, hash]));
@@ -55,6 +61,108 @@ function baselineExpected() {
     baseline_id: "001-pre-financial",
     categories: fingerprintSet(),
     transformations: {},
+  };
+}
+
+function exactTransformationRegistry(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const transformations = Object.fromEntries(
+    PHASE3_REQUIRED_TRANSFORMATIONS.map((category) => [
+      category,
+      {
+        migration: "20260902000002",
+        before_sha256:
+          category === "row_payload_hashes"
+            ? HASH_B
+            : (PHASE3_BASELINE_CATEGORY_HASHES[category] ?? HASH_A),
+        after_sha256: HASH_C,
+      },
+    ]),
+  );
+
+  return {
+    version: "1.0.0",
+    registry_id: "003-exact-money",
+    sequence: 3,
+    baseline_id: "001-pre-financial",
+    migrations: ["20260902000001", "20260902000002"],
+    transformations,
+    semantic_invariants: [...PHASE3_EXACT_INVARIANTS],
+    ...overrides,
+  };
+}
+
+function exactUpgradeSnapshot() {
+  return {
+    invoice_values: [
+      {
+        id: "6001",
+        amount_minor: "10888",
+        currency: "USD",
+        tax_rate_numerator: "71",
+        tax_rate_denominator: "800",
+        submitted_percentage: "8.875%",
+        rate_policy_version: "ordinary-percentage-v1",
+        tax_amount_minor: "966",
+        total_amount_minor: "11854",
+        rounding_policy_version: "half-away-from-zero-v1",
+      },
+    ],
+    line_items: [
+      {
+        invoice_id: "6001",
+        quantity_ratio: { numerator: "1", denominator: "1" },
+        unit_price: { amount_minor: "10888", currency: "USD" },
+        extended_amount: { amount_minor: "10888", currency: "USD" },
+        currency_policy_version: "usd-v1",
+        rounding_policy_version: "half-away-from-zero-v1",
+      },
+    ],
+    automation: {
+      negative_amount_count: "0",
+      invalid_request_fingerprint_count: "0",
+      invalid_effect_fingerprint_count: "0",
+    },
+    evidence: {
+      exact_helper_dependency: true,
+      canonical_zero_dependency: true,
+      old_numeric_signature_count: "0",
+    },
+    invoice_rpcs: {
+      locked_function_count: "3",
+      dynamic_sql_function_count: "0",
+    },
+    invoice_acl: {
+      authenticated_table_privilege_count: "0",
+      authenticated_sequence_privilege_count: "0",
+      anonymous_table_privilege_count: "0",
+    },
+    tax_rate_compatibility: {
+      data_type: "numeric",
+      numeric_precision: "12",
+      numeric_scale: "9",
+      out_of_bounds_count: "0",
+      derived_mismatch_count: "0",
+      samples: [
+        {
+          submitted_percentage: "8.875%",
+          numerator: "71",
+          denominator: "800",
+          compatibility: "8.875000000",
+        },
+        {
+          submitted_percentage: "12.500%",
+          numerator: "1",
+          denominator: "8",
+          compatibility: "12.500000000",
+        },
+      ],
+    },
+    unrelated_crm: {
+      before_sha256: HASH_A,
+      after_sha256: HASH_A,
+    },
   };
 }
 
@@ -305,5 +413,168 @@ describe("representative upgrade fingerprints", () => {
     expect(source).toContain('"psql"');
     expect(source).not.toMatch(/--linked|migration\s+down|db\s+reset/i);
     expect(source).not.toMatch(/spawn\(["']psql["']/);
+  });
+
+  it("accepts only the closed exact-money registry vocabulary", () => {
+    const result = validateTransformationRegistries({
+      baselineExpected: baselineExpected(),
+      registries: [transformationRegistry(), exactTransformationRegistry()],
+    });
+
+    expect(Object.keys(result.transformations).sort()).toEqual(
+      ["row_payload_hashes", ...PHASE3_REQUIRED_TRANSFORMATIONS].sort(),
+    );
+    expect(result.semantic_invariants).toEqual(
+      expect.arrayContaining(PHASE3_EXACT_INVARIANTS),
+    );
+    expect(result.migrations).toEqual([
+      "20260901000001",
+      "20260901000002",
+      "20260902000001",
+      "20260902000002",
+    ]);
+  });
+
+  it("rejects missing, reordered, overlapping, or broadened exact transforms", () => {
+    const missing = exactTransformationRegistry();
+    delete (missing.transformations as Record<string, unknown>)[
+      "exact_evidence_finalization"
+    ];
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [transformationRegistry(), missing],
+      }),
+    ).toThrow(/missing exact transformation/i);
+
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [
+          transformationRegistry(),
+          exactTransformationRegistry({
+            migrations: ["20260902000002", "20260902000001"],
+          }),
+        ],
+      }),
+    ).toThrow(/migrations are not ordered/i);
+
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [
+          transformationRegistry(),
+          exactTransformationRegistry({
+            transformations: {
+              ...(exactTransformationRegistry().transformations as Record<
+                string,
+                unknown
+              >),
+              queryability: {
+                migration: "20260902000002",
+                before_sha256: HASH_A,
+                after_sha256: HASH_C,
+              },
+            },
+          }),
+        ],
+      }),
+    ).toThrow(/unexpected exact transformation.*queryability/i);
+
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [
+          transformationRegistry(),
+          exactTransformationRegistry({ allow_unrelated_crm_changes: true }),
+        ],
+      }),
+    ).toThrow(/unknown registry field/i);
+  });
+
+  it("rejects stale exact hashes, missing invariants, and new financial versions", () => {
+    const stale = exactTransformationRegistry();
+    (
+      stale.transformations as Record<
+        string,
+        { before_sha256: string }
+      >
+    ).row_payload_hashes.before_sha256 = HASH_A;
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [transformationRegistry(), stale],
+      }),
+    ).toThrow(/stale transformation hash.*row_payload_hashes/i);
+
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [
+          transformationRegistry(),
+          exactTransformationRegistry({
+            semantic_invariants: PHASE3_EXACT_INVARIANTS.slice(1),
+          }),
+        ],
+      }),
+    ).toThrow(/missing exact semantic invariant/i);
+
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected: baselineExpected(),
+        registries: [
+          transformationRegistry(),
+          exactTransformationRegistry({
+            migrations: ["20260902000001", "20260902000002", "20260902000003"],
+          }),
+        ],
+      }),
+    ).toThrow(/exact migration set/i);
+  });
+
+  it("validates exact string snapshots and fixed-nine tax compatibility", () => {
+    expect(validateExactUpgradeSnapshot(exactUpgradeSnapshot())).toBe(true);
+
+    const numericToken = exactUpgradeSnapshot();
+    (numericToken.invoice_values[0] as Record<string, unknown>).amount_minor =
+      10888;
+    expect(() => validateExactUpgradeSnapshot(numericToken)).toThrow(
+      /string financial token/i,
+    );
+
+    const wrongScale = exactUpgradeSnapshot();
+    wrongScale.tax_rate_compatibility.samples[0].compatibility = "8.875";
+    expect(() => validateExactUpgradeSnapshot(wrongScale)).toThrow(
+      /fixed nine-decimal/i,
+    );
+
+    const wrongRatio = exactUpgradeSnapshot();
+    wrongRatio.tax_rate_compatibility.samples[1].denominator = "10";
+    expect(() => validateExactUpgradeSnapshot(wrongRatio)).toThrow(
+      /canonical ratio derivation/i,
+    );
+  });
+
+  it("pins every immutable exact-upgrade input by SHA-256", () => {
+    expect(verifyImmutableUpgradeInputs()).toBe(true);
+    expect(() =>
+      verifyImmutableUpgradeInputs({
+        readFile: (path: string) =>
+          path.endsWith("20260901000004_billing_evidence_security.sql")
+            ? Buffer.from("mutated")
+            : fs.readFileSync(path),
+      }),
+    ).toThrow(/immutable upgrade input differs.*20260901000004/i);
+  });
+
+  it("keeps exact fingerprints free of JavaScript numeric coercion", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../../scripts/release/fingerprint-upgrade.mjs"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/\bNumber\s*\(|\bparseFloat\s*\(/);
+    expect(canonicalFingerprint(exactUpgradeSnapshot())).toContain(
+      '"compatibility":"8.875000000"',
+    );
   });
 });
