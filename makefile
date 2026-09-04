@@ -14,7 +14,8 @@ FINANCIAL_DATABASE_SQL_TESTS := \
 FINANCIAL_DATABASE_HTTP_TESTS := \
 	tests/release/auth-rls-rpc-trigger.test.ts \
 	tests/release/billing-tenancy.test.ts \
-	tests/release/exact-money-boundaries.test.ts
+	tests/release/exact-money-boundaries.test.ts \
+	src/components/atomic-crm/financial/exactProviderContract.test.ts
 
 FINANCIAL_FUNCTION_TESTS := \
 	tests/release/edge-webhook-provider.test.ts \
@@ -25,6 +26,7 @@ FINANCIAL_FAST_TESTS := \
 	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
 	src/components/atomic-crm/billing-accounts/billingAccounts.test.ts \
 	src/components/atomic-crm/financial/exactMoney.test.ts \
+	src/components/atomic-crm/invoices/invoiceCalculations.test.ts \
 	tests/release/exact-money-release-static.test.ts \
 	tests/release/billing-security-static.test.ts
 

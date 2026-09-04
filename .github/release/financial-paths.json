@@ -18,6 +18,7 @@
     "src/components/atomic-crm/types.ts",
     "src/components/atomic-crm/billing-accounts/**",
     "src/components/atomic-crm/financial/**",
+    "src/components/atomic-crm/invoices/**",
     "src/components/atomic-crm/layout/Header.tsx",
     "src/components/atomic-crm/layout/MobileNavigation.tsx",
     "src/components/atomic-crm/root/CRM.tsx",
