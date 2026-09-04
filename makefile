@@ -43,6 +43,7 @@ test-financial-schema-push: ## prove schema push against an isolated loopback da
 
 test-financial-migration-upgrade: ## apply pending migrations to the checked-in baseline and verify fingerprints
 	node scripts/release/run-supabase-lane.mjs run --lane migration-upgrade -- node scripts/release/fingerprint-upgrade.mjs
+	npm test -- --run tests/release/migration-upgrade.test.ts
 
 test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC, and trigger contracts
 	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db $(FINANCIAL_DATABASE_SQL_TESTS) --local

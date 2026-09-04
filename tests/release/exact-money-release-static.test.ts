@@ -24,7 +24,7 @@ describe("Phase 3 exact-money release coupling", () => {
     "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
   ];
 
-  it("classifies every Wave 1 exact-money source and test as financial", () => {
+  it("classifies every protected exact-money source and test as financial", () => {
     const configuration = JSON.parse(
       readSource(".github/release/financial-paths.json"),
     ) as { financial_paths: string[] };

@@ -6,6 +6,7 @@
     "supabase/tests/**",
     "tests/release/**",
     "scripts/release/**",
+    "makefile",
     "package.json",
     "package-lock.json",
     "vite.config.ts",
