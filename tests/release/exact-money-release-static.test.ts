@@ -23,6 +23,7 @@ describe("Phase 3 exact-money release coupling", () => {
     "tests/release/migration-upgrade.test.ts",
     "makefile",
     "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
+    "supabase/migrations/20260902000001_exact_financial_primitives.sql",
     "supabase/migrations/20260902000002_exact_billing_expand.sql",
     "supabase/tests/database/35_billing_automation.sql",
     "supabase/tests/database/40_billing_evidence.sql",
@@ -293,6 +294,29 @@ describe("Phase 3 exact-money release coupling", () => {
     for (const path of immutableInputs) {
       expect(runner, path).toContain(path);
     }
+    for (const path of [
+      "supabase/migrations/20260902000001_exact_financial_primitives.sql",
+      "supabase/migrations/20260902000002_exact_billing_expand.sql",
+      "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql",
+    ]) {
+      expect(runner, path).toContain(path);
+    }
+    const registry = JSON.parse(
+      readSource(
+        "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
+      ),
+    ) as {
+      migrations: string[];
+      transformations: Record<string, { migration: string }>;
+    };
+    expect(registry.migrations).toEqual([
+      "20260902000001",
+      "20260902000002",
+      "20260903000001",
+    ]);
+    expect(registry.transformations.exact_invoice_rpcs.migration).toBe(
+      "20260903000001",
+    );
     expect(runner).toContain('registry.registry_id !== "003-exact-money"');
     expect(runner).toContain("PHASE3_REQUIRED_TRANSFORMATIONS");
   });
