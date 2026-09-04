@@ -122,12 +122,20 @@ const immutableUpgradeInputHashes = Object.freeze({
     "eb1f2e2cdee134e72f45664a11557dcecce66cec1011cfdfaf99bd5dfd100e93",
   "supabase/tests/upgrades/002-billing-tenancy/expected-transformations.json":
     "dea0df2f23c11c7292e01996fa32e9a0a0e7b6741260de741fee8e76d375211a",
+  "supabase/tests/upgrades/003-exact-money/expected-transformations.json":
+    "f629017fbb250ecddf3bbfe3a197ec3f0bb6524f234c3babf9ff77fc9b93090d",
   "supabase/migrations/20260901000002_billing_invoice_boundary.sql":
     "811947e5391aedbbbb452daee5a41302a35d610122845b909b7c53e21ff57817",
   "supabase/migrations/20260901000003_billing_automation_grants.sql":
     "d1c27c260561131037712aab783b90101a7949b41e0528052c9f764666cc92fd",
   "supabase/migrations/20260901000004_billing_evidence_security.sql":
     "740ac8cc9c5955c3e64c837082402f0d7f94e5fe2f145d88489d22b010dc48c0",
+  "supabase/migrations/20260902000001_exact_financial_primitives.sql":
+    "ef96c9c3c7ece1cca05c4a0bc3c479e72cd30f65acbfe2e0b48b9fa08b561ca3",
+  "supabase/migrations/20260902000002_exact_billing_expand.sql":
+    "588cee98b2eb5d2c447f413f88fac8eec4930be61f451c2e285033379890df76",
+  "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql":
+    "ee40140a610785daa053f1be7480cd371b52c6230a97b4e8630eb7e728fe7f94",
 });
 
 const fingerprintQueries = {
@@ -1320,7 +1328,11 @@ export function validateTransformationRegistries({
     if (registry.sequence === 3 && registry.registry_id === "003-exact-money") {
       if (
         JSON.stringify(registry.migrations) !==
-        JSON.stringify(["20260902000001", "20260902000002"])
+        JSON.stringify([
+          "20260902000001",
+          "20260902000002",
+          "20260903000001",
+        ])
       ) {
         throw new Error("sequence 003 exact migration set is invalid");
       }

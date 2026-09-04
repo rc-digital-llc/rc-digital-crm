@@ -71,7 +71,10 @@ function exactTransformationRegistry(
     PHASE3_REQUIRED_TRANSFORMATIONS.map((category) => [
       category,
       {
-        migration: "20260902000002",
+        migration:
+          category === "exact_invoice_rpcs"
+            ? "20260903000001"
+            : "20260902000002",
         before_sha256:
           category === "row_payload_hashes"
             ? HASH_B
@@ -86,7 +89,11 @@ function exactTransformationRegistry(
     registry_id: "003-exact-money",
     sequence: 3,
     baseline_id: "001-pre-financial",
-    migrations: ["20260902000001", "20260902000002"],
+    migrations: [
+      "20260902000001",
+      "20260902000002",
+      "20260903000001",
+    ],
     transformations,
     semantic_invariants: [...PHASE3_EXACT_INVARIANTS],
     ...overrides,
@@ -434,6 +441,7 @@ describe("representative upgrade fingerprints", () => {
       "20260901000002",
       "20260902000001",
       "20260902000002",
+      "20260903000001",
     ]);
   });
 
@@ -524,7 +532,12 @@ describe("representative upgrade fingerprints", () => {
         registries: [
           transformationRegistry(),
           exactTransformationRegistry({
-            migrations: ["20260902000001", "20260902000002", "20260902000003"],
+            migrations: [
+              "20260902000001",
+              "20260902000002",
+              "20260903000001",
+              "20260903000002",
+            ],
           }),
         ],
       }),
@@ -556,14 +569,24 @@ describe("representative upgrade fingerprints", () => {
 
   it("pins every immutable exact-upgrade input by SHA-256", () => {
     expect(verifyImmutableUpgradeInputs()).toBe(true);
-    expect(() =>
-      verifyImmutableUpgradeInputs({
-        readFile: (path: string) =>
-          path.endsWith("20260901000004_billing_evidence_security.sql")
-            ? Buffer.from("mutated")
-            : fs.readFileSync(path),
-      }),
-    ).toThrow(/immutable upgrade input differs.*20260901000004/i);
+    for (const filename of [
+      "20260901000004_billing_evidence_security.sql",
+      "003-exact-money/expected-transformations.json",
+      "20260902000001_exact_financial_primitives.sql",
+      "20260902000002_exact_billing_expand.sql",
+      "20260903000001_exact_invoice_save_error_contract.sql",
+    ]) {
+      expect(
+        () =>
+          verifyImmutableUpgradeInputs({
+            readFile: (path: string) =>
+              path.endsWith(filename)
+                ? Buffer.from("mutated")
+                : fs.readFileSync(path),
+          }),
+        filename,
+      ).toThrow(/immutable upgrade input differs/i);
+    }
   });
 
   it("keeps exact fingerprints free of JavaScript numeric coercion", () => {

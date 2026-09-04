@@ -5,7 +5,8 @@
   "baseline_id": "002-pre-financial-pg17",
   "migrations": [
     "20260902000001",
-    "20260902000002"
+    "20260902000002",
+    "20260903000001"
   ],
   "transformations": {
     "invoice_numeric_text": {
@@ -49,9 +50,9 @@
       "after_sha256": "8579eb8a7dc71b94578e5c6e8f3eec94790256871da62e3a1882547c3d7a9e9f"
     },
     "exact_invoice_rpcs": {
-      "migration": "20260902000002",
+      "migration": "20260903000001",
       "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-      "after_sha256": "64b902cf3bc6f1a518b07bf086d0f654321aeeeea3bf2c71da245b2cbda3dd7b"
+      "after_sha256": "19409d191e0e91ef9386db14e2232a42bb79e83d590c4968d8eba330c22df590"
     },
     "exact_invoice_acl": {
       "migration": "20260902000002",

@@ -287,6 +287,7 @@ describe("Phase 3 exact-money release coupling", () => {
     const immutableInputs = [
       "supabase/tests/baselines/001-pre-financial/manifest.json",
       "supabase/tests/upgrades/002-billing-tenancy/expected-transformations.json",
+      "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
       "supabase/migrations/20260901000002_billing_invoice_boundary.sql",
       "supabase/migrations/20260901000003_billing_automation_grants.sql",
       "supabase/migrations/20260901000004_billing_evidence_security.sql",
