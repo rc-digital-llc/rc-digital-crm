@@ -347,4 +347,185 @@ describe("Phase 3 exact-money release coupling", () => {
       expect(job).not.toMatch(/continue-on-error|retry/i);
     }
   });
+
+  it("retains same-plan coupling evidence for every introducing wave", () => {
+    const summaryEvidence: Array<[string, string[]]> = [
+      [
+        "03-01-SUMMARY.md",
+        [
+          "src/components/atomic-crm/financial/exactMoney.test.ts",
+          "tests/release/exact-money-release-static.test.ts",
+          "FINANCIAL_FAST_TESTS",
+        ],
+      ],
+      [
+        "03-02-SUMMARY.md",
+        [
+          "supabase/tests/database/60_exact_financial_primitives.sql",
+          "makefile",
+          "protected database SQL",
+        ],
+      ],
+      [
+        "03-03-SUMMARY.md",
+        [
+          "scripts/release/fingerprint-upgrade.mjs",
+          "tests/release/migration-upgrade.test.ts",
+          "protected migration-upgrade target",
+        ],
+      ],
+      [
+        "03-04-SUMMARY.md",
+        [
+          "supabase/tests/database/65_exact_billing_conversion.sql",
+          "tests/release/billing-evidence.test.ts",
+          "tests/release/replay-concurrency.test.ts",
+        ],
+      ],
+      [
+        "03-05-SUMMARY.md",
+        [
+          "tests/release/exact-money-boundaries.test.ts",
+          "tests/release/billing-tenancy.test.ts",
+          "permanent database HTTP target",
+        ],
+      ],
+      [
+        "03-06-SUMMARY.md",
+        [
+          "src/components/atomic-crm/financial/exactProviderContract.test.ts",
+          "src/components/atomic-crm/invoices/invoiceCalculations.test.ts",
+          ".github/release/financial-paths.json",
+        ],
+      ],
+    ];
+
+    for (const [summary, markers] of summaryEvidence) {
+      const source = readSource(
+        `.planning/phases/03-exact-money-and-rounding-contract/${summary}`,
+      );
+      for (const marker of markers) {
+        expect(source, `${summary}: ${marker}`).toContain(marker);
+      }
+    }
+  });
+
+  it("closes caller-bound reads and exact evidence against source regressions", () => {
+    const migration = readSource(
+      "supabase/migrations/20260902000002_exact_billing_expand.sql",
+    );
+    const validator = migration.slice(
+      migration.indexOf(
+        "CREATE FUNCTION private.billing_validate_invoice_read_request",
+      ),
+      migration.indexOf("CREATE FUNCTION private.billing_invoice_exact_json"),
+    );
+    const exactRead = migration.slice(
+      migration.indexOf(
+        "CREATE FUNCTION public.read_billing_invoices_exact(p_request jsonb)",
+      ),
+      migration.indexOf(
+        "CREATE FUNCTION public.read_billing_invoices_legacy_compat",
+      ),
+    );
+    const legacyRead = migration.slice(
+      migration.indexOf(
+        "CREATE FUNCTION public.read_billing_invoices_legacy_compat",
+      ),
+      migration.indexOf(
+        "CREATE FUNCTION private.billing_parse_optional_relation_id",
+      ),
+    );
+    const evidenceHelper = migration.slice(
+      migration.indexOf(
+        "CREATE FUNCTION private.billing_finalize_evidence_inspection",
+      ),
+      migration.indexOf(
+        "CREATE FUNCTION public.finalize_billing_evidence_inspection",
+      ),
+    );
+
+    expect(validator).toContain("SECURITY DEFINER\nSET search_path = ''");
+    expect(validator).toContain("page_value > 1000000");
+    expect(validator).toContain("per_page_value > 100");
+    expect(validator).toContain(
+      "sort_value NOT IN ('id', 'created_at', 'updated_at', 'invoice_number', 'issue_date', 'due_date', 'status')",
+    );
+    for (const readRpc of [exactRead, legacyRead]) {
+      expect(readRpc).toContain("SECURITY DEFINER\nSET search_path = ''");
+      expect(readRpc).toContain("FROM public.invoices AS invoice");
+      expect(readRpc).toContain("private.billing_has_capability(");
+      expect(readRpc).toContain("LIMIT per_page_value");
+      expect(readRpc).not.toMatch(/\bEXECUTE\b|\bformat\s*\(/i);
+    }
+    expect(migration).toContain(
+      "ALTER FUNCTION public.read_billing_invoices_exact(jsonb) OWNER TO postgres",
+    );
+    expect(migration).toContain(
+      "ALTER FUNCTION public.read_billing_invoices_legacy_compat(jsonb) OWNER TO postgres",
+    );
+    expect(evidenceHelper).toContain(
+      "pg_catalog.jsonb_build_object('amount_minor', '0', 'currency', 'USD')",
+    );
+    expect(evidenceHelper).toContain("effect_fingerprint");
+    expect(migration).toContain(
+      "DROP FUNCTION private.billing_consume_automation_grant(\n  uuid, uuid, text, text, text, text, numeric, text\n)",
+    );
+    expect(migration).not.toMatch(
+      /CREATE FUNCTION private\.billing_consume_automation_grant\([\s\S]*?p_amount numeric/,
+    );
+  });
+
+  it("keeps the six workflows isolated, pinned, and free of production mutation", () => {
+    const financial = readSource(
+      ".github/workflows/financial-release-gate.yml",
+    );
+    const build = readSource(".github/workflows/release-build.yml");
+    const promote = readSource(".github/workflows/release-promote.yml");
+    const jobBlocks = financial
+      .split(/^ {2}(?=[a-z][a-z-]+:)/m)
+      .filter((block) => /name:\s*financial \/ [a-z-]+\s*$/m.test(block));
+
+    expect(financial).toContain("permissions:\n  contents: read");
+    expect(financial).not.toMatch(/permissions:[\s\S]*?contents:\s*write/);
+    for (const job of jobBlocks) {
+      expect(job).toContain("- run: npm ci");
+      expect(job).toMatch(/timeout-minutes: (?:15|20)/);
+      expect(job).not.toMatch(/continue-on-error|retry/i);
+    }
+    for (const job of jobBlocks.filter(
+      (block) => !block.includes("financial / release-security"),
+    )) {
+      expect(job).toContain("version: 2.116.0");
+      expect(job).toContain("if: ${{ always() }}");
+      expect(job).toContain("supabase stop --no-backup");
+    }
+
+    for (const workflow of [financial, build, promote]) {
+      const actionRefs = [
+        ...workflow.matchAll(/uses:\s*[^@\s]+@([^\s]+)/g),
+      ].map((match) => match[1]);
+      expect(actionRefs.length).toBeGreaterThan(0);
+      expect(
+        actionRefs.every((reference) => /^[0-9a-f]{40}$/.test(reference)),
+      ).toBe(true);
+    }
+    expect(`${financial}\n${build}`).not.toMatch(
+      /supabase\s+(?:link|db push|functions deploy)/,
+    );
+    expect(build.match(/run: npm run build/g)).toHaveLength(1);
+    expect(promote).toContain("name: production-release");
+    expect(promote).toContain("Fetch and verify private predecessor chain");
+    expect(promote).toContain(
+      "Reverify predecessor immediately before promotion",
+    );
+    expect(promote).toContain("if: ${{ inputs.stage == 'schema' }}");
+    expect(promote).toContain(
+      'supabase link --project-ref "$SUPABASE_PROJECT_ID"',
+    );
+    expect(promote).toContain("supabase db push --dry-run");
+    expect(promote).toContain("supabase db push");
+    expect(promote).toContain("supabase migration list --linked");
+    expect(promote).toContain("Publish and read back linked private receipt");
+  });
 });

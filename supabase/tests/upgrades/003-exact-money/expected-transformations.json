@@ -3,11 +3,7 @@
   "registry_id": "003-exact-money",
   "sequence": 3,
   "baseline_id": "002-pre-financial-pg17",
-  "migrations": [
-    "20260902000001",
-    "20260902000002",
-    "20260903000001"
-  ],
+  "migrations": ["20260902000001", "20260902000002", "20260903000001"],
   "transformations": {
     "invoice_numeric_text": {
       "migration": "20260902000002",

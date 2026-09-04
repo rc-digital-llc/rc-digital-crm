@@ -123,7 +123,7 @@ const immutableUpgradeInputHashes = Object.freeze({
   "supabase/tests/upgrades/002-billing-tenancy/expected-transformations.json":
     "dea0df2f23c11c7292e01996fa32e9a0a0e7b6741260de741fee8e76d375211a",
   "supabase/tests/upgrades/003-exact-money/expected-transformations.json":
-    "f629017fbb250ecddf3bbfe3a197ec3f0bb6524f234c3babf9ff77fc9b93090d",
+    "7685e1bb8160219dae2c4745dd99adc5aa5fe05afca1f49f92fab08d5b7d4fd6",
   "supabase/migrations/20260901000002_billing_invoice_boundary.sql":
     "811947e5391aedbbbb452daee5a41302a35d610122845b909b7c53e21ff57817",
   "supabase/migrations/20260901000003_billing_automation_grants.sql":
@@ -1328,11 +1328,7 @@ export function validateTransformationRegistries({
     if (registry.sequence === 3 && registry.registry_id === "003-exact-money") {
       if (
         JSON.stringify(registry.migrations) !==
-        JSON.stringify([
-          "20260902000001",
-          "20260902000002",
-          "20260903000001",
-        ])
+        JSON.stringify(["20260902000001", "20260902000002", "20260903000001"])
       ) {
         throw new Error("sequence 003 exact migration set is invalid");
       }

@@ -89,11 +89,7 @@ function exactTransformationRegistry(
     registry_id: "003-exact-money",
     sequence: 3,
     baseline_id: "001-pre-financial",
-    migrations: [
-      "20260902000001",
-      "20260902000002",
-      "20260903000001",
-    ],
+    migrations: ["20260902000001", "20260902000002", "20260903000001"],
     transformations,
     semantic_invariants: [...PHASE3_EXACT_INVARIANTS],
     ...overrides,
