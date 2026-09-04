@@ -18,6 +18,10 @@ describe("Phase 3 exact-money release coupling", () => {
     "src/components/atomic-crm/financial/exactMoney.ts",
     "src/components/atomic-crm/financial/exactMoney.test.ts",
     "tests/release/exact-money-release-static.test.ts",
+    "scripts/release/fingerprint-upgrade.mjs",
+    "tests/release/migration-upgrade.test.ts",
+    "makefile",
+    "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
   ];
 
   it("classifies every Wave 1 exact-money source and test as financial", () => {
@@ -73,6 +77,37 @@ describe("Phase 3 exact-money release coupling", () => {
     expect(financialTargets).toMatch(
       /test-financial-database-sql:[\s\S]*?node scripts\/release\/run-supabase-lane\.mjs run --lane database-contracts -- supabase test db \$\(FINANCIAL_DATABASE_SQL_TESTS\) --local/,
     );
+  });
+
+  it("protects the closed exact upgrade verifier and immutable history pins", () => {
+    const makefile = readSource("makefile");
+    const financialTargets = makefile.slice(0, makefile.indexOf("\ninstall:"));
+    const runner = readSource("scripts/release/fingerprint-upgrade.mjs");
+    const upgradeTarget = financialTargets.match(
+      /test-financial-migration-upgrade:[\s\S]*?(?=\n[a-z][a-z-]+:)/,
+    )?.[0];
+
+    expect(upgradeTarget).toBeDefined();
+    expect(upgradeTarget).toMatch(
+      /run-supabase-lane\.mjs run --lane migration-upgrade -- node scripts\/release\/fingerprint-upgrade\.mjs/,
+    );
+    expect(upgradeTarget).toContain(
+      "npm test -- --run tests/release/migration-upgrade.test.ts",
+    );
+    expect(upgradeTarget).not.toMatch(/\|\|\s*true|continue-on-error|--linked/);
+
+    const immutableInputs = [
+      "supabase/tests/baselines/001-pre-financial/manifest.json",
+      "supabase/tests/upgrades/002-billing-tenancy/expected-transformations.json",
+      "supabase/migrations/20260901000002_billing_invoice_boundary.sql",
+      "supabase/migrations/20260901000003_billing_automation_grants.sql",
+      "supabase/migrations/20260901000004_billing_evidence_security.sql",
+    ];
+    for (const path of immutableInputs) {
+      expect(runner, path).toContain(path);
+    }
+    expect(runner).toContain('registry.registry_id !== "003-exact-money"');
+    expect(runner).toContain("PHASE3_REQUIRED_TRANSFORMATIONS");
   });
 
   it("preserves the inherited six unconditional merge-group identities", () => {
