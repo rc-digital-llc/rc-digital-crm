@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-09-04T20:22:11.977Z"
-last_activity: 2026-09-04 -- Phase 04 planning complete
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-09-04T20:45:25.002Z"
+last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 37
-  completed_plans: 29
+  completed_plans: 30
   percent: 30
 ---
 
@@ -24,16 +24,16 @@ See: .planning/PROJECT.md (updated 2026-09-04)
 to the applicable agreement version, verified revenue evidence, deterministic
 calculation, invoice, payment-provider event, settlement, and collections
 history.
-**Current focus:** Phase 4 — agreements, revenue evidence, and calculation close
+**Current focus:** Phase 04 — agreements-revenue-evidence-and-calculation-close
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
+Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-09-04 -- Phase 04 planning complete
+Last activity: 2026-09-04
 
-Progress: [██████████] 100%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [██████████] 100%
 | Phase 03 P05 | 17 min | 3 tasks | 8 files |
 | Phase 03 P06 | 14 min | 3 tasks | 10 files |
 | Phase 03 P07 | 66 min | 2 tasks | 11 files |
+| Phase 04 P01 | 22 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ security decisions:
 - [Phase 03]: FakeRest exact invoice state is owned by an isolated deterministic provider factory.
 - [Phase 03]: Invoice preview delegates parsing, exact multiplication, named rounding, and range enforcement to the central exact-money module.
 - [Phase 03]: Human invoice preview descriptions are display-only and never accepted as financial authority.
+- [Phase 04]: Agreement activation uses an advisory lock plus GiST exclusion; active ranges are never truncated. — This preserves signed historical terms while making concurrent non-overlap a database invariant.
+- [Phase 04]: Pause and termination are append-only events instead of edits to activated versions. — Operational lifecycle changes must not rewrite calculation authority.
+- [Phase 04]: Agreement approval is human-only and same-person approval is explicitly marked. — Automation cannot become commercial authority, while the accepted single-owner risk remains visible.
 
 ### Pending Todos
 
@@ -168,6 +172,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T20:11:35.479Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: .planning/phases/04-agreements-revenue-evidence-and-calculation-close/04-UI-SPEC.md
+Last session: 2026-09-04T20:45:24.996Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

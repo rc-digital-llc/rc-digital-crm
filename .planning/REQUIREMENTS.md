@@ -87,20 +87,20 @@ history.
 
 ### Agreements
 
-- [ ] **AGR-01**: An authorized operator can create fixed monthly,
+- [x] **AGR-01**: An authorized operator can create fixed monthly,
   percentage-of-revenue, minimum-support, and hybrid
   `max(minimum, rate × commissionable revenue)` agreement versions.
-- [ ] **AGR-02**: Each agreement version records effective dates, currency,
+- [x] **AGR-02**: Each agreement version records effective dates, currency,
   billing cadence, due terms, evidence deadline, minimum, rate, and the exact
   signed commercial terms that control calculation and collection.
-- [ ] **AGR-03**: Each percentage or hybrid agreement defines commissionable
+- [x] **AGR-03**: Each percentage or hybrid agreement defines commissionable
   revenue, cash-versus-accrual timing, included and excluded amounts, taxes,
   refunds/chargebacks, period boundaries, cutoff, dispute window, missing-report
   treatment, and true-up/credit treatment.
-- [ ] **AGR-04**: Activated agreement versions are immutable and non-overlapping;
+- [x] **AGR-04**: Activated agreement versions are immutable and non-overlapping;
   amendments create a new effective-dated version without changing historical
   calculations or invoices.
-- [ ] **AGR-05**: Agreement activation, amendment, pause, termination, and
+- [x] **AGR-05**: Agreement activation, amendment, pause, termination, and
   customer authorization require authenticated approval and produce an
   auditable event containing actor, reason, evidence reference, and timestamp.
 
@@ -444,11 +444,11 @@ A v1 requirement is complete only when:
 | SEC-05 | Phase 2 | Complete |
 | SEC-06 | Phase 2 | Complete |
 | SEC-07 | Phase 2 | Complete |
-| AGR-01 | Phase 4 | Pending |
-| AGR-02 | Phase 4 | Pending |
-| AGR-03 | Phase 4 | Pending |
-| AGR-04 | Phase 4 | Pending |
-| AGR-05 | Phase 4 | Pending |
+| AGR-01 | Phase 4 | Complete |
+| AGR-02 | Phase 4 | Complete |
+| AGR-03 | Phase 4 | Complete |
+| AGR-04 | Phase 4 | Complete |
+| AGR-05 | Phase 4 | Complete |
 | REV-01 | Phase 4 | Pending |
 | REV-02 | Phase 4 | Pending |
 | REV-03 | Phase 8 | Pending |
