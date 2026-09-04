@@ -59,6 +59,22 @@ describe("Phase 3 exact-money release coupling", () => {
     );
   });
 
+  it("makes the exact financial pgTAP contract an explicit protected SQL member", () => {
+    const makefile = readSource("makefile");
+    const financialTargets = makefile.slice(0, makefile.indexOf("\ninstall:"));
+    const sqlTests = financialTargets.match(
+      /FINANCIAL_DATABASE_SQL_TESTS := \\\n([\s\S]*?)\n\nFINANCIAL_DATABASE_HTTP_TESTS/,
+    )?.[1];
+
+    expect(sqlTests).toBeDefined();
+    expect(sqlTests).toContain(
+      "supabase/tests/database/60_exact_financial_primitives.sql",
+    );
+    expect(financialTargets).toMatch(
+      /test-financial-database-sql:[\s\S]*?node scripts\/release\/run-supabase-lane\.mjs run --lane database-contracts -- supabase test db \$\(FINANCIAL_DATABASE_SQL_TESTS\) --local/,
+    );
+  });
+
   it("preserves the inherited six unconditional merge-group identities", () => {
     const workflow = readSource(".github/workflows/financial-release-gate.yml");
     const requiredNames = [
