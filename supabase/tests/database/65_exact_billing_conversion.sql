@@ -3,7 +3,7 @@ SET search_path TO public, extensions;
 
 BEGIN;
 
-SELECT plan(44);
+SELECT plan(47);
 
 SELECT has_column('public', 'invoices', 'amount_minor', 'invoices have exact amount authority');
 SELECT has_column('public', 'invoices', 'currency', 'invoices identify exact currency');
@@ -178,6 +178,47 @@ SELECT throws_ok(
   'unknown filters are rejected'
 );
 RESET ROLE;
+
+CREATE TEMP TABLE test_invalid_save_snapshot AS
+SELECT pg_catalog.jsonb_build_object(
+  'invoice_count', (SELECT count(*)::text FROM public.invoices),
+  'audit_count', (SELECT count(*)::text FROM public.billing_audit_events)
+) AS payload;
+SET LOCAL ROLE authenticated;
+SELECT throws_ok(
+  $$SELECT public.save_billing_invoice_exact('{
+    "billing_account_id":"21000000-0000-0000-0000-000000000200",
+    "invoice_number":"INVALID-NUMERIC-MONEY",
+    "amount":{"amount_minor":1,"currency":"USD"},
+    "tax_rate":{"kind":"ordinary_percentage","numerator":"0","denominator":"1","submitted_percentage":"0%","rate_policy_version":"ordinary-percentage-v1"},
+    "line_items":[],
+    "status":"Draft"
+  }'::jsonb)$$,
+  '22023', 'INVOICE_SAVE_INVALID_REQUEST',
+  'numeric JSON money is rejected before any invoice save effect'
+);
+SELECT throws_ok(
+  $$SELECT public.save_billing_invoice_exact('{
+    "billing_account_id":"21000000-0000-0000-0000-000000000200",
+    "invoice_number":"INVALID-PHASE5-KEY",
+    "amount":{"amount_minor":"1","currency":"USD"},
+    "tax_rate":{"kind":"ordinary_percentage","numerator":"0","denominator":"1","submitted_percentage":"0%","rate_policy_version":"ordinary-percentage-v1"},
+    "line_items":[],
+    "status":"Draft",
+    "idempotency_key":"not-in-phase-three"
+  }'::jsonb)$$,
+  '22023', 'INVOICE_SAVE_INVALID_REQUEST',
+  'invoice save rejects deferred Phase 5 idempotency fields'
+);
+RESET ROLE;
+SELECT is(
+  (SELECT payload FROM test_invalid_save_snapshot),
+  pg_catalog.jsonb_build_object(
+    'invoice_count', (SELECT count(*)::text FROM public.invoices),
+    'audit_count', (SELECT count(*)::text FROM public.billing_audit_events)
+  ),
+  'invalid exact saves preserve invoice and audit effects'
+);
 
 SELECT has_column('public', 'billing_automation_grants', 'max_amount_minor', 'automation grant limits are exact');
 SELECT has_column('public', 'billing_automation_grants', 'total_amount_consumed_minor', 'automation grant counters are exact');
