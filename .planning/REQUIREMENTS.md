@@ -123,9 +123,9 @@ history.
 - [x] **REV-07**: When the active agreement explicitly permits it, an authorized
   reviewer can approve a minimum-only invoice draft for a missed reporting
   deadline while preserving the unresolved evidence exception.
-- [ ] **REV-08**: Late accepted evidence produces a linked compensating true-up
+- [x] **REV-08**: Late accepted evidence produces a linked compensating true-up
   or credit calculation without rewriting the original minimum invoice.
-- [ ] **REV-09**: A reviewer can close a revenue period only when its applicable
+- [x] **REV-09**: A reviewer can close a revenue period only when its applicable
   agreement, accepted inputs, evidence, exceptions, and approval state satisfy
   the versioned close policy.
 
@@ -456,8 +456,8 @@ A v1 requirement is complete only when:
 | REV-05 | Phase 4 | Complete |
 | REV-06 | Phase 4 | Complete |
 | REV-07 | Phase 4 | Complete |
-| REV-08 | Phase 4 | Pending |
-| REV-09 | Phase 4 | Pending |
+| REV-08 | Phase 4 | Complete |
+| REV-09 | Phase 4 | Complete |
 | CALC-01 | Phase 3 | Complete |
 | CALC-02 | Phase 4 | Complete |
 | CALC-03 | Phase 3 | Complete |

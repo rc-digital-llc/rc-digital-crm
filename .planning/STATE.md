@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-09-04T21:45:38.070Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-09-04T22:20:14.528Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 37
-  completed_plans: 32
+  completed_plans: 33
   percent: 30
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [█████████░] 86%
 | Phase 04 P01 | 22 min | 3 tasks | 4 files |
 | Phase 04 P02 | 23 min | 3 tasks | 3 files |
 | Phase 04 P03 | 34 min | 3 tasks | 5 files |
+| Phase 04 P04 | 29 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,10 @@ security decisions:
 - [Phase 04]: Calculation authority accepts only active agreement terms and frozen close inputs. — Browser amounts, branches, and explanations cannot become financial authority.
 - [Phase 04]: Calculation approval is one immutable event over a frozen snapshot. — Manual and automation paths share current policy, anomaly, fingerprint, and authorization rechecks without mutating the calculation.
 - [Phase 04]: Missing and zero prior periods have distinct exact comparison states. — not_available preserves null deltas; zero_baseline avoids inventing a percentage.
+- [Phase 04]: Close, calculation creation, and approval remain separate commands, while shared validators require immutable IDs, fingerprints, policies, exact values, and actor/grant causation to form one complete chain.
+- [Phase 04]: Support lineage is caller-bound and allowlisted to stable IDs, exact values, policy names, and hash prefixes; raw evidence paths, content, filenames, and customer data are excluded.
+- [Phase 04]: Late evidence creates a dedicated immutable adjustment calculation and acyclic link without reopening or changing the original close, calculation, approval, or missing-evidence exception.
+- [Phase 04]: A hybrid late adjustment compares the exact percentage candidate with the frozen minimum, and the original true-up policy alone determines credit-candidate versus held treatment for a negative delta.
 
 ### Pending Todos
 
@@ -179,6 +184,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T21:45:38.064Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-09-04T22:20:14.523Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
