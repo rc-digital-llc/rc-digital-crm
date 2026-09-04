@@ -36,6 +36,12 @@ describe("Phase 3 exact-money release coupling", () => {
     "tests/release/exact-money-boundaries.test.ts",
     "tests/release/billing-tenancy.test.ts",
     "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql",
+    "src/components/atomic-crm/providers/fakerest/dataProvider.ts",
+    "src/components/atomic-crm/providers/fakerest/dataGenerator/billingAccounts.ts",
+    "src/components/atomic-crm/providers/fakerest/dataGenerator/types.ts",
+    "src/components/atomic-crm/financial/exactProviderContract.test.ts",
+    "src/components/atomic-crm/invoices/invoiceCalculations.ts",
+    "src/components/atomic-crm/invoices/invoiceCalculations.test.ts",
   ];
 
   it("classifies every protected exact-money source and test as financial", () => {
@@ -212,6 +218,51 @@ describe("Phase 3 exact-money release coupling", () => {
     );
     expect(errorContractMigration).toContain(
       "MESSAGE = 'INVOICE_SAVE_INVALID_REQUEST'",
+    );
+  });
+
+  it("protects Wave 6 provider parity and exact invoice preview", () => {
+    const makefile = readSource("makefile");
+    const financialTargets = makefile.slice(0, makefile.indexOf("\ninstall:"));
+    const httpTests = financialTargets.match(
+      /FINANCIAL_DATABASE_HTTP_TESTS := \\\n([\s\S]*?)\n\nFINANCIAL_FUNCTION_TESTS/,
+    )?.[1];
+    const fastTests = financialTargets.match(
+      /FINANCIAL_FAST_TESTS := \\\n([\s\S]*?)\n\n\.PHONY:/,
+    )?.[1];
+    const fakeProvider = readSource(
+      "src/components/atomic-crm/providers/fakerest/dataProvider.ts",
+    );
+    const generator = readSource(
+      "src/components/atomic-crm/providers/fakerest/dataGenerator/billingAccounts.ts",
+    );
+    const preview = readSource(
+      "src/components/atomic-crm/invoices/invoiceCalculations.ts",
+    );
+
+    expect(httpTests).toContain(
+      "src/components/atomic-crm/financial/exactProviderContract.test.ts",
+    );
+    expect(fastTests).toContain(
+      "src/components/atomic-crm/invoices/invoiceCalculations.test.ts",
+    );
+    expect(fakeProvider).toContain("createExactFakeInvoiceProvider");
+    expect(fakeProvider).not.toMatch(
+      /(?:quantity|rate|amount)\s*:\s*(?:Number\(|parseFloat\(|[0-9]+(?:\.[0-9]+)?(?:,|\s*}))/,
+    );
+    expect(generator).not.toMatch(
+      /amount_minor\s*:\s*-?[0-9]+|(?:numerator|denominator)\s*:\s*-?[0-9]+/,
+    );
+    expect(preview).toContain("multiplyUsdMoneyByRate");
+    expect(preview).toContain("multiplyUsdMoneyByExactRatio");
+    expect(preview).not.toMatch(
+      /Math\.round|\.toFixed\(|parseFloat\(|Number\([^)]*amount_minor|887\.5|:\s*number/,
+    );
+    expect(financialTargets).toMatch(
+      /test-financial-database-http:[\s\S]*?\$\(FINANCIAL_DATABASE_HTTP_TESTS\)/,
+    );
+    expect(financialTargets).toMatch(
+      /test-financial-fast:[\s\S]*?\$\(FINANCIAL_FAST_TESTS\)/,
     );
   });
 
