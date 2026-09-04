@@ -7,7 +7,8 @@ FINANCIAL_DATABASE_SQL_TESTS := \
 	supabase/tests/database/40_billing_evidence.sql \
 	supabase/tests/database/45_billing_account_commands.sql \
 	supabase/tests/database/50_billing_access_commands.sql \
-	supabase/tests/database/55_billing_evidence_presentation.sql
+	supabase/tests/database/55_billing_evidence_presentation.sql \
+	supabase/tests/database/60_exact_financial_primitives.sql
 
 FINANCIAL_DATABASE_HTTP_TESTS := \
 	tests/release/auth-rls-rpc-trigger.test.ts \
