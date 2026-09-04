@@ -3,7 +3,7 @@ SET search_path TO public, extensions;
 
 BEGIN;
 
-SELECT plan(56);
+SELECT plan(62);
 
 -- Immutable global policy catalogs and least-privilege boundaries.
 SELECT is(
@@ -250,6 +250,21 @@ SELECT is(
   '8.875 percent reduces exactly to 71/800'
 );
 SELECT is(
+  public.financial_parse_ordinary_percentage(to_jsonb('0%'::text), 'ordinary-percentage-v1')->>'denominator',
+  '1',
+  'the zero-percent TypeScript fixture normalizes to denominator one'
+);
+SELECT is(
+  public.financial_parse_ordinary_percentage(to_jsonb('100%'::text), 'ordinary-percentage-v1')->>'numerator',
+  '1',
+  'the whole 100-percent TypeScript fixture normalizes to numerator one'
+);
+SELECT is(
+  public.financial_parse_ordinary_percentage(to_jsonb('12.5%'::text), 'ordinary-percentage-v1')->>'denominator',
+  '8',
+  'the short 12.5-percent TypeScript fixture reduces to one eighth'
+);
+SELECT is(
   public.financial_parse_ordinary_percentage(to_jsonb('0.000%'::text), 'ordinary-percentage-v1')->>'denominator',
   '1',
   'zero rate canonicalizes to denominator one'
@@ -293,12 +308,21 @@ SELECT is(public.financial_round_usd_minor('{"numerator":"-1","denominator":"3"}
 SELECT is(public.financial_round_usd_minor('{"numerator":"2","denominator":"3"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '1', '+2/3 rounds away from zero');
 SELECT is(public.financial_round_usd_minor('{"numerator":"-2","denominator":"3"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '-1', '-2/3 rounds away from zero');
 SELECT is(public.financial_round_usd_minor('{"numerator":"6","denominator":"3"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '2', 'exact division does not round');
+SELECT is(public.financial_round_usd_minor('{"numerator":"0","denominator":"9"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '0', 'the zero-numerator TypeScript fixture stays canonical zero');
 SELECT is(public.financial_round_usd_minor('{"numerator":"710000","denominator":"800"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '888', '10000 times 71/800 rounds once to 888 minor units');
 SELECT is(public.financial_round_usd_minor('{"numerator":"-9223372036854775808","denominator":"1"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '-9223372036854775808', 'rounding handles the full signed minimum without bigint negation overflow');
 SELECT is(public.financial_round_usd_minor('{"numerator":"9223372036854775807","denominator":"1"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)->>'amount_minor', '9223372036854775807', 'rounding handles the full signed maximum');
 SELECT throws_ok(
   $$SELECT public.financial_round_usd_minor('{"numerator":"1","denominator":"0"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)$$,
   '22012', 'FINANCIAL_DIVISION_BY_ZERO', 'rounding rejects denominator zero'
+);
+SELECT throws_ok(
+  $$SELECT public.financial_round_usd_minor('{"numerator":"1","denominator":"-2"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)$$,
+  '22023', 'FINANCIAL_INVALID_RATIO', 'rounding rejects a negative denominator'
+);
+SELECT throws_ok(
+  $$SELECT public.financial_round_usd_minor('{"numerator":1,"denominator":"2"}'::jsonb, 'usd-v1', 'half-away-from-zero-v1', 2)$$,
+  '22023', 'FINANCIAL_INVALID_INTEGER', 'rounding rejects JSON numeric ratio components'
 );
 SELECT throws_ok(
   $$SELECT public.financial_round_usd_minor('{"numerator":"1","denominator":"2"}'::jsonb, 'usd-v1', 'latest', 2)$$,
