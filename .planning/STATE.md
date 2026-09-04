@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-09-04T05:44:05.779Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-09-04T05:58:29.884Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 03 (exact-money-and-rounding-contract) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [█████████░] 93%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -60,6 +60,7 @@ Progress: [█████████░] 93%
 | Phase 03 P03 | 12 min | 2 tasks | 5 files |
 | Phase 03 P04 | 43 min | 3 tasks | 11 files |
 | Phase 03 P05 | 17 min | 3 tasks | 8 files |
+| Phase 03 P06 | 14 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,9 @@ security decisions:
 - [Phase 03]: React Admin invoice operations translate into closed exact RPC contracts; generic Supabase table CRUD never handles invoices.
 - [Phase 03]: Every exact invoice response is decoded and financially reconciled before branded application types are returned.
 - [Phase 03]: Malformed PostgreSQL invoice-save parameter errors are normalized by a forward-only locked wrapper.
+- [Phase 03]: FakeRest exact invoice state is owned by an isolated deterministic provider factory.
+- [Phase 03]: Invoice preview delegates parsing, exact multiplication, named rounding, and range enforcement to the central exact-money module.
+- [Phase 03]: Human invoice preview descriptions are display-only and never accepted as financial authority.
 
 ### Pending Todos
 
@@ -162,6 +166,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T05:44:05.773Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-09-04T05:58:29.878Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None

@@ -159,7 +159,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 03-06-PLAN.md — Match FakeRest and invoice preview to the proven exact production boundary.
+- [x] 03-06-PLAN.md — Match FakeRest and invoice preview to the proven exact production boundary.
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -289,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 5/7 | In Progress|  |
+| 3. Exact Money and Rounding Contract | 6/7 | In Progress|  |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
