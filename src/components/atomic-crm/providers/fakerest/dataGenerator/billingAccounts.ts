@@ -31,6 +31,120 @@ export const DEMO_QUARANTINED_EVIDENCE_ID =
 export const DEMO_EVIDENCE_NOW = "2026-09-01T20:00:00.000Z";
 export const DEMO_EVIDENCE_EXPIRES_AT = "2026-09-01T20:01:00.000Z";
 
+export type DemoBillingCloseScenario = Readonly<{
+  account_id: string;
+  organization_id: string;
+  agreement_id: string;
+  agreement_version_id: string;
+  evidence_id: string;
+  period_id: string;
+  close_snapshot_id: string;
+  formula_kind: "fixed" | "percentage" | "minimum_support" | "hybrid";
+  fixed_amount_minor: string | null;
+  minimum_amount_minor: string | null;
+  rate_numerator: string | null;
+  rate_denominator: string | null;
+  submitted_percentage: string | null;
+  commissionable_amount_minor: string;
+  missing_report_policy: "hold_close" | "minimum_only";
+  true_up_policy: "next_period_adjustment" | "credit_candidate";
+  open_exception: boolean;
+  late_submission_id: string;
+  late_review_event_id: string;
+  late_commissionable_amount_minor: string;
+}>;
+
+export const DEMO_BILLING_CLOSE_SCENARIOS = Object.freeze({
+  fixed: Object.freeze({
+    account_id: "31000000-0000-4000-8000-000000000210",
+    organization_id: DEMO_BILLING_ORGANIZATION_ID,
+    agreement_id: "31000000-0000-4000-8000-000000001210",
+    agreement_version_id: "31000000-0000-4000-8000-000000002210",
+    evidence_id: "31000000-0000-4000-8000-000000003210",
+    period_id: "31000000-0000-4000-8000-000000004210",
+    close_snapshot_id: "31000000-0000-4000-8000-000000005210",
+    formula_kind: "fixed",
+    fixed_amount_minor: "50000",
+    minimum_amount_minor: null,
+    rate_numerator: null,
+    rate_denominator: null,
+    submitted_percentage: null,
+    commissionable_amount_minor: "825000",
+    missing_report_policy: "hold_close",
+    true_up_policy: "next_period_adjustment",
+    open_exception: false,
+    late_submission_id: "31000000-0000-4000-8000-000000006210",
+    late_review_event_id: "7210",
+    late_commissionable_amount_minor: "850000",
+  }),
+  percentage: Object.freeze({
+    account_id: "31000000-0000-4000-8000-000000000220",
+    organization_id: DEMO_BILLING_ORGANIZATION_ID,
+    agreement_id: "31000000-0000-4000-8000-000000001220",
+    agreement_version_id: "31000000-0000-4000-8000-000000002220",
+    evidence_id: "31000000-0000-4000-8000-000000003220",
+    period_id: "31000000-0000-4000-8000-000000004220",
+    close_snapshot_id: "31000000-0000-4000-8000-000000005220",
+    formula_kind: "percentage",
+    fixed_amount_minor: null,
+    minimum_amount_minor: null,
+    rate_numerator: "1",
+    rate_denominator: "10",
+    submitted_percentage: "10%",
+    commissionable_amount_minor: "825000",
+    missing_report_policy: "hold_close",
+    true_up_policy: "next_period_adjustment",
+    open_exception: false,
+    late_submission_id: "31000000-0000-4000-8000-000000006220",
+    late_review_event_id: "7220",
+    late_commissionable_amount_minor: "900000",
+  }),
+  minimum_exception: Object.freeze({
+    account_id: "31000000-0000-4000-8000-000000000230",
+    organization_id: DEMO_BILLING_ORGANIZATION_ID,
+    agreement_id: "31000000-0000-4000-8000-000000001230",
+    agreement_version_id: "31000000-0000-4000-8000-000000002230",
+    evidence_id: "31000000-0000-4000-8000-000000003230",
+    period_id: "31000000-0000-4000-8000-000000004230",
+    close_snapshot_id: "31000000-0000-4000-8000-000000005230",
+    formula_kind: "minimum_support",
+    fixed_amount_minor: null,
+    minimum_amount_minor: "50000",
+    rate_numerator: null,
+    rate_denominator: null,
+    submitted_percentage: null,
+    commissionable_amount_minor: "0",
+    missing_report_policy: "minimum_only",
+    true_up_policy: "credit_candidate",
+    open_exception: true,
+    late_submission_id: "31000000-0000-4000-8000-000000006230",
+    late_review_event_id: "7230",
+    late_commissionable_amount_minor: "0",
+  }),
+  hybrid: Object.freeze({
+    account_id: DEMO_BILLING_ACCOUNT_ID,
+    organization_id: DEMO_BILLING_ORGANIZATION_ID,
+    agreement_id: "31000000-0000-4000-8000-000000001200",
+    agreement_version_id: "31000000-0000-4000-8000-000000002200",
+    evidence_id: DEMO_CLEAN_EVIDENCE_ID,
+    period_id: "31000000-0000-4000-8000-000000004200",
+    close_snapshot_id: "31000000-0000-4000-8000-000000005200",
+    formula_kind: "hybrid",
+    fixed_amount_minor: null,
+    minimum_amount_minor: "50000",
+    rate_numerator: "1",
+    rate_denominator: "10",
+    submitted_percentage: "10%",
+    commissionable_amount_minor: "825000",
+    missing_report_policy: "minimum_only",
+    true_up_policy: "credit_candidate",
+    open_exception: false,
+    late_submission_id: "31000000-0000-4000-8000-000000006200",
+    late_review_event_id: "7200",
+    late_commissionable_amount_minor: "900000",
+  }),
+} satisfies Record<string, DemoBillingCloseScenario>);
+
 type BillingData = Pick<
   Db,
   | "billing_organizations"
@@ -44,6 +158,10 @@ type BillingData = Pick<
   | "billing_automation_grants"
   | "billing_evidence_support_safe"
   | "billing_evidence_access_events"
+  | "billing_agreements_support_safe"
+  | "billing_revenue_periods_support_safe"
+  | "billing_calculations_support_safe"
+  | "billing_calculation_lineage_support_safe"
   | "invoices"
 >;
 
@@ -68,6 +186,24 @@ const account: BillingAccount = {
   ended_at: null,
   end_reason: null,
 };
+
+const closeScenarioAccounts: BillingAccount[] = Object.entries(
+  DEMO_BILLING_CLOSE_SCENARIOS,
+).map(([name, scenario]) =>
+  scenario.account_id === account.id
+    ? { ...account }
+    : {
+        id: scenario.account_id,
+        organization_id: scenario.organization_id,
+        company_id: null,
+        customer_name: `Synthetic ${name.replace("_", " ")} billing scenario`,
+        billing_status: "active",
+        created_at: DEMO_EVIDENCE_NOW,
+        updated_at: DEMO_EVIDENCE_NOW,
+        ended_at: null,
+        end_reason: null,
+      },
+);
 
 const owner: BillingAccountOwner = {
   id: "31000000-0000-0000-0000-000000000250",
@@ -203,6 +339,17 @@ const quarantinedEvidence: BillingEvidenceMetadata = {
   inspection_reason_code: null,
 };
 
+const closeScenarioEvidence: BillingEvidenceMetadata[] = Object.entries(
+  DEMO_BILLING_CLOSE_SCENARIOS,
+)
+  .filter(([, scenario]) => scenario.evidence_id !== cleanEvidence.id)
+  .map(([name, scenario]) => ({
+    ...cleanEvidence,
+    id: scenario.evidence_id,
+    account_id: scenario.account_id,
+    original_filename: `synthetic-${name.replace("_", "-")}-agreement.pdf`,
+  }));
+
 const accessEvent: BillingEvidenceAccessEvent = {
   id: 1,
   evidence_id: cleanEvidence.id,
@@ -328,7 +475,9 @@ export const generateExactBillingInvoices = (): ExactBillingInvoice[] =>
 
 export const generateBillingAccounts = (): BillingData => ({
   billing_organizations: [{ ...organization }],
-  billing_accounts: [{ ...account }],
+  billing_accounts: closeScenarioAccounts.map((scenarioAccount) => ({
+    ...scenarioAccount,
+  })),
   billing_account_owners: [{ ...owner }],
   billing_contacts: [{ ...contact }],
   billing_roles: roles.map((role) => ({ ...role })),
@@ -341,7 +490,26 @@ export const generateBillingAccounts = (): BillingData => ({
   billing_evidence_support_safe: [
     { ...cleanEvidence },
     { ...quarantinedEvidence },
+    ...closeScenarioEvidence.map((evidence) => ({ ...evidence })),
   ],
   billing_evidence_access_events: [{ ...accessEvent }],
+  billing_agreements_support_safe: Object.values(
+    DEMO_BILLING_CLOSE_SCENARIOS,
+  ).map((scenario) => ({
+    id: scenario.agreement_version_id,
+    account_id: scenario.account_id,
+    agreement_id: scenario.agreement_id,
+    formula_kind: scenario.formula_kind,
+    state: "active",
+  })),
+  billing_revenue_periods_support_safe: Object.values(
+    DEMO_BILLING_CLOSE_SCENARIOS,
+  ).map((scenario) => ({
+    id: scenario.period_id,
+    account_id: scenario.account_id,
+    state: scenario === DEMO_BILLING_CLOSE_SCENARIOS.hybrid ? "open" : "closed",
+  })),
+  billing_calculations_support_safe: [],
+  billing_calculation_lineage_support_safe: [],
   invoices: generateExactBillingInvoices(),
 });

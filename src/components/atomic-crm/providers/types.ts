@@ -655,6 +655,7 @@ export const billingResourceNames = [
   "billing_automation_grants",
   "billing_evidence_support_safe",
   "billing_evidence_access_events",
+  ...billingCloseResourceNames,
   "invoices",
 ] as const;
 

@@ -58,6 +58,7 @@ import type {
   ExactBillingInvoiceSaveRequest,
 } from "../types";
 import { authProvider, USER_STORAGE_KEY } from "./authProvider";
+import { createFakeBillingCloseProvider } from "./billingCloseProvider";
 import generateData from "./dataGenerator";
 import {
   DEMO_BILLING_ACCOUNT_ID,
@@ -68,6 +69,10 @@ import {
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 
 const baseDataProvider = fakeRestDataProvider(generateData(), true, 300);
+const {
+  inspectBillingCloseState: _inspectBillingCloseState,
+  ...billingCloseProvider
+} = createFakeBillingCloseProvider();
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -120,6 +125,29 @@ const FAKE_LINE_ITEM_FIELDS = [
   "rounding_policy_version",
   "unit_price",
 ];
+const FAKE_PHASE4_AUTHORITATIVE_RESOURCES = new Set([
+  "billing_agreements",
+  "billing_agreement_versions",
+  "billing_agreement_revenue_rules",
+  "billing_agreement_events",
+  "billing_revenue_periods",
+  "billing_revenue_submissions",
+  "billing_revenue_submission_evidence",
+  "billing_revenue_review_events",
+  "billing_close_exceptions",
+  "billing_close_exception_events",
+  "billing_revenue_close_snapshots",
+  "billing_calculations",
+  "billing_calculation_snapshots",
+  "billing_calculation_events",
+  "billing_adjustment_calculations",
+  "billing_calculation_links",
+  "billing_adjustment_exceptions",
+  "billing_agreements_support_safe",
+  "billing_revenue_periods_support_safe",
+  "billing_calculations_support_safe",
+  "billing_calculation_lineage_support_safe",
+]);
 
 function fakeInvoiceFailure(code: string): never {
   throw new Error(code);
@@ -692,6 +720,7 @@ async function fetchAndUpdateCompanyData(
 
 const dataProviderWithCustomMethod: CrmDataProvider = {
   ...baseDataProvider,
+  ...billingCloseProvider,
   listExactBillingInvoices: exactInvoiceProvider.listExactBillingInvoices,
   getExactBillingInvoice: exactInvoiceProvider.getExactBillingInvoice,
   saveExactBillingInvoice: exactInvoiceProvider.saveExactBillingInvoice,
@@ -725,6 +754,9 @@ const dataProviderWithCustomMethod: CrmDataProvider = {
         data: await exactInvoiceProvider.saveExactBillingInvoice(params.data),
       };
     }
+    if (FAKE_PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error("BILLING_CLOSE_INVALID_REQUEST");
+    }
     return baseDataProvider.create(resource, params);
   },
   update: async (resource, params) => {
@@ -739,7 +771,16 @@ const dataProviderWithCustomMethod: CrmDataProvider = {
         }),
       };
     }
+    if (FAKE_PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error("BILLING_CLOSE_INVALID_REQUEST");
+    }
     return baseDataProvider.update(resource, params);
+  },
+  delete: async (resource, params) => {
+    if (FAKE_PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error("BILLING_CLOSE_INVALID_REQUEST");
+    }
+    return baseDataProvider.delete(resource, params);
   },
   unarchiveDeal: async (deal: Deal) => {
     // get all deals where stage is the same as the deal to unarchive

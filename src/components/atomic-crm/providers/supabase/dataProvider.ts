@@ -145,6 +145,10 @@ const PHASE4_AUTHORITATIVE_RESOURCES = new Set([
   "billing_adjustment_calculations",
   "billing_calculation_links",
   "billing_adjustment_exceptions",
+  "billing_agreements_support_safe",
+  "billing_revenue_periods_support_safe",
+  "billing_calculations_support_safe",
+  "billing_calculation_lineage_support_safe",
 ]);
 const EXACT_INVOICE_RESPONSE_FIELDS = [
   "amount_minor",

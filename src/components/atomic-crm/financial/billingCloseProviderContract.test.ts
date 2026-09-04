@@ -11,6 +11,8 @@ import {
   billingPhase4ContractValues,
 } from "../providers/types";
 import { createSupabaseBillingCloseProvider } from "../providers/supabase/billingCloseProvider";
+import { createFakeBillingCloseProvider } from "../providers/fakerest/billingCloseProvider";
+import { DEMO_BILLING_CLOSE_SCENARIOS } from "../providers/fakerest/dataGenerator/billingAccounts";
 import { parseOrdinaryPercentage, parseUsdMoney } from "./exactMoney";
 
 const uuid = "44000000-0000-4000-8000-000000000001";
@@ -514,5 +516,184 @@ describe("Supabase Phase 4 RPC translation", () => {
         command_key: "agreement-activate-0001",
       }),
     ).rejects.toThrow("AGREEMENT_NOT_AUTHORIZED");
+  });
+});
+
+describe("FakeRest Phase 4 provider parity", () => {
+  it("starts each factory from byte-equivalent isolated state", async () => {
+    const first = createFakeBillingCloseProvider();
+    const second = createFakeBillingCloseProvider();
+
+    expect(first.inspectBillingCloseState()).toEqual(
+      second.inspectBillingCloseState(),
+    );
+    for (const method of billingCloseProviderMethodKeys) {
+      expect(first[method]).toBeTypeOf("function");
+    }
+    await first.saveBillingAgreementDraft(agreementDrafts[0]);
+    expect(first.inspectBillingCloseState()).not.toEqual(
+      second.inspectBillingCloseState(),
+    );
+    expect(createFakeBillingCloseProvider().inspectBillingCloseState()).toEqual(
+      second.inspectBillingCloseState(),
+    );
+  });
+
+  it("replays identical agreement commands and conflicts before mutation", async () => {
+    const provider = createFakeBillingCloseProvider();
+    const draft = {
+      ...agreementDrafts[3],
+      command_key: "fake-agreement-save-0001",
+    };
+
+    const created = await provider.saveBillingAgreementDraft(draft);
+    await expect(provider.saveBillingAgreementDraft(draft)).resolves.toEqual(
+      created,
+    );
+    const beforeConflict = provider.inspectBillingCloseState();
+    await expect(
+      provider.saveBillingAgreementDraft({
+        ...draft,
+        effective_end: "2027-10-01",
+      }),
+    ).rejects.toThrow("AGREEMENT_IDEMPOTENCY_CONFLICT");
+    expect(provider.inspectBillingCloseState()).toEqual(beforeConflict);
+  });
+
+  it("runs exact revenue close, preview, create, approval, and late adjustment", async () => {
+    const provider = createFakeBillingCloseProvider();
+    const scenario = DEMO_BILLING_CLOSE_SCENARIOS.hybrid;
+    const submission = await provider.submitBillingRevenueRevision({
+      account_id: scenario.account_id,
+      period_id: scenario.period_id,
+      gross_amount: parseUsdMoney({
+        amount_minor: "825000",
+        currency: "USD",
+      }),
+      excluded_amount: parseUsdMoney({ amount_minor: "0", currency: "USD" }),
+      commissionable_amount: parseUsdMoney({
+        amount_minor: "825000",
+        currency: "USD",
+      }),
+      provenance_kind: "statement",
+      provenance_source_id: "statement-2026-09",
+      attestation: { accurate: true, text: "Synthetic demo attestation" },
+      evidence_ids: [scenario.evidence_id],
+      command_key: "fake-revenue-submit-0001",
+    });
+    const review = await provider.reviewBillingRevenueRevision({
+      account_id: scenario.account_id,
+      period_id: scenario.period_id,
+      submission_id: submission.submission_id,
+      outcome: "accept",
+      reason_code: "REVENUE_ACCEPTED",
+      reason: "Synthetic evidence accepted",
+      exception: null,
+      command_key: "fake-revenue-review-0001",
+    });
+    const close = await provider.closeBillingRevenuePeriod({
+      account_id: scenario.account_id,
+      period_id: scenario.period_id,
+      close_mode: "accepted_evidence",
+      review_event_id: review.review_event_id,
+      reason: "Close accepted synthetic revenue",
+      command_key: "fake-revenue-close-0001",
+    });
+    const calculated = await provider.previewBillingCalculation({
+      account_id: scenario.account_id,
+      close_snapshot_id: close.close_snapshot_id,
+    });
+    expect(calculated.final_amount.amount_minor).toBe("82500");
+    const created = await provider.createBillingCalculation({
+      account_id: scenario.account_id,
+      close_snapshot_id: close.close_snapshot_id,
+      preview_fingerprint: calculated.preview_fingerprint,
+      command_key: "fake-calculation-create-0001",
+    });
+    await expect(
+      provider.createBillingCalculation({
+        account_id: scenario.account_id,
+        close_snapshot_id: close.close_snapshot_id,
+        preview_fingerprint: fingerprint,
+        command_key: "fake-calculation-stale-0001",
+      }),
+    ).rejects.toThrow("CALCULATION_PREVIEW_STALE");
+    await expect(
+      provider.approveBillingCalculation({
+        account_id: scenario.account_id,
+        calculation_id: created.calculation_id,
+        mode: "manual",
+        close_policy_version: "billing-manual-v1",
+        preview_fingerprint: calculated.preview_fingerprint,
+        reason: "Approve deterministic demo close",
+        command_key: "fake-calculation-approve-0001",
+      }),
+    ).resolves.toMatchObject({
+      result: "approved",
+      approved_amount: { amount_minor: "82500", currency: "USD" },
+    });
+    await expect(
+      provider.createBillingAdjustmentCalculation({
+        account_id: scenario.account_id,
+        original_calculation_id: created.calculation_id,
+        late_submission_id: scenario.late_submission_id,
+        late_review_event_id: scenario.late_review_event_id,
+        reason: "Recognize accepted late evidence",
+        command_key: "fake-adjustment-create-0001",
+      }),
+    ).resolves.toMatchObject({
+      original_amount: { amount_minor: "82500", currency: "USD" },
+      actual_amount: { amount_minor: "90000", currency: "USD" },
+      delta: { amount_minor: "7500", currency: "USD" },
+      treatment: "true_up",
+      status: "approved",
+    });
+  });
+
+  it("uses safe denials and blocks anomalous calculations", async () => {
+    const denied = createFakeBillingCloseProvider({ capabilities: [] });
+    await expect(
+      denied.listBillingAgreements({
+        account_id: DEMO_BILLING_CLOSE_SCENARIOS.fixed.account_id,
+      }),
+    ).rejects.toThrow("AGREEMENT_READ_NOT_AUTHORIZED");
+
+    const provider = createFakeBillingCloseProvider();
+    const hybrid = DEMO_BILLING_CLOSE_SCENARIOS.hybrid;
+    await expect(
+      provider.submitBillingRevenueRevision({
+        account_id: hybrid.account_id,
+        period_id: hybrid.period_id,
+        gross_amount: parseUsdMoney({ amount_minor: "1", currency: "USD" }),
+        excluded_amount: parseUsdMoney({ amount_minor: "0", currency: "USD" }),
+        commissionable_amount: parseUsdMoney({
+          amount_minor: "1",
+          currency: "USD",
+        }),
+        provenance_kind: "statement",
+        provenance_source_id: "unknown-evidence-demo",
+        attestation: { accurate: true, text: "Synthetic demo attestation" },
+        evidence_ids: ["44000000-0000-4000-8000-000000000099"],
+        command_key: "fake-unknown-evidence-0001",
+      }),
+    ).rejects.toThrow("REVENUE_EVIDENCE_INVALID");
+    const scenario = DEMO_BILLING_CLOSE_SCENARIOS.minimum_exception;
+    const previewResult = await provider.previewBillingCalculation({
+      account_id: scenario.account_id,
+      close_snapshot_id: scenario.close_snapshot_id,
+    });
+    expect(previewResult.anomalies).toContainEqual({
+      code: "OPEN_CLOSE_EXCEPTION",
+      status: "fail",
+      blocking: true,
+    });
+    await expect(
+      provider.createBillingCalculation({
+        account_id: scenario.account_id,
+        close_snapshot_id: scenario.close_snapshot_id,
+        preview_fingerprint: previewResult.preview_fingerprint,
+        command_key: "fake-anomalous-create-0001",
+      }),
+    ).rejects.toThrow("CALCULATION_POLICY_MISMATCH");
   });
 });

@@ -18,6 +18,7 @@ import {
   shouldPersistBillingQuery,
   type BillingCapabilitySummary,
 } from "./billingAccess";
+import { billingCloseResourceNames } from "../providers/types";
 
 const readSource = (relativePath: string) =>
   fs.readFileSync(new URL(relativePath, import.meta.url), "utf8");
@@ -433,6 +434,54 @@ describe("billing access panels", () => {
     ).toBe(true);
   });
 
+  it("maps Phase 4 reads and named actions while denying generic mutation", () => {
+    const closeOperator = summary(
+      [],
+      [
+        "agreement.read",
+        "agreement.manage",
+        "revenue.read",
+        "revenue.review",
+        "calculation.read",
+        "calculation.calculate",
+        "calculation.approve",
+      ],
+    );
+
+    expect(
+      canAccessBillingPresentation(closeOperator, {
+        resource: "billing_agreements_support_safe",
+        action: "manage",
+        record: { account_id: "account-one" },
+      }),
+    ).toBe(true);
+    expect(
+      canAccessBillingPresentation(closeOperator, {
+        resource: "billing_revenue_periods_support_safe",
+        action: "review",
+        record: { account_id: "account-one" },
+      }),
+    ).toBe(true);
+    expect(
+      canAccessBillingPresentation(closeOperator, {
+        resource: "billing_calculations_support_safe",
+        action: "approve",
+        record: { account_id: "account-one" },
+      }),
+    ).toBe(true);
+    for (const resource of billingCloseResourceNames) {
+      for (const action of ["create", "edit", "update", "delete"]) {
+        expect(
+          canAccessBillingPresentation(closeOperator, {
+            resource,
+            action,
+            record: { account_id: "account-one" },
+          }),
+        ).toBe(false);
+      }
+    }
+  });
+
   it("keeps reviewer, auditor, and customer presentation least privileged", () => {
     const reviewer = summary([], ["account.read", "evidence.review"]);
     const auditor = summary(
@@ -514,6 +563,11 @@ describe("billing evidence access and cache", () => {
       ["billing_evidence_access_events", "getManyReference"],
       ["billing_audit_events", "getList"],
       ["auth", "canAccess", "billing_accounts"],
+      ...billingCloseResourceNames.map((resource) => [
+        resource,
+        "getList",
+        { account_id: "account-one" },
+      ]),
     ];
 
     sensitiveKeys.forEach((queryKey) => {

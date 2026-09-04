@@ -34,6 +34,18 @@ export interface Db {
   billing_automation_grants: BillingAutomationGrant[];
   billing_evidence_support_safe: BillingEvidenceMetadata[];
   billing_evidence_access_events: BillingEvidenceAccessEvent[];
+  billing_agreements_support_safe: Array<
+    Record<string, unknown> & { id: string }
+  >;
+  billing_revenue_periods_support_safe: Array<
+    Record<string, unknown> & { id: string }
+  >;
+  billing_calculations_support_safe: Array<
+    Record<string, unknown> & { id: string }
+  >;
+  billing_calculation_lineage_support_safe: Array<
+    Record<string, unknown> & { id: string }
+  >;
   invoices: ExactBillingInvoice[];
   companies: Required<Company>[];
   contacts: Required<Contact>[];
