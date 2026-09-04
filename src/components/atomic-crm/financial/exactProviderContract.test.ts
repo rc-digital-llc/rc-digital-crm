@@ -9,6 +9,9 @@ import type {
   ExactBillingInvoiceListResult,
   ExactBillingInvoiceSaveRequest,
 } from "../providers/types";
+import type { createExactFakeInvoiceProvider as createExactFakeInvoiceProviderExport } from "../providers/fakerest/dataProvider";
+import type { dataProvider as liveDataProviderExport } from "../providers/supabase/dataProvider";
+import type { supabase as liveSupabaseExport } from "../providers/supabase/supabase";
 import {
   DEMO_BILLING_ACCOUNT_ID,
   generateExactBillingInvoices,
@@ -21,9 +24,9 @@ import {
   USD_HALF_AWAY_ROUNDING_POLICY,
 } from "./exactMoney";
 
-let createExactFakeInvoiceProvider: typeof import("../providers/fakerest/dataProvider").createExactFakeInvoiceProvider;
-let liveProvider: typeof import("../providers/supabase/dataProvider").dataProvider;
-let liveSupabase: typeof import("../providers/supabase/supabase").supabase;
+let createExactFakeInvoiceProvider: typeof createExactFakeInvoiceProviderExport;
+let liveProvider: typeof liveDataProviderExport;
+let liveSupabase: typeof liveSupabaseExport;
 
 type ProcessResult = { code: number; stdout: string; stderr: string };
 type ExactTestProvider = {

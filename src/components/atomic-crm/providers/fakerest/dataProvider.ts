@@ -22,7 +22,6 @@ import type {
   DealNote,
   ExactBillingInvoice,
   ExactBillingInvoiceLineItem,
-  InvoiceStatus,
   Sale,
   SalesFormData,
   SignUpData,
