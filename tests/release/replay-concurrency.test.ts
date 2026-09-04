@@ -190,8 +190,12 @@ async function countEffects(
 async function applyAutomationCommand(
   container: string,
   idempotencyKey: string,
+  amountMinor = "100",
 ) {
   assertIdentifier(idempotencyKey);
+  if (!/^-?(?:0|[1-9][0-9]*)$/.test(amountMinor)) {
+    throw new Error("test exact amount is invalid");
+  }
   const output = await psql(
     container,
     `BEGIN;
@@ -204,7 +208,7 @@ async function applyAutomationCommand(
        'provider-alpha-fixture',
        'policy-fixture-v1',
        'record.concurrent',
-       1.00,
+       '{"amount_minor":"${amountMinor}","currency":"USD"}'::jsonb,
        '${idempotencyKey}'
      )::text;
      COMMIT;`,
@@ -379,14 +383,52 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
             container,
             `SELECT jsonb_build_object(
                'actions', actions_consumed,
-               'amount', total_amount_consumed::text,
+               'amount_minor', total_amount_consumed_minor::text,
                'status', status
              )::text
              FROM public.billing_automation_grants
              WHERE id = '21000000-0000-0000-0000-000000000501'`,
           ),
         ),
-      ).toEqual({ actions: 1, amount: "1.00", status: "exhausted" });
+      ).toEqual({ actions: 1, amount_minor: "100", status: "exhausted" });
+      expect(
+        JSON.parse(
+          await psql(
+            container,
+            `SELECT jsonb_build_object(
+               'request_fingerprint', request_fingerprint ~ '^[0-9a-f]{64}$',
+               'effect_fingerprint', effect_fingerprint ~ '^[0-9a-f]{64}$',
+               'amount_minor', amount_minor::text,
+               'currency', currency
+             )::text
+             FROM public.billing_automation_executions
+             WHERE idempotency_key = '${idempotencyKey}'`,
+          ),
+        ),
+      ).toEqual({
+        request_fingerprint: true,
+        effect_fingerprint: true,
+        amount_minor: "100",
+        currency: "USD",
+      });
+      expect(
+        await applyAutomationCommand(container, idempotencyKey, "101"),
+      ).toMatchObject({
+        result: "denied",
+        reason_code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      expect(
+        await applyAutomationCommand(container, "automation-negative", "-1"),
+      ).toMatchObject({ result: "denied" });
+      expect(
+        Number(
+          await psql(
+            container,
+            `SELECT count(*) FROM public.billing_automation_executions
+             WHERE idempotency_key IN ('${idempotencyKey}', 'automation-negative')`,
+          ),
+        ),
+      ).toBe(1);
       expect(
         Number(
           await psql(

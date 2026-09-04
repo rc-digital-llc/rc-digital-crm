@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 function readSource(path: string): string {
@@ -22,6 +23,13 @@ describe("Phase 3 exact-money release coupling", () => {
     "tests/release/migration-upgrade.test.ts",
     "makefile",
     "supabase/tests/upgrades/003-exact-money/expected-transformations.json",
+    "supabase/migrations/20260902000002_exact_billing_expand.sql",
+    "supabase/tests/database/35_billing_automation.sql",
+    "supabase/tests/database/40_billing_evidence.sql",
+    "supabase/tests/database/65_exact_billing_conversion.sql",
+    "supabase/tests/support/billing-security-fixtures.sql",
+    "tests/release/replay-concurrency.test.ts",
+    "tests/release/billing-evidence.test.ts",
   ];
 
   it("classifies every protected exact-money source and test as financial", () => {
@@ -74,9 +82,60 @@ describe("Phase 3 exact-money release coupling", () => {
     expect(sqlTests).toContain(
       "supabase/tests/database/60_exact_financial_primitives.sql",
     );
+    expect(sqlTests).toContain(
+      "supabase/tests/database/65_exact_billing_conversion.sql",
+    );
     expect(financialTargets).toMatch(
       /test-financial-database-sql:[\s\S]*?node scripts\/release\/run-supabase-lane\.mjs run --lane database-contracts -- supabase test db \$\(FINANCIAL_DATABASE_SQL_TESTS\) --local/,
     );
+  });
+
+  it("protects every Wave 4 exact billing caller and authority boundary", () => {
+    const makefile = readSource("makefile");
+    const migration = readSource(
+      "supabase/migrations/20260902000002_exact_billing_expand.sql",
+    );
+    const runner = readSource("scripts/release/fingerprint-upgrade.mjs");
+    const acceptedEvidenceMigration = readSource(
+      "supabase/migrations/20260901000004_billing_evidence_security.sql",
+    );
+
+    for (const path of [
+      "supabase/tests/database/35_billing_automation.sql",
+      "supabase/tests/database/40_billing_evidence.sql",
+      "supabase/tests/database/65_exact_billing_conversion.sql",
+    ]) {
+      expect(makefile, path).toContain(path);
+    }
+    expect(makefile).toContain("tests/release/billing-evidence.test.ts");
+    expect(makefile).toContain("tests/release/replay-concurrency.test.ts");
+    expect(migration).toContain(
+      "CREATE FUNCTION public.read_billing_invoices_exact(p_request jsonb)",
+    );
+    expect(migration).toContain(
+      "CREATE FUNCTION public.read_billing_invoices_legacy_compat(p_request jsonb)",
+    );
+    expect(migration).toContain(
+      "CREATE FUNCTION public.save_billing_invoice_exact(p_request jsonb)",
+    );
+    expect(migration).toContain("SECURITY DEFINER\nSET search_path = ''");
+    expect(migration).toContain(
+      "REVOKE ALL ON TABLE public.invoices FROM anon, authenticated",
+    );
+    expect(migration).toContain(
+      "REVOKE ALL ON SEQUENCE public.invoices_id_seq FROM anon, authenticated",
+    );
+    expect(migration).toContain(
+      "DROP FUNCTION private.billing_consume_automation_grant(\n  uuid, uuid, text, text, text, text, numeric, text\n)",
+    );
+    expect(migration).not.toMatch(/CREATE\s+(?:OR\s+REPLACE\s+)?VIEW/i);
+    expect(migration).not.toMatch(/\bEXECUTE\s+(?:format|\()/i);
+    expect(runner).toContain(
+      '"supabase/migrations/20260901000004_billing_evidence_security.sql"',
+    );
+    expect(
+      createHash("sha256").update(acceptedEvidenceMigration).digest("hex"),
+    ).toBe("740ac8cc9c5955c3e64c837082402f0d7f94e5fe2f145d88489d22b010dc48c0");
   });
 
   it("protects the closed exact upgrade verifier and immutable history pins", () => {

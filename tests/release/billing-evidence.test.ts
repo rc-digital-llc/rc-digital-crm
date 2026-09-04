@@ -350,7 +350,10 @@ async function createUploadedEvidence(
     },
     body: content,
   });
-  expect(upload.ok).toBe(true);
+  expect(
+    upload.ok,
+    `signed upload failed with HTTP ${upload.status}: ${await upload.text()}`,
+  ).toBe(true);
   return { content, evidenceId, expiresAt: String(body.expires_at), url };
 }
 
@@ -365,6 +368,52 @@ async function evidenceState(evidenceId: string) {
   )::text
   FROM public.billing_evidence_objects
   WHERE id = '${evidenceId}'`);
+}
+
+async function inspectionEffectState(evidenceIds: string[]) {
+  const ids = evidenceIds.map(assertUuid);
+  if (ids.length === 0) throw new Error("evidence snapshot is empty");
+  const idList = ids.map((id) => `'${id}'::uuid`).join(",");
+  return serviceJson<Record<string, unknown>>(`SELECT jsonb_build_object(
+    'evidence', (
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', id,
+        'inspection_status', inspection_status,
+        'inspection_reason_code', inspection_reason_code,
+        'inspection_principal_id', inspection_principal_id,
+        'inspection_grant_id', inspection_grant_id,
+        'inspection_decided_at', inspection_decided_at
+      ) ORDER BY id)
+      FROM public.billing_evidence_objects
+      WHERE id IN (${idList})
+    ),
+    'audit_count', (
+      SELECT count(*)::text FROM public.billing_audit_events
+      WHERE actor_id = '${automationPrincipalId}'
+    ),
+    'grant', (
+      SELECT jsonb_build_object(
+        'actions', actions_consumed,
+        'amount_minor', total_amount_consumed_minor::text,
+        'status', status
+      )
+      FROM public.billing_automation_grants
+      WHERE id = '${automationGrantId}'
+    ),
+    'executions', (
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', id,
+        'idempotency_key', idempotency_key,
+        'amount_minor', amount_minor::text,
+        'currency', currency,
+        'request_fingerprint', request_fingerprint,
+        'effect_fingerprint', effect_fingerprint,
+        'effect_discriminator', effect_discriminator
+      ) ORDER BY id)
+      FROM public.billing_automation_executions
+      WHERE principal_id = '${automationPrincipalId}'
+    )
+  )::text`);
 }
 
 async function countWhere(table: string, predicate: string) {
@@ -596,7 +645,10 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
         },
         body: "synthetic-pdf-content",
       });
-      expect(upload.ok).toBe(true);
+      expect(
+        upload.ok,
+        `signed upload failed with HTTP ${upload.status}: ${await upload.text()}`,
+      ).toBe(true);
       uploadedCapability = {
         content: "synthetic-pdf-content",
         evidenceId,
@@ -703,6 +755,41 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
            AND result = 'succeeded'`,
         ),
       ).toBe(1);
+
+      const conflictBefore = await inspectionEffectState([
+        cleanUpload.evidenceId,
+        rejectedUpload.evidenceId,
+      ]);
+      const conflictingEvidence = await invokeEvidence(automation.accessToken, {
+        command: "inspection",
+        evidence_id: rejectedUpload.evidenceId,
+        decision: "rejected",
+        reason_code: "SCAN_REJECTED",
+        idempotency_key: cleanIdempotencyKey,
+      });
+      expect(conflictingEvidence.status).toBe(200);
+      expect(await responseJson(conflictingEvidence)).toEqual({
+        result: "denied",
+        reason_code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      const conflictingDecision = await invokeEvidence(automation.accessToken, {
+        command: "inspection",
+        evidence_id: cleanUpload.evidenceId,
+        decision: "rejected",
+        reason_code: "SCAN_REJECTED",
+        idempotency_key: cleanIdempotencyKey,
+      });
+      expect(conflictingDecision.status).toBe(200);
+      expect(await responseJson(conflictingDecision)).toEqual({
+        result: "denied",
+        reason_code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      expect(
+        await inspectionEffectState([
+          cleanUpload.evidenceId,
+          rejectedUpload.evidenceId,
+        ]),
+      ).toEqual(conflictBefore);
 
       const rejectedInspection = await invokeEvidence(automation.accessToken, {
         command: "inspection",
