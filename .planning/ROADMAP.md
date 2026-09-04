@@ -290,7 +290,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
 | 3. Exact Money and Rounding Contract | 7/7 | Complete    | 2026-09-04 |
-| 4. Agreements, Revenue Evidence, and Calculation Close | 5/8 | In Progress|  |
+| 4. Agreements, Revenue Evidence, and Calculation Close | 6/8 | In Progress|  |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
 | 7. Controls, Observability, and Recovery | 0/TBD | Not started | - |

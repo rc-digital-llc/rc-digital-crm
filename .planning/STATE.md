@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-09-04T23:06:30.296Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-09-04T23:28:19.485Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 37
-  completed_plans: 34
+  completed_plans: 35
   percent: 30
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [█████████░] 92%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 92%
 | Phase 04 P03 | 34 min | 3 tasks | 5 files |
 | Phase 04 P04 | 29 min | 3 tasks | 8 files |
 | Phase 04 P05 | 44 min | 3 tasks | 13 files |
+| Phase 04 P06 | 22 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,9 @@ security decisions:
 - [Phase 04]: Revenue-period and calculation support lists use bounded caller-scoped RPCs with text financial tokens and safe fields only. — The UI needs list data without trusting browser tenant scope or exposing evidence paths and content.
 - [Phase 04]: Supabase success payloads are accepted only after exact key, ID, policy, hash, lineage, and formula reconciliation. — Structurally valid JSON is not sufficient financial authority.
 - [Phase 04]: FakeRest owns deterministic isolated state per factory and mirrors evidence, replay, conflict, anomaly, lineage, and adjustment behavior without network or randomness. — Demo behavior must be repeatable and must not silently weaken production controls.
+- [Phase 04]: Agreement lifecycle history uses a caller-scoped support-safe projection with string event IDs. — Operators need immutable actor, role, reason, and timestamp causation without evidence storage details or raw contract content.
+- [Phase 04]: Active agreement versions remain browser read-only and amendments create new drafts. — Signed calculation authority must remain immutable while operators can propose future terms through explicit server commands.
+- [Phase 04]: Agreement presentation stops offline and treats capability checks as presentation only. — Sensitive agreement data must not render from persisted cache, and the server must remain authoritative for every lifecycle command.
 
 ### Pending Todos
 
@@ -189,6 +193,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T23:06:30.290Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-09-04T23:28:19.479Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None
