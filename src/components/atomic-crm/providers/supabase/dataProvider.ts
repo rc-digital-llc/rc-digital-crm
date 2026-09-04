@@ -46,6 +46,11 @@ import type {
   ExactBillingInvoiceListResult,
   ExactBillingInvoiceSaveRequest,
 } from "../types";
+import {
+  BILLING_CLOSE_INVALID_REQUEST,
+  createSupabaseBillingCloseProvider,
+  type BillingCloseRpc,
+} from "./billingCloseProvider";
 import { getIsInitialized } from "./authProvider";
 import { getEmailRedirectTo } from "./authRedirect";
 import { supabase } from "./supabase";
@@ -64,6 +69,13 @@ const baseDataProvider = supabaseDataProvider({
   apiKey: import.meta.env.VITE_SB_PUBLISHABLE_KEY,
   supabaseClient: supabase,
   sortOrder: "asc,desc.nullslast" as any,
+});
+
+const billingCloseProvider = createSupabaseBillingCloseProvider({
+  rpc: (async (name, args) => {
+    const { data, error } = await supabase.rpc(name as never, args as never);
+    return { data, error };
+  }) satisfies BillingCloseRpc,
 });
 
 const INVOICE_READ_INVALID_REQUEST = "INVOICE_READ_INVALID_REQUEST";
@@ -114,6 +126,25 @@ const INVOICE_SAVE_FIELDS = new Set([
   "status",
   "tax_rate",
   "terms",
+]);
+const PHASE4_AUTHORITATIVE_RESOURCES = new Set([
+  "billing_agreements",
+  "billing_agreement_versions",
+  "billing_agreement_revenue_rules",
+  "billing_agreement_events",
+  "billing_revenue_periods",
+  "billing_revenue_submissions",
+  "billing_revenue_submission_evidence",
+  "billing_revenue_review_events",
+  "billing_close_exceptions",
+  "billing_close_exception_events",
+  "billing_revenue_close_snapshots",
+  "billing_calculations",
+  "billing_calculation_snapshots",
+  "billing_calculation_events",
+  "billing_adjustment_calculations",
+  "billing_calculation_links",
+  "billing_adjustment_exceptions",
 ]);
 const EXACT_INVOICE_RESPONSE_FIELDS = [
   "amount_minor",
@@ -747,6 +778,7 @@ const processCompanyLogo = async (params: any) => {
 
 const dataProviderWithCustomMethods = {
   ...baseDataProvider,
+  ...billingCloseProvider,
   listExactBillingInvoices,
   getExactBillingInvoice,
   saveExactBillingInvoice,
@@ -785,6 +817,9 @@ const dataProviderWithCustomMethods = {
     if (resource === "invoices") {
       return { data: await saveExactBillingInvoice(params?.data) };
     }
+    if (PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error(BILLING_CLOSE_INVALID_REQUEST);
+    }
     return baseDataProvider.create(resource, params);
   },
   async update(resource: string, params: any) {
@@ -799,7 +834,16 @@ const dataProviderWithCustomMethods = {
         }),
       };
     }
+    if (PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error(BILLING_CLOSE_INVALID_REQUEST);
+    }
     return baseDataProvider.update(resource, params);
+  },
+  async delete(resource: string, params: any) {
+    if (PHASE4_AUTHORITATIVE_RESOURCES.has(resource)) {
+      throw new Error(BILLING_CLOSE_INVALID_REQUEST);
+    }
+    return baseDataProvider.delete(resource, params);
   },
 
   async signUp({ email, password, first_name, last_name }: SignUpData) {

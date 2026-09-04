@@ -8,7 +8,6 @@ import type {
   BillingCalculationAnomaly,
   BillingCalculationComparison,
   BillingCalculationExplanation,
-  BillingCalculationLineage,
   BillingCalculationSelectedBranch,
   BillingCloseException,
   BillingContactMethod,
@@ -28,7 +27,6 @@ import type {
 } from "../types";
 import type {
   CanonicalIntegerText,
-  ExactRatio,
   OrdinaryPercentageRate,
   UsdMoney,
 } from "../financial/exactMoney";
@@ -486,7 +484,10 @@ export type BillingCalculationClosePolicy = Readonly<{
   allowed_account_statuses: readonly BillingAccountStatus[];
   allowed_formula_kinds: readonly BillingAgreementFormulaKind[];
   allowed_close_modes: readonly BillingRevenueCloseMode[];
-  allowed_provenance_kinds: readonly BillingRevenueProvenance[];
+  allowed_provenance_kinds: readonly (
+    | BillingRevenueProvenance
+    | "minimum_only"
+  )[];
   require_zero_anomalies: boolean;
   minimum_result: UsdMoney;
   maximum_result: UsdMoney | null;
@@ -502,15 +503,18 @@ export type BillingCalculationPreviewRequest = Readonly<{
 
 export type BillingCalculationPreview = Readonly<{
   result: "preview";
+  organization_id: string;
   account_id: string;
   agreement_id: string;
   agreement_version_id: string;
   period_id: string;
+  period_start: string;
+  period_end: string;
   close_snapshot_id: string;
   close_mode: BillingRevenueCloseMode;
-  gross_amount: UsdMoney;
-  excluded_amount: UsdMoney;
-  source_commissionable_amount: UsdMoney;
+  gross_amount: UsdMoney | null;
+  excluded_amount: UsdMoney | null;
+  source_commissionable_amount: UsdMoney | null;
   calculation_base: UsdMoney;
   provenance_kind: BillingRevenueProvenance | "minimum_only";
   provenance_source_id: string | null;
@@ -570,7 +574,7 @@ export type BillingCalculationApproveRequest = Readonly<{
   preview_fingerprint: string;
   reason: string;
   command_key: string;
-  automation_grant_id?: string;
+  grant_id?: string;
   provider_reference?: string;
 }>;
 
@@ -651,7 +655,6 @@ export const billingResourceNames = [
   "billing_automation_grants",
   "billing_evidence_support_safe",
   "billing_evidence_access_events",
-  ...billingCloseResourceNames,
   "invoices",
 ] as const;
 

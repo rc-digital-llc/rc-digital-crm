@@ -695,7 +695,7 @@ export type BillingCalculationAnomaly = Readonly<{
 }>;
 
 export type BillingCalculationComparison = Readonly<{
-  status: "available" | "unavailable";
+  status: "available" | "unavailable" | "zero_baseline";
   previous_calculation_id: string | null;
   previous_amount: UsdMoney | null;
   delta: UsdMoney | null;
@@ -785,8 +785,8 @@ export type BillingCalculationLineage = Readonly<{
   }>;
   formula: Readonly<{
     calculation_base: UsdMoney;
-    intermediate_numerator: CanonicalIntegerText;
-    intermediate_denominator: CanonicalIntegerText;
+    intermediate_numerator: CanonicalIntegerText | null;
+    intermediate_denominator: CanonicalIntegerText | null;
     fixed_candidate: UsdMoney | null;
     minimum_candidate: UsdMoney | null;
     percentage_candidate: UsdMoney | null;
