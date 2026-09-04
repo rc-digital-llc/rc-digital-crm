@@ -15,6 +15,7 @@ import type {
   ContactNote,
   Deal,
   DealNote,
+  ExactBillingInvoice,
   Sale,
   Tag,
   Task,
@@ -33,6 +34,7 @@ export interface Db {
   billing_automation_grants: BillingAutomationGrant[];
   billing_evidence_support_safe: BillingEvidenceMetadata[];
   billing_evidence_access_events: BillingEvidenceAccessEvent[];
+  invoices: ExactBillingInvoice[];
   companies: Required<Company>[];
   contacts: Required<Contact>[];
   contact_notes: ContactNote[];

@@ -8,7 +8,18 @@ import type {
   BillingRole,
   BillingRoleAssignment,
   BillingRoleCapability,
+  ExactBillingInvoice,
+  ExactBillingInvoiceLineItem,
 } from "../../../types";
+import {
+  multiplyUsdMoneyByExactRatio,
+  multiplyUsdMoneyByRate,
+  parseCanonicalIntegerText,
+  parseExactRatio,
+  parseOrdinaryPercentage,
+  parseUsdMoney,
+  USD_HALF_AWAY_ROUNDING_POLICY,
+} from "../../../financial/exactMoney";
 import type { Db } from "./types";
 
 export const DEMO_BILLING_ORGANIZATION_ID =
@@ -33,6 +44,7 @@ type BillingData = Pick<
   | "billing_automation_grants"
   | "billing_evidence_support_safe"
   | "billing_evidence_access_events"
+  | "invoices"
 >;
 
 const organization: BillingOrganization = {
@@ -205,6 +217,115 @@ const accessEvent: BillingEvidenceAccessEvent = {
   created_at: DEMO_EVIDENCE_NOW,
 };
 
+function exactLineItem(
+  description: string,
+  quantityNumerator: string,
+  quantityDenominator: string,
+  unitAmountMinor: string,
+): ExactBillingInvoiceLineItem {
+  const quantityRatio = parseExactRatio({
+    numerator: quantityNumerator,
+    denominator: quantityDenominator,
+  });
+  const unitPrice = parseUsdMoney({
+    amount_minor: unitAmountMinor,
+    currency: "USD",
+  });
+  return Object.freeze({
+    description,
+    quantity_ratio: quantityRatio,
+    unit_price: unitPrice,
+    extended_amount: multiplyUsdMoneyByExactRatio(
+      unitPrice,
+      quantityRatio,
+      USD_HALF_AWAY_ROUNDING_POLICY,
+    ),
+    currency_policy_version: "usd-v1",
+    rounding_policy_version: "half-away-from-zero-v1",
+  });
+}
+
+function exactInvoice(
+  id: string,
+  invoiceNumber: string,
+  amountMinor: string,
+  submittedPercentage: string,
+  lineItems: ExactBillingInvoiceLineItem[] = [],
+): ExactBillingInvoice {
+  const amount = parseUsdMoney({ amount_minor: amountMinor, currency: "USD" });
+  const taxRate = parseOrdinaryPercentage(submittedPercentage);
+  const taxAmount = multiplyUsdMoneyByRate(
+    amount,
+    taxRate,
+    USD_HALF_AWAY_ROUNDING_POLICY,
+  );
+  const totalAmount = parseUsdMoney({
+    amount_minor: parseCanonicalIntegerText(
+      (BigInt(amount.amount_minor) + BigInt(taxAmount.amount_minor)).toString(),
+    ),
+    currency: "USD",
+  });
+  return Object.freeze({
+    id,
+    created_at: DEMO_EVIDENCE_NOW,
+    updated_at: DEMO_EVIDENCE_NOW,
+    billing_account_id: DEMO_BILLING_ACCOUNT_ID,
+    company_id: "1",
+    project_id: null,
+    deal_id: null,
+    invoice_number: invoiceNumber,
+    description: null,
+    amount,
+    currency_policy_version: "usd-v1",
+    tax_rate: taxRate,
+    tax_amount: taxAmount,
+    total_amount: totalAmount,
+    rounding_policy_version: "half-away-from-zero-v1",
+    line_items: lineItems,
+    status: "Draft",
+    issue_date: "2026-09-01",
+    due_date: null,
+    paid_date: null,
+    payment_method: null,
+    payment_reference: null,
+    notes: null,
+    terms: "Payment due within 30 days of invoice date.",
+  });
+}
+
+const exactInvoices = [
+  exactInvoice("3100001", "DEMO-EXACT-MIN", "-9223372036854775808", "0%"),
+  exactInvoice("3100002", "DEMO-EXACT-MAX", "9223372036854775807", "0%"),
+  exactInvoice("3100003", "DEMO-EXACT-8875", "800", "8.875%", [
+    exactLineItem("Two exact units", "2", "1", "400"),
+  ]),
+  exactInvoice("3100004", "DEMO-EXACT-12500", "8", "12.500%"),
+];
+
+function cloneExactInvoice(invoice: ExactBillingInvoice): ExactBillingInvoice {
+  return Object.freeze({
+    ...invoice,
+    amount: Object.freeze({ ...invoice.amount }),
+    tax_rate: Object.freeze({ ...invoice.tax_rate }),
+    tax_amount: Object.freeze({ ...invoice.tax_amount }),
+    total_amount: Object.freeze({ ...invoice.total_amount }),
+    line_items: invoice.line_items.map((item) =>
+      Object.freeze({
+        ...item,
+        quantity_ratio: parseExactRatio({
+          numerator: item.quantity_ratio.numerator,
+          denominator: item.quantity_ratio.denominator,
+        }),
+        unit_price: Object.freeze({ ...item.unit_price }),
+        extended_amount: Object.freeze({ ...item.extended_amount }),
+      }),
+    ),
+  });
+}
+
+export const generateExactBillingInvoices = (): ExactBillingInvoice[] =>
+  exactInvoices.map(cloneExactInvoice);
+
 export const generateBillingAccounts = (): BillingData => ({
   billing_organizations: [{ ...organization }],
   billing_accounts: [{ ...account }],
@@ -222,4 +343,5 @@ export const generateBillingAccounts = (): BillingData => ({
     { ...quarantinedEvidence },
   ],
   billing_evidence_access_events: [{ ...accessEvent }],
+  invoices: generateExactBillingInvoices(),
 });

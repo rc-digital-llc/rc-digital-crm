@@ -480,6 +480,43 @@ function buildExactInvoiceGetRequest(
   };
 }
 
+function parseExactInvoiceListMethodRequest(
+  value: unknown,
+): ExactBillingInvoiceListRequest {
+  if (
+    !isPlainRecord(value) ||
+    !hasExactKeys(value, [
+      "filters",
+      "mode",
+      "order",
+      "page",
+      "per_page",
+      "sort",
+    ]) ||
+    value.mode !== "list"
+  ) {
+    invoiceFailure(INVOICE_READ_INVALID_REQUEST);
+  }
+  return buildExactInvoiceListRequest({
+    pagination: { page: value.page, perPage: value.per_page },
+    sort: { field: value.sort, order: value.order },
+    filter: value.filters,
+  });
+}
+
+function parseExactInvoiceGetMethodRequest(
+  value: unknown,
+): ExactBillingInvoiceGetRequest {
+  if (
+    !isPlainRecord(value) ||
+    !hasExactKeys(value, ["invoice_id", "mode"]) ||
+    value.mode !== "get"
+  ) {
+    invoiceFailure(INVOICE_READ_INVALID_REQUEST);
+  }
+  return buildExactInvoiceGetRequest(value.invoice_id);
+}
+
 function requireSaveNullableString(
   value: unknown,
   maximumBytes: number,
@@ -647,13 +684,9 @@ function throwSafeRpcError(error: unknown, fallback: string): never {
 }
 
 async function listExactBillingInvoices(
-  requestValue: ExactBillingInvoiceListRequest,
+  requestValue: unknown,
 ): Promise<ExactBillingInvoiceListResult> {
-  const request = buildExactInvoiceListRequest({
-    pagination: { page: requestValue.page, perPage: requestValue.per_page },
-    sort: { field: requestValue.sort, order: requestValue.order },
-    filter: requestValue.filters,
-  });
+  const request = parseExactInvoiceListMethodRequest(requestValue);
   const { data, error } = await supabase.rpc("read_billing_invoices_exact", {
     p_request: request,
   });
@@ -664,9 +697,9 @@ async function listExactBillingInvoices(
 }
 
 async function getExactBillingInvoice(
-  requestValue: ExactBillingInvoiceGetRequest,
+  requestValue: unknown,
 ): Promise<ExactBillingInvoice> {
-  const request = buildExactInvoiceGetRequest(requestValue.invoice_id);
+  const request = parseExactInvoiceGetMethodRequest(requestValue);
   const { data, error } = await supabase.rpc("read_billing_invoices_exact", {
     p_request: request,
   });
@@ -681,7 +714,7 @@ async function getExactBillingInvoice(
 }
 
 async function saveExactBillingInvoice(
-  requestValue: ExactBillingInvoiceSaveRequest,
+  requestValue: unknown,
 ): Promise<ExactBillingInvoice> {
   const request = parseExactInvoiceSaveRequest(requestValue);
   const { data, error } = await supabase.rpc("save_billing_invoice_exact", {
