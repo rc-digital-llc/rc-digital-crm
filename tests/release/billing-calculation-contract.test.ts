@@ -193,7 +193,6 @@ function calculationFixtureSql(
   const months = ["2026-06-01", "2026-07-01", "2026-08-01", "2026-09-01"];
   const gross = ["1000000", "2000000", "2500000", "3000000"];
   const excluded = ["100000", "100000", "100000", "100000"];
-  const closeFingerprintCharacter = ["a", "b", "c", "d"];
   const tuples = periodIds
     .map(
       (periodId, index) =>
@@ -220,7 +219,8 @@ function calculationFixtureSql(
         `('${alphaOrganizationId}', '${alphaAccountId}', '${periodId}',
           '${submissionIds[index]}', 'accept', 'REVENUE_ACCEPTED',
           '${identities.reviewer}', 'reviewer', 'Exact fixture accepted',
-          repeat('${index + 2}', 64), repeat('${index + 6}', 64),
+          repeat('${index + 2}', 64),
+          private.billing_revenue_evidence_fingerprint('${submissionIds[index]}'),
           repeat('${index + 2}', 64))`,
     )
     .join(",\n");
@@ -236,8 +236,36 @@ function calculationFixtureSql(
           ${BigInt(gross[index]) - BigInt(excluded[index])}, 'statement',
           'fixture-${suffix}-${index}',
           '[{"evidence_id":"${evidenceId}","captured_sha256":"${"1".repeat(64)}","ordinal":1}]',
-          repeat('a', 64), repeat('${index + 2}', 64), repeat('${index + 6}', 64),
-          repeat('${closeFingerprintCharacter[index]}', 64),
+          repeat('a', 64), repeat('${index + 2}', 64),
+          private.billing_revenue_evidence_fingerprint('${submissionIds[index]}'),
+          (SELECT pg_catalog.encode(extensions.digest(
+            pg_catalog.jsonb_build_object(
+              'agreement_id', period.agreement_id,
+              'agreement_version_id', period.agreement_version_id,
+              'agreement_fingerprint', repeat('a', 64),
+              'period_id', period.id,
+              'period_start', period.period_start,
+              'period_end', period.period_end,
+              'timezone', period.timezone,
+              'submission_deadline_at', period.submission_deadline_at,
+              'close_mode', 'accepted_evidence',
+              'submission_id', submission.id,
+              'review_event_id', review.id,
+              'input_fingerprint', submission.request_fingerprint,
+              'evidence_fingerprint', review.evidence_fingerprint,
+              'exception_id', NULL,
+              'gross_amount_minor', submission.gross_amount_minor,
+              'excluded_amount_minor', submission.excluded_amount_minor,
+              'commissionable_amount_minor', submission.commissionable_amount_minor,
+              'review_policy_version', review.review_policy_version,
+              'close_policy_version', 'revenue-close-v1'
+            )::text, 'sha256'), 'hex')
+           FROM public.billing_revenue_periods AS period
+           JOIN public.billing_revenue_submissions AS submission
+             ON submission.period_id = period.id
+           JOIN public.billing_revenue_review_events AS review
+             ON review.submission_id = submission.id
+           WHERE period.id = '${periodIds[index]}'),
           'revenue-review-v1', 'revenue-close-v1',
           '${identities.reviewer}', 'reviewer', 'Freeze exact fixture',
           repeat('${index + 2}', 64))`,
@@ -256,7 +284,7 @@ function calculationFixtureSql(
       '21000000-0000-0000-0000-000000000400',
       '21000000-0000-0000-0000-000000000502', pg_catalog.now(),
       'SCAN_CLEAN', '2035-01-01T00:00:00Z', 'active',
-      'revenue_statement', 'calculation-${suffix}.pdf', 'Calculation fixture'
+      'contract', 'calculation-${suffix}.pdf', 'Calculation fixture'
     );
     INSERT INTO public.billing_agreements (
       id, organization_id, account_id, agreement_family, created_by
@@ -290,6 +318,17 @@ function calculationFixtureSql(
       'exclude', 'deduct_in_period', 5, 'hold_close', 'minimum_only',
       'next_period_adjustment', '["statement"]'
     );
+    INSERT INTO public.billing_agreement_events (
+      organization_id, account_id, agreement_id, agreement_version_id,
+      event_type, actor_id, actor_role, reason, command_key,
+      request_fingerprint, evidence_sha256, response_snapshot
+    ) VALUES (
+      '${alphaOrganizationId}', '${alphaAccountId}', '${agreementId}',
+      '${versionId}', 'activated', '${identities.reviewer}', 'reviewer',
+      'Activated exact calculation fixture', 'calculation-activate-${suffix}',
+      repeat('a', 64), repeat('1', 64),
+      jsonb_build_object('result', 'activated', 'agreement_version_id', '${versionId}')
+    );
     INSERT INTO public.billing_revenue_periods (
       id, organization_id, account_id, agreement_id, agreement_version_id,
       period_start, period_end, timezone, submission_deadline_at,
@@ -301,6 +340,14 @@ function calculationFixtureSql(
       provenance_kind, provenance_source_id, submitter_id, submitter_role,
       attested_accurate, attestation_text, request_fingerprint
     ) VALUES ${submissions};
+    INSERT INTO public.billing_revenue_submission_evidence (
+      submission_id, evidence_id, organization_id, account_id,
+      evidence_ordinal, captured_sha256
+    )
+    SELECT submission.id, '${evidenceId}', '${alphaOrganizationId}',
+      '${alphaAccountId}', 1, repeat('1', 64)
+    FROM public.billing_revenue_submissions AS submission
+    WHERE submission.id IN (${submissionIds.map((id) => `'${id}'`).join(",")});
     INSERT INTO public.billing_revenue_review_events (
       organization_id, account_id, period_id, submission_id, outcome,
       reason_code, reviewer_id, reviewer_role, reason, input_fingerprint,

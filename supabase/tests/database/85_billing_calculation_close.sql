@@ -148,5 +148,55 @@ SELECT ok(
   'adjustment command creates no invoice, payment, or ledger effect'
 );
 
+SELECT is(
+  (
+    SELECT count(*)
+    FROM pg_catalog.pg_trigger AS trigger_record
+    JOIN pg_catalog.pg_class AS relation ON relation.oid = trigger_record.tgrelid
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND trigger_record.tgname IN (
+        'billing_adjustment_calculations_freeze',
+        'billing_adjustment_calculations_immutable',
+        'billing_calculation_links_freeze',
+        'billing_calculation_links_immutable',
+        'billing_adjustment_exceptions_freeze',
+        'billing_adjustment_exceptions_immutable'
+      )
+      AND NOT trigger_record.tgisinternal
+  ),
+  6::bigint,
+  'adjustment snapshots, links, and exceptions validate then remain immutable'
+);
+
+SELECT ok(
+  (
+    SELECT procedure_record.prosecdef
+      AND owner_role.rolname = 'postgres'
+      AND COALESCE(pg_catalog.array_to_string(procedure_record.proconfig, ','), '')
+        IN ('search_path=', 'search_path=""')
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_roles AS owner_role ON owner_role.oid = procedure_record.proowner
+    WHERE procedure_record.oid =
+      'public.create_billing_adjustment_calculation(jsonb)'::regprocedure
+  ),
+  'adjustment command is a locked postgres-owned security definer'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name IN (
+        'billing_adjustment_calculations', 'billing_calculation_links',
+        'billing_adjustment_exceptions'
+      )
+      AND data_type IN ('real', 'double precision', 'money')
+  ),
+  0::bigint,
+  'adjustment authority contains no floating-point or locale money columns'
+);
+
 SELECT * FROM finish();
 ROLLBACK;

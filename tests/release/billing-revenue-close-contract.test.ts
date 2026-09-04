@@ -298,7 +298,24 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
            ('${ids.minimumVersion}', '21000000-0000-0000-0000-000000000100',
             '${alphaAccountId}', 'America/Los_Angeles', 'cash', '["service_revenue"]',
             '["sales_tax"]', 'exclude', 'deduct_in_period', 5, 'hold_close',
-            'minimum_only', 'next_period_adjustment', '["statement"]');`,
+            'minimum_only', 'next_period_adjustment', '["statement"]');
+         INSERT INTO public.billing_agreement_events (
+           organization_id, account_id, agreement_id, agreement_version_id,
+           event_type, actor_id, actor_role, reason, command_key,
+           request_fingerprint, evidence_sha256, response_snapshot
+         ) VALUES
+           ('21000000-0000-0000-0000-000000000100', '${alphaAccountId}',
+            '${ids.normalAgreement}', '${ids.normalVersion}', 'activated',
+            '${identities.reviewer}', 'reviewer', 'Activated normal close fixture',
+            'close-normal-activate-${suffix}',
+            encode(extensions.digest('${ids.normalVersion}', 'sha256'), 'hex'),
+            repeat('1', 64), jsonb_build_object('result', 'activated')),
+           ('21000000-0000-0000-0000-000000000100', '${alphaAccountId}',
+            '${ids.minimumAgreement}', '${ids.minimumVersion}', 'activated',
+            '${identities.reviewer}', 'reviewer', 'Activated minimum close fixture',
+            'close-minimum-activate-${suffix}',
+            encode(extensions.digest('${ids.minimumVersion}', 'sha256'), 'hex'),
+            repeat('1', 64), jsonb_build_object('result', 'activated'));`,
       );
 
       const periodPayload = {
