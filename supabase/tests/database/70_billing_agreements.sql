@@ -229,12 +229,211 @@ SELECT throws_ok(
   'wrong-account signed evidence fails closed'
 );
 
+CREATE TEMP TABLE agreement_submit_results AS
+SELECT public.submit_billing_agreement_version(jsonb_build_object(
+  'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+  'reason', 'Ready for independent review',
+  'command_key', 'agreement-submit-alpha-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'result' FROM agreement_submit_results),
+  'submitted',
+  'operator submits the draft for approval'
+);
+
+SELECT is(
+  public.submit_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Ready for independent review',
+    'command_key', 'agreement-submit-alpha-0001'
+  )),
+  (SELECT response FROM agreement_submit_results),
+  'same command key and fingerprint returns the original submit effect'
+);
+
+SELECT throws_ok(
+  $$SELECT public.submit_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Changed replay payload',
+    'command_key', 'agreement-submit-alpha-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_IDEMPOTENCY_CONFLICT',
+  'changed reuse of a lifecycle command key fails before mutation'
+);
+
+SELECT throws_ok(
+  $$SELECT public.activate_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Operator cannot approve',
+    'command_key', 'agreement-activate-operator-denied-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'operator cannot activate an agreement'
+);
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000003', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.save_billing_agreement_draft(
+    pg_temp.valid_agreement_payload('agreement-reviewer-draft-denied-0001')
+  )$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'reviewer cannot draft agreement terms'
+);
+
+CREATE TEMP TABLE agreement_activate_results AS
+SELECT public.activate_billing_agreement_version(jsonb_build_object(
+  'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+  'reason', 'Signed terms independently approved',
+  'command_key', 'agreement-activate-alpha-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'result' FROM agreement_activate_results),
+  'activated',
+  'reviewer activates submitted signed terms'
+);
+
+SELECT is(
+  (SELECT response->>'self_approved' FROM agreement_activate_results),
+  'false',
+  'independent reviewer approval is not marked self-approved'
+);
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '22000000-0000-0000-0000-000000000002', true);
+SELECT set_config('request.jwt.claims', '{"sub":"22000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.pause_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Cross-tenant attempt',
+    'command_key', 'agreement-cross-tenant-denied-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'wrong-tenant operator cannot act on an agreement'
+);
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000004', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000004","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.pause_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Auditor attempt',
+    'command_key', 'agreement-auditor-denied-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'auditor cannot change agreement lifecycle'
+);
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000005', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000005","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.pause_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Customer attempt',
+    'command_key', 'agreement-customer-denied-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'customer cannot change agreement lifecycle'
+);
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000006', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000006","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.activate_billing_agreement_version(jsonb_build_object(
+    'version_id', (SELECT response->>'version_id' FROM agreement_command_results),
+    'reason', 'Automation attempt',
+    'command_key', 'agreement-automation-denied-0001'
+  ))$$,
+  'P0001',
+  'AGREEMENT_NOT_AUTHORIZED',
+  'automation principals cannot approve agreement terms'
+);
+
+RESET ROLE;
+
+SELECT is(
+  (
+    SELECT jsonb_build_object(
+      'events', count(*),
+      'audits', (
+        SELECT count(*)
+        FROM public.billing_audit_events AS audit
+        WHERE audit.subject_type = 'billing_agreement_versions'
+          AND audit.subject_id = (SELECT response->>'version_id' FROM agreement_command_results)
+      )
+    )
+    FROM public.billing_agreement_events AS event
+    WHERE event.agreement_version_id = (
+      SELECT (response->>'version_id')::uuid FROM agreement_command_results
+    )
+  ),
+  '{"audits": 3, "events": 3}'::jsonb,
+  'draft, submit, and activate each append exactly one event and audit effect'
+);
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000001', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000001","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+CREATE TEMP TABLE self_approval_draft AS
+SELECT public.save_billing_agreement_draft(
+  pg_temp.valid_agreement_payload('agreement-self-draft-0001')
+    || jsonb_build_object('agreement_family', 'self_approval')
+) AS response;
+
+CREATE TEMP TABLE self_approval_submit AS
+SELECT public.submit_billing_agreement_version(jsonb_build_object(
+  'version_id', (SELECT response->>'version_id' FROM self_approval_draft),
+  'reason', 'Single-owner submission',
+  'command_key', 'agreement-self-submit-0001'
+)) AS response;
+
+CREATE TEMP TABLE self_approval_activate AS
+SELECT public.activate_billing_agreement_version(jsonb_build_object(
+  'version_id', (SELECT response->>'version_id' FROM self_approval_draft),
+  'reason', 'Accepted single-owner approval',
+  'command_key', 'agreement-self-activate-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'self_approved' FROM self_approval_activate),
+  'true',
+  'authorized single-owner approval is explicitly marked self-approved'
+);
+
 RESET ROLE;
 
 SELECT is(
   (SELECT count(*) FROM public.billing_agreements),
-  1::bigint,
-  'one stable agreement identity is stored'
+  2::bigint,
+  'primary and self-approval agreement identities remain distinct'
 );
 
 SELECT is(
@@ -251,9 +450,10 @@ SELECT is(
       'evidence_hash', signed_evidence_sha256
     )
     FROM public.billing_agreement_versions
+    WHERE id = (SELECT (response->>'version_id')::uuid FROM agreement_command_results)
   ),
   jsonb_build_object(
-    'state', 'draft',
+    'state', 'active',
     'formula_kind', 'hybrid',
     'minimum_minor', '125000',
     'rate', '7/100',
@@ -263,7 +463,7 @@ SELECT is(
     'rounding_policy', 'half-away-from-zero-v1',
     'evidence_hash', repeat('1', 64)
   ),
-  'draft freezes exact formula policy and signed evidence hash facts'
+  'activated version preserves exact formula policy and signed evidence hash facts'
 );
 
 SELECT lives_ok(
@@ -286,7 +486,8 @@ SELECT lives_ok(
     CROSS JOIN (VALUES
       ('21000000-0000-0000-0000-000000000700'::uuid, 10, '2028-01-01'::date, '2029-01-01'::date, 10000::bigint, 'a'),
       ('21000000-0000-0000-0000-000000000701'::uuid, 11, '2029-01-01'::date, '2030-01-01'::date, 20000::bigint, 'b')
-    ) AS fixture(id, version_number, effective_start, effective_end, amount_minor, fingerprint_character)$$,
+    ) AS fixture(id, version_number, effective_start, effective_end, amount_minor, fingerprint_character)
+    WHERE agreement.agreement_family = 'primary'$$,
   'adjacent half-open active agreement ranges are valid'
 );
 
@@ -304,7 +505,8 @@ SELECT throws_like(
       '21000000-0000-0000-0000-000000000002', 'operator',
       '21000000-0000-0000-0000-000000000002', 'operator', now(),
       '21000000-0000-0000-0000-000000000003', 'reviewer', now()
-    FROM public.billing_agreements$$,
+    FROM public.billing_agreements
+    WHERE agreement_family = 'primary'$$,
   '%billing_agreement_versions_active_overlap_excl%',
   'overlapping active agreement ranges fail at the exclusion constraint'
 );
@@ -334,7 +536,8 @@ SELECT lives_ok(
       id, version_number, effective_start, effective_end, formula_kind,
       fixed_amount_minor, minimum_amount_minor, rate_numerator,
       rate_denominator, submitted_percentage, fingerprint_character
-    )$$,
+    )
+    WHERE agreement.agreement_family = 'primary'$$,
   'fixed, percentage, and minimum-support exact agreement rows accept valid terms'
 );
 
@@ -347,7 +550,8 @@ SELECT throws_like(
     SELECT organization_id, account_id, id, 30, '2033-01-01', '2034-01-01',
       'invented', '21000000-0000-0000-0000-000000000601', repeat('1', 64),
       repeat('9', 64), '21000000-0000-0000-0000-000000000002', 'operator'
-    FROM public.billing_agreements$$,
+    FROM public.billing_agreements
+    WHERE agreement_family = 'primary'$$,
   '%billing_agreement_versions_formula_%',
   'unknown formula kinds fail closed'
 );

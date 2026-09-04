@@ -265,14 +265,29 @@ BEGIN
   END IF;
   IF OLD.state = 'submitted' THEN
     IF NEW.state <> 'active'
-      OR (to_jsonb(OLD) - ARRAY[
-          'state', 'approved_by', 'approved_by_role', 'approved_at',
-          'self_approved', 'updated_at'
-        ]) IS DISTINCT FROM
-        (to_jsonb(NEW) - ARRAY[
-          'state', 'approved_by', 'approved_by_role', 'approved_at',
-          'self_approved', 'updated_at'
-        ])
+      OR ROW(
+        OLD.id, OLD.organization_id, OLD.account_id, OLD.agreement_id,
+        OLD.version_number, OLD.effective_start, OLD.effective_end,
+        OLD.formula_kind, OLD.fixed_amount_minor, OLD.minimum_amount_minor,
+        OLD.rate_numerator, OLD.rate_denominator, OLD.submitted_percentage,
+        OLD.currency, OLD.currency_policy_version, OLD.rate_policy_version,
+        OLD.rounding_policy_version, OLD.formula_version,
+        OLD.explanation_version, OLD.signed_evidence_id,
+        OLD.signed_evidence_sha256, OLD.terms_fingerprint, OLD.authored_by,
+        OLD.authored_by_role, OLD.submitted_by, OLD.submitted_by_role,
+        OLD.submitted_at, OLD.created_at
+      ) IS DISTINCT FROM ROW(
+        NEW.id, NEW.organization_id, NEW.account_id, NEW.agreement_id,
+        NEW.version_number, NEW.effective_start, NEW.effective_end,
+        NEW.formula_kind, NEW.fixed_amount_minor, NEW.minimum_amount_minor,
+        NEW.rate_numerator, NEW.rate_denominator, NEW.submitted_percentage,
+        NEW.currency, NEW.currency_policy_version, NEW.rate_policy_version,
+        NEW.rounding_policy_version, NEW.formula_version,
+        NEW.explanation_version, NEW.signed_evidence_id,
+        NEW.signed_evidence_sha256, NEW.terms_fingerprint, NEW.authored_by,
+        NEW.authored_by_role, NEW.submitted_by, NEW.submitted_by_role,
+        NEW.submitted_at, NEW.created_at
+      )
     THEN
       RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'AGREEMENT_VERSION_IMMUTABLE';
     END IF;

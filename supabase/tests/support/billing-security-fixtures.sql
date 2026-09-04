@@ -270,6 +270,15 @@ VALUES
   )
 ON CONFLICT (id) DO NOTHING;
 
+-- The clean Alpha evidence row is the deterministic signed-contract anchor
+-- for agreement lifecycle tests. Presentation metadata is intentionally
+-- support-safe; object paths and bytes remain server-owned.
+UPDATE public.billing_evidence_objects
+SET kind = 'contract',
+    original_filename = 'signed-agreement.pdf',
+    uploader_label = 'Fixture agreement signer'
+WHERE id = '21000000-0000-0000-0000-000000000601';
+
 INSERT INTO public.billing_role_assignments (organization_id, account_id, sales_id, role)
 SELECT fixture.organization_id, fixture.account_id, sale.id, fixture.role
 FROM (VALUES
