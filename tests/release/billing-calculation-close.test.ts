@@ -217,6 +217,7 @@ type FormulaCase = Readonly<{
   numerator: string | null;
   denominator: string | null;
   percent: string | null;
+  trueUpPolicy: "next_period_adjustment" | "credit_candidate";
   expected: string;
 }>;
 
@@ -227,9 +228,9 @@ function agreementFixtureSql(
 ) {
   const agreements = cases
     .map(
-      (entry) =>
+      (entry, index) =>
         `('${entry.agreementId}', '${alphaOrganizationId}', '${alphaAccountId}',
-          'close_${entry.name}_${suffix}', '${identities.operator}')`,
+          'close_${entry.name}_${index}_${suffix}', '${identities.operator}')`,
     )
     .join(",\n");
   const versions = cases
@@ -251,7 +252,7 @@ function agreementFixtureSql(
         `('${entry.versionId}', '${alphaOrganizationId}', '${alphaAccountId}',
           'America/Los_Angeles', 'cash', '["service_revenue"]', '["sales_tax"]',
           'exclude', 'deduct_in_period', 5, 'hold_close', 'minimum_only',
-          'next_period_adjustment', '["statement"]')`,
+          '${entry.trueUpPolicy}', '["statement"]')`,
     )
     .join(",\n");
   const events = cases
@@ -319,6 +320,167 @@ function formulaInput(entry: FormulaCase): BillingFormulaInput {
   };
 }
 
+async function prepareLateAdjustment(
+  container: string,
+  suffix: string,
+  label: string,
+  entry: FormulaCase,
+  evidenceId: string,
+  month: string,
+  commissionableMinor: string,
+) {
+  const period = parseResult(
+    await invokeRpc(
+      container,
+      identities.operator,
+      "ensure_billing_revenue_period",
+      {
+        account_id: alphaAccountId,
+        agreement_version_id: entry.versionId,
+        period_month: month,
+        command_key: `${label}-period-${suffix}`,
+      },
+    ),
+  );
+  const missingReview = parseResult(
+    await invokeRpc(
+      container,
+      identities.reviewer,
+      "review_billing_revenue_revision",
+      {
+        account_id: alphaAccountId,
+        period_id: period.period_id,
+        submission_id: null,
+        outcome: "hold",
+        reason_code: "MISSING_EVIDENCE",
+        reason: "Missing evidence; preserve the minimum exception",
+        exception: {
+          kind: "MISSING_EVIDENCE",
+          owner_id: identities.operator,
+          next_action: "Obtain the late source statement",
+          due_at: "2030-01-01T00:00:00Z",
+          amount_at_risk: null,
+        },
+        command_key: `${label}-missing-${suffix}`,
+      },
+    ),
+  );
+  const close = parseResult(
+    await invokeRpc(
+      container,
+      identities.reviewer,
+      "close_billing_revenue_period",
+      {
+        account_id: alphaAccountId,
+        period_id: period.period_id,
+        close_mode: "minimum_only",
+        review_event_id: String(missingReview.review_event_id),
+        reason: "Close the past period at the contract minimum",
+        command_key: `${label}-close-${suffix}`,
+      },
+    ),
+  );
+  const previewRequest = {
+    account_id: alphaAccountId,
+    close_snapshot_id: close.close_snapshot_id,
+    close_policy_version: "billing-manual-v1",
+  };
+  const preview = parseResult(
+    await invokeRpc(
+      container,
+      identities.operator,
+      "preview_billing_calculation",
+      previewRequest,
+    ),
+  );
+  const calculation = parseResult(
+    await invokeRpc(
+      container,
+      identities.operator,
+      "create_billing_calculation",
+      {
+        ...previewRequest,
+        preview_fingerprint: preview.preview_fingerprint,
+        command_key: `${label}-calculate-${suffix}`,
+      },
+    ),
+  );
+  parseResult(
+    await invokeRpc(
+      container,
+      identities.reviewer,
+      "approve_billing_calculation",
+      {
+        account_id: alphaAccountId,
+        calculation_id: calculation.calculation_id,
+        preview_fingerprint: preview.preview_fingerprint,
+        close_policy_version: "billing-manual-v1",
+        mode: "manual",
+        reason: "Approve the frozen minimum calculation",
+        command_key: `${label}-approve-${suffix}`,
+      },
+    ),
+  );
+
+  const submissionId = randomUUID();
+  const grossMinor = (BigInt(commissionableMinor) + 100_000n).toString(10);
+  const fingerprintCharacter = label.at(-1) ?? "a";
+  await serviceSql(
+    container,
+    `INSERT INTO public.billing_revenue_submissions (
+       id, organization_id, account_id, period_id, revision_number,
+       gross_amount_minor, excluded_amount_minor, commissionable_amount_minor,
+       provenance_kind, provenance_source_id, submitter_id, submitter_role,
+       attested_accurate, attestation_text, request_fingerprint, submitted_at
+     ) VALUES (
+       '${submissionId}', '${alphaOrganizationId}', '${alphaAccountId}',
+       '${period.period_id}', 1, ${grossMinor}, 100000, ${commissionableMinor},
+       'statement', '${label}-source-${suffix}', '${identities.operator}', 'operator',
+       true, 'Late exact evidence attestation',
+       encode(extensions.digest('${label}:${suffix}', 'sha256'), 'hex'),
+       pg_catalog.now() + interval '1 second'
+     );
+     INSERT INTO public.billing_revenue_submission_evidence (
+       submission_id, evidence_id, organization_id, account_id,
+       evidence_ordinal, captured_sha256
+     ) VALUES (
+       '${submissionId}', '${evidenceId}', '${alphaOrganizationId}',
+       '${alphaAccountId}', 1, repeat('e', 64)
+     );
+     INSERT INTO public.billing_revenue_review_events (
+       organization_id, account_id, period_id, submission_id, outcome,
+       reason_code, reviewer_id, reviewer_role, reason, input_fingerprint,
+       evidence_fingerprint, request_fingerprint, created_at
+     ) SELECT
+       '${alphaOrganizationId}', '${alphaAccountId}', '${period.period_id}',
+       submission.id, 'accept', 'REVENUE_ACCEPTED', '${identities.reviewer}',
+       'reviewer', 'Accepted late evidence for exact adjustment',
+       submission.request_fingerprint,
+       private.billing_revenue_evidence_fingerprint(submission.id),
+       encode(extensions.digest('${fingerprintCharacter}:${submissionId}', 'sha256'), 'hex'),
+       pg_catalog.now() + interval '2 seconds'
+     FROM public.billing_revenue_submissions AS submission
+     WHERE submission.id = '${submissionId}';`,
+  );
+  const reviewId = await serviceSql(
+    container,
+    `SELECT id FROM public.billing_revenue_review_events
+     WHERE submission_id = '${submissionId}' AND outcome = 'accept'`,
+  );
+  return {
+    periodId: String(period.period_id),
+    originalCalculationId: String(calculation.calculation_id),
+    request: {
+      account_id: alphaAccountId,
+      original_calculation_id: calculation.calculation_id,
+      late_submission_id: submissionId,
+      late_review_event_id: reviewId,
+      reason: `Create ${label} late-evidence adjustment`,
+      command_key: `${label}-adjust-${suffix}`,
+    },
+  };
+}
+
 describe("billing calculation close harness", () => {
   it("uses exact container and RPC allowlists", async () => {
     const calls: string[][] = [];
@@ -359,6 +521,7 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           numerator: null,
           denominator: null,
           percent: null,
+          trueUpPolicy: "next_period_adjustment",
           expected: "50000",
         },
         {
@@ -370,6 +533,7 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           numerator: "1",
           denominator: "10",
           percent: "10%",
+          trueUpPolicy: "next_period_adjustment",
           expected: "90000",
         },
         {
@@ -381,6 +545,7 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           numerator: null,
           denominator: null,
           percent: null,
+          trueUpPolicy: "next_period_adjustment",
           expected: "125000",
         },
         {
@@ -392,6 +557,19 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           numerator: "1",
           denominator: "10",
           percent: "10%",
+          trueUpPolicy: "next_period_adjustment",
+          expected: "125000",
+        },
+        {
+          name: "hybrid",
+          agreementId: randomUUID(),
+          versionId: randomUUID(),
+          fixed: null,
+          minimum: "125000",
+          numerator: "1",
+          denominator: "10",
+          percent: "10%",
+          trueUpPolicy: "credit_candidate",
           expected: "125000",
         },
       ];
@@ -811,6 +989,104 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
                WHERE period_id = '${minimumPeriod.period_id}'))`,
         ),
       ).toBe("1:1:1");
+
+      const noAdjustmentFixture = await prepareLateAdjustment(
+        container,
+        suffix,
+        "late-zero-0",
+        hybrid,
+        evidenceId,
+        "2026-02",
+        "1250000",
+      );
+      expect(
+        parseResult(
+          await invokeRpc(
+            container,
+            identities.reviewer,
+            "create_billing_adjustment_calculation",
+            noAdjustmentFixture.request,
+          ),
+        ),
+      ).toMatchObject({
+        result: "no_adjustment",
+        actual_amount_minor: "125000",
+        delta_minor: "0",
+        treatment: "no_adjustment",
+      });
+
+      const heldFixture = await prepareLateAdjustment(
+        container,
+        suffix,
+        "late-held-1",
+        hybrid,
+        evidenceId,
+        "2026-03",
+        "1000000",
+      );
+      const heldAdjustment = parseResult(
+        await invokeRpc(
+          container,
+          identities.reviewer,
+          "create_billing_adjustment_calculation",
+          heldFixture.request,
+        ),
+      );
+      expect(heldAdjustment).toMatchObject({
+        result: "held",
+        actual_amount_minor: "100000",
+        delta_minor: "-25000",
+        treatment: "held",
+      });
+      expect(
+        Number(
+          await serviceSql(
+            container,
+            `SELECT count(*) FROM public.billing_adjustment_exceptions
+             WHERE adjustment_calculation_id =
+               '${heldAdjustment.adjustment_calculation_id}'
+               AND reason_code = 'CONTRACT_REVIEW_REQUIRED'
+               AND status = 'held'`,
+          ),
+        ),
+      ).toBe(1);
+
+      const creditHybrid = cases.find(
+        (entry) => entry.trueUpPolicy === "credit_candidate",
+      )!;
+      const creditFixture = await prepareLateAdjustment(
+        container,
+        suffix,
+        "late-credit-2",
+        creditHybrid,
+        evidenceId,
+        "2026-01",
+        "1000000",
+      );
+      const creditAdjustment = parseResult(
+        await invokeRpc(
+          container,
+          identities.reviewer,
+          "create_billing_adjustment_calculation",
+          creditFixture.request,
+        ),
+      );
+      expect(creditAdjustment).toMatchObject({
+        result: "approved",
+        actual_amount_minor: "100000",
+        delta_minor: "-25000",
+        treatment: "credit_candidate",
+      });
+      expect(
+        Number(
+          await serviceSql(
+            container,
+            `SELECT count(*) FROM public.billing_adjustment_exceptions
+             WHERE adjustment_calculation_id =
+               '${creditAdjustment.adjustment_calculation_id}'`,
+          ),
+        ),
+      ).toBe(0);
       expectSupportSafe(calculations);
     }, 240_000);
   },

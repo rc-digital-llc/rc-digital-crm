@@ -806,10 +806,10 @@ CREATE TABLE public.billing_adjustment_calculations (
         AND percentage_candidate_minor >= 0
         AND ((selected_branch = 'minimum'
             AND percentage_candidate_minor < minimum_candidate_minor
-            AND actual_amount_minor = minimum_candidate_minor)
+            AND actual_amount_minor = percentage_candidate_minor)
           OR (selected_branch = 'minimum_equal'
             AND percentage_candidate_minor = minimum_candidate_minor
-            AND actual_amount_minor = minimum_candidate_minor)
+            AND actual_amount_minor = percentage_candidate_minor)
           OR (selected_branch = 'percentage'
             AND percentage_candidate_minor > minimum_candidate_minor
             AND actual_amount_minor = percentage_candidate_minor)))
@@ -1033,10 +1033,16 @@ BEGIN
     OR NEW.percentage_candidate_minor
       IS DISTINCT FROM (formula_result->>'percentage_candidate_minor')::bigint
     OR NEW.selected_branch IS DISTINCT FROM formula_result->>'selected_branch'
-    OR NEW.actual_amount_minor
-      IS DISTINCT FROM (formula_result->>'final_amount_minor')::bigint
+    OR NEW.actual_amount_minor IS DISTINCT FROM (CASE
+      WHEN version_row.formula_kind = 'hybrid'
+      THEN (formula_result->>'percentage_candidate_minor')::bigint
+      ELSE (formula_result->>'final_amount_minor')::bigint
+    END)
     OR NEW.delta_minor IS DISTINCT FROM
-      (formula_result->>'final_amount_minor')::bigint - original_row.result_amount_minor
+      (CASE WHEN version_row.formula_kind = 'hybrid'
+        THEN (formula_result->>'percentage_candidate_minor')::bigint
+        ELSE (formula_result->>'final_amount_minor')::bigint
+      END) - original_row.result_amount_minor
     OR NEW.true_up_policy IS DISTINCT FROM rule_row.true_up_policy
     OR NEW.currency_policy_version IS DISTINCT FROM version_row.currency_policy_version
     OR NEW.rate_policy_version IS DISTINCT FROM version_row.rate_policy_version
@@ -1423,7 +1429,14 @@ BEGIN
     'formula_version', version_row.formula_version
   );
   formula_result := private.billing_calculate_exact(formula_input);
-  actual_amount_value := (formula_result->>'final_amount_minor')::bigint;
+  -- A hybrid minimum-only close freezes the minimum candidate. Its late
+  -- evidence adjustment reconciles the independently exact percentage
+  -- candidate against that frozen minimum; the agreement's true-up policy
+  -- then decides whether a negative candidate may become a credit.
+  actual_amount_value := CASE WHEN version_row.formula_kind = 'hybrid'
+    THEN (formula_result->>'percentage_candidate_minor')::bigint
+    ELSE (formula_result->>'final_amount_minor')::bigint
+  END;
   delta_value := actual_amount_value - original_row.result_amount_minor;
   treatment_value := CASE
     WHEN delta_value > 0 THEN 'true_up'
