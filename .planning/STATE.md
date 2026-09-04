@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-09-04T05:23:04.508Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-09-04T05:44:05.779Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 29
-  completed_plans: 26
+  completed_plans: 27
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 03 (exact-money-and-rounding-contract) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [█████████░] 90%
 | Phase 03 P02 | 15 min | 3 tasks | 5 files |
 | Phase 03 P03 | 12 min | 2 tasks | 5 files |
 | Phase 03 P04 | 43 min | 3 tasks | 11 files |
+| Phase 03 P05 | 17 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,9 @@ security decisions:
 - [Phase 03]: Invoice legacy money and tax columns remain derived compatibility projections; exact minor units, reduced rate ratios, policies, and canonical line items are the sole authority.
 - [Phase 03]: Automation replay equality binds the complete request fingerprint and a command-owned effect discriminator; conflicts return before audit, counters, execution, or evidence mutation.
 - [Phase 03]: Authenticated invoice access is RPC-only: base-table and sequence privileges remain revoked even though the functions run as a locked definer.
+- [Phase 03]: React Admin invoice operations translate into closed exact RPC contracts; generic Supabase table CRUD never handles invoices.
+- [Phase 03]: Every exact invoice response is decoded and financially reconciled before branded application types are returned.
+- [Phase 03]: Malformed PostgreSQL invoice-save parameter errors are normalized by a forward-only locked wrapper.
 
 ### Pending Todos
 
@@ -158,6 +162,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T05:22:45.018Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-09-04T05:44:05.773Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
