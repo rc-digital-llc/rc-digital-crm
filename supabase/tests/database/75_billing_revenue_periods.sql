@@ -87,6 +87,25 @@ INSERT INTO public.billing_agreement_revenue_rules (
   'next_period_adjustment', '["api","statement","portal"]'
 );
 
+INSERT INTO public.billing_agreement_events (
+  organization_id, account_id, agreement_id, agreement_version_id,
+  event_type, actor_id, actor_role, reason, command_key,
+  request_fingerprint, evidence_sha256, response_snapshot
+) VALUES (
+  '21000000-0000-0000-0000-000000000100',
+  '21000000-0000-0000-0000-000000000200',
+  '21000000-0000-0000-0000-000000000800',
+  '21000000-0000-0000-0000-000000000801',
+  'activated', '21000000-0000-0000-0000-000000000003', 'reviewer',
+  'Activated revenue validation fixture',
+  'revenue-fixture-activate-0001', repeat('8', 64), repeat('1', 64),
+  jsonb_build_object(
+    'result', 'activated',
+    'agreement_version_id', '21000000-0000-0000-0000-000000000801',
+    'terms_fingerprint', repeat('8', 64)
+  )
+);
+
 INSERT INTO public.billing_evidence_objects (
   id, organization_id, account_id, sha256, size_bytes, mime_type,
   inspection_status, inspection_principal_id, inspection_grant_id,
