@@ -13,7 +13,8 @@ FINANCIAL_DATABASE_SQL_TESTS := \
 
 FINANCIAL_DATABASE_HTTP_TESTS := \
 	tests/release/auth-rls-rpc-trigger.test.ts \
-	tests/release/billing-tenancy.test.ts
+	tests/release/billing-tenancy.test.ts \
+	tests/release/exact-money-boundaries.test.ts
 
 FINANCIAL_FUNCTION_TESTS := \
 	tests/release/edge-webhook-provider.test.ts \
