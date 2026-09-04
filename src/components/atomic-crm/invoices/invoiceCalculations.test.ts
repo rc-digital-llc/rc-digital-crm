@@ -1,79 +1,149 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+
 import {
+  FinancialContractError,
+  parseExactRatio,
+  parseOrdinaryPercentage,
+  parseUsdMoney,
+  USD_HALF_AWAY_ROUNDING_POLICY,
+} from "../financial/exactMoney";
+import type { ExactBillingInvoiceLineItem } from "../types";
+import {
+  calculateInvoiceTotal,
   calculateLineItemsTotal,
   calculateTaxAmount,
-  calculateInvoiceTotal,
-  type LineItem,
+  createInvoicePreview,
 } from "./invoiceCalculations";
 
-describe("calculateLineItemsTotal", () => {
-  it("returns 0 for empty line items", () => {
-    expect(calculateLineItemsTotal([])).toBe(0);
+function money(amountMinor: string) {
+  return parseUsdMoney({ amount_minor: amountMinor, currency: "USD" });
+}
+
+function lineItem(
+  description: string,
+  quantityNumerator: string,
+  quantityDenominator: string,
+  unitAmountMinor: string,
+  extendedAmountMinor: string,
+): ExactBillingInvoiceLineItem {
+  return {
+    description,
+    quantity_ratio: parseExactRatio({
+      numerator: quantityNumerator,
+      denominator: quantityDenominator,
+    }),
+    unit_price: money(unitAmountMinor),
+    extended_amount: money(extendedAmountMinor),
+    currency_policy_version: "usd-v1",
+    rounding_policy_version: "half-away-from-zero-v1",
+  };
+}
+
+describe("exact invoice preview", () => {
+  it("sums canonical line-item minor units without floating authority", () => {
+    expect(
+      calculateLineItemsTotal([
+        lineItem("Design", "1", "1", "500000", "500000"),
+        lineItem("Development", "2", "1", "300000", "600000"),
+      ]),
+    ).toEqual(money("1100000"));
   });
 
-  it("sums quantity * unit_price for each line item", () => {
-    const items: LineItem[] = [
-      { description: "Design", quantity: 1, unit_price: 5000 },
-      { description: "Development", quantity: 2, unit_price: 3000 },
-    ];
-    expect(calculateLineItemsTotal(items)).toBe(11000);
+  it("keeps fractional quantities exact until the named rounding boundary", () => {
+    expect(
+      calculateLineItemsTotal([
+        lineItem("Half hour", "5", "2", "10000", "25000"),
+      ]),
+    ).toEqual(money("25000"));
   });
 
-  it("handles fractional quantities", () => {
-    const items: LineItem[] = [
-      { description: "Hourly work", quantity: 2.5, unit_price: 100 },
-    ];
-    expect(calculateLineItemsTotal(items)).toBe(250);
+  it("rounds 8.875 percent once to minor units", () => {
+    const rate = parseOrdinaryPercentage("8.875%");
+    expect(
+      calculateTaxAmount(
+        money("10000"),
+        rate,
+        USD_HALF_AWAY_ROUNDING_POLICY,
+      ),
+    ).toEqual(money("888"));
+    expect(
+      calculateInvoiceTotal(
+        money("10000"),
+        rate,
+        USD_HALF_AWAY_ROUNDING_POLICY,
+      ),
+    ).toEqual({ taxAmount: money("888"), totalAmount: money("10888") });
   });
 
-  it("handles zero quantity", () => {
-    const items: LineItem[] = [
-      { description: "Free item", quantity: 0, unit_price: 500 },
-    ];
-    expect(calculateLineItemsTotal(items)).toBe(0);
-  });
-});
-
-describe("calculateTaxAmount", () => {
-  it("calculates tax at 0%", () => {
-    expect(calculateTaxAmount(10000, 0)).toBe(0);
-  });
-
-  it("calculates tax at 10%", () => {
-    expect(calculateTaxAmount(10000, 10)).toBe(1000);
+  it("mirrors positive and negative half ties and canonicalizes zero", () => {
+    const half = parseOrdinaryPercentage("50%");
+    expect(
+      calculateTaxAmount(money("1"), half, USD_HALF_AWAY_ROUNDING_POLICY),
+    ).toEqual(money("1"));
+    expect(
+      calculateTaxAmount(money("-1"), half, USD_HALF_AWAY_ROUNDING_POLICY),
+    ).toEqual(money("-1"));
+    expect(
+      calculateTaxAmount(money("0"), half, USD_HALF_AWAY_ROUNDING_POLICY),
+    ).toEqual(money("0"));
   });
 
-  it("calculates tax at 8.25%", () => {
-    expect(calculateTaxAmount(10000, 8.25)).toBe(825);
+  it("returns exact preview values and non-authoritative descriptions", () => {
+    const preview = createInvoicePreview({
+      amount: money("800"),
+      tax_rate: parseOrdinaryPercentage("12.500%"),
+      line_items: [lineItem("Two units", "2", "1", "400", "800")],
+      policy: USD_HALF_AWAY_ROUNDING_POLICY,
+    });
+    expect(preview).toEqual({
+      amount: money("800"),
+      lineItemsTotal: money("800"),
+      taxAmount: money("100"),
+      totalAmount: money("900"),
+      submittedPercentageDescription: "Submitted percentage: 12.500%",
+      currencyDescription: "USD minor units (2 decimal places)",
+      roundingDescription: "Half away from zero",
+    });
   });
 
-  it("handles zero amount", () => {
-    expect(calculateTaxAmount(0, 10)).toBe(0);
-  });
-});
+  it("rejects line-item mismatch, bad policies, zero denominators, and overflow", () => {
+    expect(() =>
+      calculateLineItemsTotal([
+        lineItem("Mismatch", "2", "1", "400", "799"),
+      ]),
+    ).toThrowError("INVOICE_PREVIEW_LINE_ITEM_MISMATCH");
 
-describe("calculateInvoiceTotal", () => {
-  it("returns correct totals with no tax", () => {
-    const result = calculateInvoiceTotal(5000, 0);
-    expect(result.taxAmount).toBe(0);
-    expect(result.totalAmount).toBe(5000);
-  });
+    expect(() =>
+      calculateInvoiceTotal(
+        money("1"),
+        parseOrdinaryPercentage("0%"),
+        {
+          ...USD_HALF_AWAY_ROUNDING_POLICY,
+          rounding_policy_version: "bankers-v1",
+        },
+      ),
+    ).toThrowError("FINANCIAL_POLICY_MISMATCH");
 
-  it("returns correct totals with 10% tax", () => {
-    const result = calculateInvoiceTotal(5000, 10);
-    expect(result.taxAmount).toBe(500);
-    expect(result.totalAmount).toBe(5500);
-  });
+    expect(() =>
+      calculateTaxAmount(
+        money("1"),
+        {
+          kind: "ordinary_percentage",
+          numerator: "1",
+          denominator: "0",
+          submitted_percentage: "1%",
+          rate_policy_version: "ordinary-percentage-v1",
+        },
+        USD_HALF_AWAY_ROUNDING_POLICY,
+      ),
+    ).toThrow(FinancialContractError);
 
-  it("returns correct totals with fractional tax rate", () => {
-    const result = calculateInvoiceTotal(10000, 8.875);
-    expect(result.taxAmount).toBe(887.5);
-    expect(result.totalAmount).toBe(10887.5);
-  });
-
-  it("handles zero amount", () => {
-    const result = calculateInvoiceTotal(0, 10);
-    expect(result.taxAmount).toBe(0);
-    expect(result.totalAmount).toBe(0);
+    expect(() =>
+      calculateInvoiceTotal(
+        money("9223372036854775807"),
+        parseOrdinaryPercentage("1%"),
+        USD_HALF_AWAY_ROUNDING_POLICY,
+      ),
+    ).toThrowError("FINANCIAL_OVERFLOW");
   });
 });
