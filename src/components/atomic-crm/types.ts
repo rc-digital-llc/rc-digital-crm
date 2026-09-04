@@ -2,6 +2,12 @@ import type { Identifier, RaRecord } from "ra-core";
 import type { ComponentType } from "react";
 
 import type {
+  ExactRatio,
+  OrdinaryPercentageRate,
+  UsdMoney,
+} from "./financial/exactMoney";
+
+import type {
   COMPANY_CREATED,
   CONTACT_CREATED,
   CONTACT_NOTE_CREATED,
@@ -502,3 +508,48 @@ export type BillingEvidenceAccessEvent = {
   capability_expires_at: string | null;
   created_at: string;
 };
+
+export type InvoiceStatus =
+  | "Draft"
+  | "Sent"
+  | "Viewed"
+  | "Paid"
+  | "Overdue"
+  | "Cancelled";
+
+export type ExactBillingInvoiceLineItem = Readonly<{
+  description: string;
+  quantity_ratio: ExactRatio;
+  unit_price: UsdMoney;
+  extended_amount: UsdMoney;
+  currency_policy_version: "usd-v1";
+  rounding_policy_version: "half-away-from-zero-v1";
+}>;
+
+/** Canonical invoice record returned by the caller-bound exact RPC. */
+export type ExactBillingInvoice = Readonly<{
+  id: string;
+  created_at: string;
+  updated_at: string;
+  billing_account_id: string;
+  company_id: string;
+  project_id: string | null;
+  deal_id: string | null;
+  invoice_number: string;
+  description: string | null;
+  amount: UsdMoney;
+  currency_policy_version: "usd-v1";
+  tax_rate: OrdinaryPercentageRate;
+  tax_amount: UsdMoney;
+  total_amount: UsdMoney;
+  rounding_policy_version: "half-away-from-zero-v1";
+  line_items: ExactBillingInvoiceLineItem[];
+  status: InvoiceStatus;
+  issue_date: string;
+  due_date: string | null;
+  paid_date: string | null;
+  payment_method: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+  terms: string | null;
+}>;

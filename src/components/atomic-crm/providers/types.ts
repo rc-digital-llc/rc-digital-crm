@@ -4,7 +4,11 @@ import type {
   BillingContactMethod,
   BillingEvidenceAccessPurpose,
   BillingEvidenceInspectionStatus,
+  ExactBillingInvoice,
+  ExactBillingInvoiceLineItem,
+  InvoiceStatus,
 } from "../types";
+import type { OrdinaryPercentageRate, UsdMoney } from "../financial/exactMoney";
 
 export type BillingAccessRoleSummary = Readonly<{
   assignment_id: string;
@@ -144,6 +148,63 @@ export const billingEvidenceProviderMethodKeys = [
   "createBillingEvidenceDownload",
 ] as const;
 
+export type ExactBillingInvoiceListFilters = Readonly<{
+  billing_account_id?: string;
+  invoice_number?: string;
+  status?: InvoiceStatus;
+}>;
+
+export type ExactBillingInvoiceListRequest = Readonly<{
+  mode: "list";
+  page: number;
+  per_page: number;
+  sort:
+    | "id"
+    | "created_at"
+    | "updated_at"
+    | "invoice_number"
+    | "issue_date"
+    | "due_date"
+    | "status";
+  order: "ASC" | "DESC";
+  filters: ExactBillingInvoiceListFilters;
+}>;
+
+export type ExactBillingInvoiceGetRequest = Readonly<{
+  mode: "get";
+  invoice_id: string;
+}>;
+
+export type ExactBillingInvoiceSaveRequest = Readonly<{
+  id?: string;
+  billing_account_id: string;
+  invoice_number: string;
+  description?: string | null;
+  amount: UsdMoney;
+  tax_rate: OrdinaryPercentageRate;
+  line_items: ExactBillingInvoiceLineItem[];
+  status: "Draft";
+  project_id?: string | null;
+  deal_id?: string | null;
+  issue_date?: string;
+  due_date?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  notes?: string | null;
+  terms?: string | null;
+}>;
+
+export type ExactBillingInvoiceListResult = Readonly<{
+  data: ExactBillingInvoice[];
+  total: number;
+}>;
+
+export const billingInvoiceProviderMethodKeys = [
+  "listExactBillingInvoices",
+  "getExactBillingInvoice",
+  "saveExactBillingInvoice",
+] as const;
+
 export const billingResourceNames = [
   "billing_organizations",
   "billing_accounts",
@@ -156,6 +217,7 @@ export const billingResourceNames = [
   "billing_automation_grants",
   "billing_evidence_support_safe",
   "billing_evidence_access_events",
+  "invoices",
 ] as const;
 
 export type { CrmDataProvider } from "./supabase/dataProvider";
