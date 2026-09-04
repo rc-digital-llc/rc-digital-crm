@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-09-04T04:37:44.576Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-09-04T05:23:04.508Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 2
   total_plans: 29
-  completed_plans: 25
+  completed_plans: 26
   percent: 20
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 03 (exact-money-and-rounding-contract) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [█████████░] 86%
 | Phase 03 P01 | 6 min | 3 tasks | 6 files |
 | Phase 03 P02 | 15 min | 3 tasks | 5 files |
 | Phase 03 P03 | 12 min | 2 tasks | 5 files |
+| Phase 03 P04 | 43 min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,10 @@ security decisions:
   configuration and fails before mutation on localhost, a missing canonical
   allow-list entry, or a cross-project target.
 
+- [Phase 03]: Invoice legacy money and tax columns remain derived compatibility projections; exact minor units, reduced rate ratios, policies, and canonical line items are the sole authority.
+- [Phase 03]: Automation replay equality binds the complete request fingerprint and a command-owned effect discriminator; conflicts return before audit, counters, execution, or evidence mutation.
+- [Phase 03]: Authenticated invoice access is RPC-only: base-table and sequence privileges remain revoked even though the functions run as a locked definer.
+
 ### Pending Todos
 
 - Start Phase 03 exact-money-and-rounding-contract planning.
@@ -153,6 +158,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T04:37:44.571Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-09-04T05:22:45.018Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None

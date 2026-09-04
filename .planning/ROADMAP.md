@@ -151,7 +151,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-04-PLAN.md — Atomically convert invoices, automation, and evidence finalization behind caller-bound exact RPCs.
+- [x] 03-04-PLAN.md — Atomically convert invoices, automation, and evidence finalization behind caller-bound exact RPCs.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
@@ -289,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 3/7 | In Progress|  |
+| 3. Exact Money and Rounding Contract | 4/7 | In Progress|  |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
