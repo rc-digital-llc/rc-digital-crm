@@ -147,7 +147,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-03-PLAN.md — Prepare and protect the closed immutable upgrade verifier before database cutover.
+- [x] 03-03-PLAN.md — Prepare and protect the closed immutable upgrade verifier before database cutover.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -289,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 2/7 | In Progress|  |
+| 3. Exact Money and Rounding Contract | 3/7 | In Progress|  |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
