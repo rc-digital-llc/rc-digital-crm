@@ -37,6 +37,9 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { formatUsdMoney } from "../financial/exactMoney";
 import type {
+  BillingCalculationApproveRequest,
+  BillingCalculationAdjustmentRequest,
+  BillingCalculationPreview as BillingCalculationPreviewValue,
   BillingRevenueCloseRequest,
   BillingRevenuePeriodSummary,
   BillingRevenueReviewRequest,
@@ -46,9 +49,11 @@ import type {
 import type {
   BillingAccount,
   BillingAgreementVersion,
+  BillingCalculation,
   BillingEvidenceMetadata,
   BillingRevenueReviewOutcome,
 } from "../types";
+import { BillingCalculationPreview } from "./BillingCalculationPreview";
 import { BillingRevenueRevisionForm } from "./BillingRevenueRevisionForm";
 
 const submissionLabels: Record<BillingRevenueReviewOutcome, string> = {
@@ -165,12 +170,32 @@ export const BillingMonthlyClosePanel = ({
     resource: "billing_revenue_periods_support_safe",
     record: { account_id: account.id },
   });
+  const calculationReadAccess = useCanAccess({
+    action: "list",
+    resource: "billing_calculations_support_safe",
+    record: { account_id: account.id },
+  });
+  const calculationAccess = useCanAccess({
+    action: "calculate",
+    resource: "billing_calculations_support_safe",
+    record: { account_id: account.id },
+  });
+  const calculationApproveAccess = useCanAccess({
+    action: "approve",
+    resource: "billing_calculations_support_safe",
+    record: { account_id: account.id },
+  });
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [reviewAction, setReviewAction] = useState<ReviewAction | null>(null);
   const [closeMode, setCloseMode] = useState<CloseMode | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<BillingCalculationPreviewValue | null>(
+    null,
+  );
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [adjustmentOpen, setAdjustmentOpen] = useState(false);
 
   const periods = periodQuery.data?.data ?? [];
   const current =
@@ -194,13 +219,74 @@ export const BillingMonthlyClosePanel = ({
   const minimumCloseEligible = current
     ? canApproveMinimumClose(current, activeAgreement)
     : false;
+  const calculationQuery = useQuery({
+    queryKey: ["billingCalculations", account.id],
+    queryFn: () =>
+      dataProvider.listBillingCalculations({
+        account_id: account.id,
+        page: 1,
+        per_page: 100,
+      }),
+    enabled: online && calculationReadAccess.canAccess === true,
+  });
+  const currentCalculation = current?.close_snapshot
+    ? (calculationQuery.data?.data.find(
+        (calculation) =>
+          calculation.close_snapshot_id === current.close_snapshot?.id,
+      ) ?? null)
+    : null;
+  const currentAdjustments = currentCalculation
+    ? (calculationQuery.data?.adjustments.filter(
+        (adjustment) =>
+          adjustment.original_calculation_id === currentCalculation.id,
+      ) ?? [])
+    : [];
+  const lineageQuery = useQuery({
+    queryKey: ["billingCalculationLineage", account.id, currentCalculation?.id],
+    queryFn: () =>
+      dataProvider.getBillingCalculationLineage({
+        account_id: account.id,
+        calculation_id: currentCalculation?.id ?? "",
+      }),
+    enabled:
+      online &&
+      currentCalculation?.status === "approved" &&
+      calculationReadAccess.canAccess === true,
+  });
+  const lateSubmission = current?.close_snapshot
+    ? [...current.submissions]
+        .reverse()
+        .find(
+          (submission) =>
+            submission.id !== current.close_snapshot?.submission_id,
+        )
+    : undefined;
+  const lateReview = lateSubmission
+    ? [...(current?.reviews ?? [])]
+        .reverse()
+        .find(
+          (review) =>
+            review.submission_id === lateSubmission.id &&
+            review.outcome === "accept",
+        )
+    : undefined;
+  const adjustmentPending = Boolean(
+    currentCalculation?.status === "approved" &&
+      lateSubmission &&
+      lateReview &&
+      currentAdjustments.length === 0,
+  );
 
   const refresh = async () => {
-    await Promise.all([
+    const refreshes = [
       periodQuery.refetch(),
       agreementQuery.refetch(),
       evidenceQuery.refetch(),
-    ]);
+    ];
+    if (calculationReadAccess.canAccess === true) {
+      refreshes.push(calculationQuery.refetch());
+    }
+    await Promise.all(refreshes);
   };
 
   const runAction = async (label: string, action: () => Promise<void>) => {
@@ -210,12 +296,14 @@ export const BillingMonthlyClosePanel = ({
     try {
       await action();
       await refresh();
-    } catch {
+    } catch (error) {
       await periodQuery.refetch();
       setActionError(
-        "The action could not be completed. Refresh the account and review the reason before trying again.",
+        String(error).includes("STALE")
+          ? "This preview is no longer current. Refresh the period and review the new calculation before approving."
+          : "The action could not be completed. Refresh the account and review the reason before trying again.",
       );
-      throw new Error("MONTHLY_CLOSE_ACTION_FAILED");
+      throw error;
     } finally {
       setPendingAction(null);
     }
@@ -282,6 +370,65 @@ export const BillingMonthlyClosePanel = ({
     } catch {
       throw new Error("REVENUE_CLOSE_FAILED");
     }
+  };
+
+  const previewCalculation = async () => {
+    if (!current?.close_snapshot) return;
+    try {
+      await runAction("preview-calculation", async () => {
+        const response = await dataProvider.previewBillingCalculation({
+          account_id: account.id,
+          close_snapshot_id: current.close_snapshot?.id ?? "",
+        });
+        setPreview(response);
+        notify("Exact calculation preview refreshed.", { type: "success" });
+      });
+    } catch {
+      // The section alert owns safe stale/recovery copy.
+    }
+  };
+
+  const createCalculation = async () => {
+    if (!preview || preview.anomalies.some((anomaly) => anomaly.blocking))
+      return;
+    try {
+      await runAction("create-calculation", async () => {
+        await dataProvider.createBillingCalculation({
+          account_id: account.id,
+          close_snapshot_id: preview.close_snapshot_id,
+          close_policy_version: preview.close_policy_version,
+          preview_fingerprint: preview.preview_fingerprint,
+          command_key: `calculation-create-${Date.now()}`,
+        });
+        notify("Calculation snapshot created and ready for approval.", {
+          type: "success",
+        });
+      });
+    } catch {
+      // The section alert owns safe stale/recovery copy.
+    }
+  };
+
+  const approveCalculation = async (
+    request: BillingCalculationApproveRequest,
+  ) => {
+    await runAction("approve-calculation", async () => {
+      await dataProvider.approveBillingCalculation(request);
+      notify("Calculation approval recorded.", { type: "success" });
+    });
+    setApprovalOpen(false);
+  };
+
+  const createAdjustment = async (
+    request: BillingCalculationAdjustmentRequest,
+  ) => {
+    await runAction("create-adjustment", async () => {
+      await dataProvider.createBillingAdjustmentCalculation(request);
+      notify("Linked late-evidence calculation treatment recorded.", {
+        type: "success",
+      });
+    });
+    setAdjustmentOpen(false);
   };
 
   const queryError = periodQuery.error ?? agreementQuery.error;
@@ -370,7 +517,17 @@ export const BillingMonthlyClosePanel = ({
             />
           </div>
 
-          <CalculationNotReady closed={Boolean(current.close_snapshot)} />
+          {preview ? (
+            <BillingCalculationPreview
+              preview={preview}
+              calculation={currentCalculation}
+              lineage={lineageQuery.data ?? null}
+              adjustments={currentAdjustments}
+              adjustmentPending={adjustmentPending}
+            />
+          ) : (
+            <CalculationNotReady closed={Boolean(current.close_snapshot)} />
+          )}
 
           <div className="flex flex-wrap justify-end gap-3">
             {canManage && acceptedCloseEligible ? (
@@ -392,6 +549,54 @@ export const BillingMonthlyClosePanel = ({
                 onClick={() => setCloseMode("minimum_only")}
               >
                 Approve minimum close
+              </Button>
+            ) : null}
+            {calculationAccess.canAccess === true && current.close_snapshot ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={Boolean(pendingAction)}
+                onClick={() => void previewCalculation()}
+              >
+                Preview calculation
+              </Button>
+            ) : null}
+            {calculationAccess.canAccess === true &&
+            preview &&
+            !currentCalculation &&
+            !preview.anomalies.some((anomaly) => anomaly.blocking) ? (
+              <Button
+                type="button"
+                className="h-11"
+                disabled={Boolean(pendingAction)}
+                onClick={() => void createCalculation()}
+              >
+                Create calculation
+              </Button>
+            ) : null}
+            {calculationApproveAccess.canAccess === true &&
+            preview &&
+            currentCalculation?.status === "created" &&
+            !preview.anomalies.some((anomaly) => anomaly.blocking) ? (
+              <Button
+                type="button"
+                className="h-11"
+                disabled={Boolean(pendingAction)}
+                onClick={() => setApprovalOpen(true)}
+              >
+                Approve calculation
+              </Button>
+            ) : null}
+            {calculationAccess.canAccess === true && adjustmentPending ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={Boolean(pendingAction)}
+                onClick={() => setAdjustmentOpen(true)}
+              >
+                Calculate linked adjustment
               </Button>
             ) : null}
           </div>
@@ -447,6 +652,31 @@ export const BillingMonthlyClosePanel = ({
           pending={pendingAction === "close-period"}
           onOpenChange={(open) => !open && setCloseMode(null)}
           onConfirm={closePeriod}
+        />
+      ) : null}
+
+      {preview && currentCalculation && approvalOpen ? (
+        <CalculationApprovalDialog
+          open
+          accountId={account.id}
+          preview={preview}
+          calculation={currentCalculation}
+          pending={pendingAction === "approve-calculation"}
+          onOpenChange={setApprovalOpen}
+          onConfirm={approveCalculation}
+        />
+      ) : null}
+
+      {currentCalculation && lateSubmission && lateReview && adjustmentOpen ? (
+        <CalculationAdjustmentDialog
+          open
+          accountId={account.id}
+          calculation={currentCalculation}
+          lateSubmissionId={lateSubmission.id}
+          lateReviewEventId={lateReview.id}
+          pending={pendingAction === "create-adjustment"}
+          onOpenChange={setAdjustmentOpen}
+          onConfirm={createAdjustment}
         />
       ) : null}
     </section>
@@ -1122,6 +1352,215 @@ const RevenueCloseDialog = ({
           >
             {minimum ? "Approve minimum close" : "Close revenue period"}
             {pending ? " · Working" : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const CalculationApprovalDialog = ({
+  open,
+  accountId,
+  preview,
+  calculation,
+  pending,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean;
+  accountId: string;
+  preview: BillingCalculationPreviewValue;
+  calculation: BillingCalculation;
+  pending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (request: BillingCalculationApproveRequest) => Promise<void>;
+}) => {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const confirm = async () => {
+    if (pending || !reason.trim()) {
+      setError("Enter an approval reason.");
+      return;
+    }
+    try {
+      await onConfirm({
+        account_id: accountId,
+        calculation_id: calculation.id,
+        mode: "manual",
+        close_policy_version: preview.close_policy_version,
+        preview_fingerprint: preview.preview_fingerprint,
+        reason: reason.trim(),
+        command_key: `calculation-approve-${Date.now()}`,
+      });
+    } catch {
+      setError(
+        "This preview is no longer current. Refresh the period and review the new calculation before approving.",
+      );
+    }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Approve calculation?</DialogTitle>
+          <DialogDescription>
+            Confirm the exact result, agreement version, period, input
+            fingerprint, and manual approval context.
+          </DialogDescription>
+        </DialogHeader>
+        <dl className="grid gap-3 text-sm">
+          <Detail label="Final amount">
+            <Money value={preview.final_amount} />
+          </Detail>
+          <Detail label="Agreement version">
+            <span className="break-all font-mono">
+              {preview.agreement_version_id}
+            </span>
+          </Detail>
+          <Detail label="Revenue period">
+            {formatDate(preview.period_start)} to{" "}
+            {formatDate(preview.period_end)}
+          </Detail>
+          <Detail label="Input fingerprint">
+            <span className="font-mono">
+              {preview.close_input_fingerprint.slice(0, 16)}…
+            </span>
+          </Detail>
+          <Detail label="Approval mode">Manual approval</Detail>
+        </dl>
+        <div className="space-y-2">
+          <Label htmlFor="calculation-approval-reason">Approval reason</Label>
+          <Textarea
+            id="calculation-approval-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="h-11"
+            disabled={pending}
+            onClick={() => void confirm()}
+          >
+            Approve calculation{pending ? " · Working" : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const CalculationAdjustmentDialog = ({
+  open,
+  accountId,
+  calculation,
+  lateSubmissionId,
+  lateReviewEventId,
+  pending,
+  onOpenChange,
+  onConfirm,
+}: {
+  open: boolean;
+  accountId: string;
+  calculation: BillingCalculation;
+  lateSubmissionId: string;
+  lateReviewEventId: string;
+  pending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (request: BillingCalculationAdjustmentRequest) => Promise<void>;
+}) => {
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const confirm = async () => {
+    if (pending || !reason.trim()) {
+      setError("Enter the reason for calculating this linked adjustment.");
+      return;
+    }
+    try {
+      await onConfirm({
+        account_id: accountId,
+        original_calculation_id: calculation.id,
+        late_submission_id: lateSubmissionId,
+        late_review_event_id: lateReviewEventId,
+        reason: reason.trim(),
+        command_key: `calculation-adjustment-${Date.now()}`,
+      });
+    } catch {
+      setError(
+        "The action could not be completed. Refresh the account and review the reason before trying again.",
+      );
+    }
+  };
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Calculate linked adjustment?</DialogTitle>
+          <DialogDescription>
+            Compare accepted late evidence with the immutable original result.
+            The agreement policy determines true-up, credit candidate, or held
+            contract review treatment.
+          </DialogDescription>
+        </DialogHeader>
+        <dl className="grid gap-3 text-sm">
+          <Detail label="Original calculation">
+            <span className="break-all font-mono">{calculation.id}</span>
+          </Detail>
+          <Detail label="Late submission">
+            <span className="break-all font-mono">{lateSubmissionId}</span>
+          </Detail>
+          <Detail label="Late review event">
+            <span className="font-mono">{lateReviewEventId}</span>
+          </Detail>
+        </dl>
+        <div className="space-y-2">
+          <Label htmlFor="calculation-adjustment-reason">
+            Adjustment reason
+          </Label>
+          <Textarea
+            id="calculation-adjustment-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11"
+            disabled={pending}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="h-11"
+            disabled={pending}
+            onClick={() => void confirm()}
+          >
+            Calculate linked adjustment{pending ? " · Working" : ""}
           </Button>
         </DialogFooter>
       </DialogContent>

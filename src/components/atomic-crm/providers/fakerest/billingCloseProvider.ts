@@ -1309,6 +1309,12 @@ export function createFakeBillingCloseProvider(
       const start = (request.page - 1) * request.per_page;
       return copy({
         data: records.slice(start, start + request.per_page),
+        adjustments: state.adjustments.filter((adjustment) =>
+          records.some(
+            (calculation) =>
+              calculation.id === adjustment.original_calculation_id,
+          ),
+        ),
         total: records.length,
       });
     },
@@ -1600,11 +1606,13 @@ export function createFakeBillingCloseProvider(
             id: nextUuid(state),
             original_calculation_id: original.id,
             late_submission_id: request.late_submission_id,
+            late_review_event_id: request.late_review_event_id,
             original_amount: money(classified.original_amount_minor),
             actual_amount: money(classified.actual_amount_minor),
             delta: money(classified.delta_minor),
             treatment: classified.treatment,
             status: classified.status,
+            reason: request.reason,
             snapshot_hash: syntheticHash({ request, actualFormula }),
             relationship_hash: syntheticHash({
               original_calculation_id: original.id,

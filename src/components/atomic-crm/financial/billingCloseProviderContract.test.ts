@@ -455,8 +455,11 @@ describe("Supabase Phase 4 RPC translation", () => {
   });
 
   it("uses bounded account-scoped RPCs for support lists", async () => {
-    const rpc = vi.fn(async () => ({
-      data: { data: [], total: 0 },
+    const rpc = vi.fn(async (name: string) => ({
+      data:
+        name === "read_billing_calculations"
+          ? { data: [], adjustments: [], total: 0 }
+          : { data: [], total: 0 },
       error: null,
     }));
     const provider = createSupabaseBillingCloseProvider({ rpc });
@@ -474,13 +477,68 @@ describe("Supabase Phase 4 RPC translation", () => {
         page: 1,
         per_page: 25,
       }),
-    ).resolves.toEqual({ data: [], total: 0 });
+    ).resolves.toEqual({ data: [], adjustments: [], total: 0 });
     expect(rpc).toHaveBeenNthCalledWith(1, "read_billing_revenue_periods", {
       p_request: { account_id: uuid, page: 1, per_page: 25 },
     });
     expect(rpc).toHaveBeenNthCalledWith(2, "read_billing_calculations", {
       p_request: { account_id: uuid, page: 1, per_page: 25 },
     });
+  });
+
+  it("decodes durable string-safe adjustment history and rejects numeric event IDs", async () => {
+    const adjustment = {
+      id: "44000000-0000-4000-8000-000000000020",
+      original_calculation_id: "44000000-0000-4000-8000-000000000021",
+      late_submission_id: "44000000-0000-4000-8000-000000000022",
+      late_review_event_id: "12",
+      original_amount: { amount_minor: "50000", currency: "USD" },
+      actual_amount: { amount_minor: "75000", currency: "USD" },
+      delta: { amount_minor: "25000", currency: "USD" },
+      treatment: "true_up",
+      status: "approved",
+      reason: "Accepted late evidence",
+      snapshot_hash: fingerprint,
+      relationship_hash: fingerprint,
+    };
+    const rpc = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: { data: [], adjustments: [adjustment], total: 0 },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: [],
+          adjustments: [{ ...adjustment, late_review_event_id: 12 }],
+          total: 0,
+        },
+        error: null,
+      });
+    const provider = createSupabaseBillingCloseProvider({ rpc });
+
+    await expect(
+      provider.listBillingCalculations({
+        account_id: uuid,
+        page: 1,
+        per_page: 25,
+      }),
+    ).resolves.toMatchObject({
+      adjustments: [
+        {
+          late_review_event_id: "12",
+          reason: "Accepted late evidence",
+          delta: { amount_minor: "25000", currency: "USD" },
+        },
+      ],
+    });
+    await expect(
+      provider.listBillingCalculations({
+        account_id: uuid,
+        page: 1,
+        per_page: 25,
+      }),
+    ).rejects.toThrow("BILLING_CLOSE_INVALID_RESPONSE");
   });
 
   it("fails closed when a support list carries numeric financial tokens", async () => {
@@ -492,6 +550,7 @@ describe("Supabase Phase 4 RPC translation", () => {
             final_amount: { amount_minor: 82500, currency: "USD" },
           },
         ],
+        adjustments: [],
         total: 1,
       },
       error: null,
@@ -663,22 +722,30 @@ describe("FakeRest Phase 4 provider parity", () => {
       result: "approved",
       approved_amount: { amount_minor: "82500", currency: "USD" },
     });
-    await expect(
-      provider.createBillingAdjustmentCalculation({
-        account_id: scenario.account_id,
-        original_calculation_id: created.calculation_id,
-        late_submission_id: scenario.late_submission_id,
-        late_review_event_id: scenario.late_review_event_id,
-        reason: "Recognize accepted late evidence",
-        command_key: "fake-adjustment-create-0001",
-      }),
-    ).resolves.toMatchObject({
+    const adjustment = await provider.createBillingAdjustmentCalculation({
+      account_id: scenario.account_id,
+      original_calculation_id: created.calculation_id,
+      late_submission_id: scenario.late_submission_id,
+      late_review_event_id: scenario.late_review_event_id,
+      reason: "Recognize accepted late evidence",
+      command_key: "fake-adjustment-create-0001",
+    });
+    expect(adjustment).toMatchObject({
       original_amount: { amount_minor: "82500", currency: "USD" },
       actual_amount: { amount_minor: "90000", currency: "USD" },
       delta: { amount_minor: "7500", currency: "USD" },
       treatment: "true_up",
       status: "approved",
+      late_review_event_id: scenario.late_review_event_id,
+      reason: "Recognize accepted late evidence",
     });
+    await expect(
+      provider.listBillingCalculations({
+        account_id: scenario.account_id,
+        page: 1,
+        per_page: 25,
+      }),
+    ).resolves.toMatchObject({ adjustments: [adjustment] });
   });
 
   it("uses safe denials and blocks anomalous calculations", async () => {

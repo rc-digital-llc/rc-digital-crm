@@ -597,6 +597,7 @@ export type BillingCalculationListRequest = Readonly<{
 
 export type BillingCalculationListResult = Readonly<{
   data: readonly BillingCalculation[];
+  adjustments: readonly BillingAdjustmentCalculation[];
   total: number;
 }>;
 

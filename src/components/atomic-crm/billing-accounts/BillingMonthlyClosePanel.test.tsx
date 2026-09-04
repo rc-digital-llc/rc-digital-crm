@@ -2,9 +2,17 @@ import fs from "node:fs";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { parseUsdMoney } from "../financial/exactMoney";
+import { parseExactRatio, parseUsdMoney } from "../financial/exactMoney";
 import type { BillingRevenuePeriodSummary } from "../providers/types";
-import type { BillingAgreementVersion } from "../types";
+import type {
+  BillingAgreementVersion,
+  BillingCalculationComparison,
+} from "../types";
+import {
+  calculationBranchLabel,
+  formatCalculationComparison,
+  formatExactDeltaRate,
+} from "./BillingCalculationPreview";
 import {
   buildBillingRevenueRevisionRequest,
   validateBillingRevenueRevisionForm,
@@ -221,5 +229,114 @@ describe("monthly revenue review workflow", () => {
     expect(source).toContain("enabled: online");
     expect(source).toContain("useCanAccess");
     expect(source).not.toMatch(/overflow-x-(?:auto|scroll)|<table|<Table/i);
+  });
+});
+
+describe("exact calculation preview and adjustment presentation", () => {
+  const comparison = (
+    amount: string,
+    previous: string,
+  ): BillingCalculationComparison => ({
+    status: "available",
+    previous_calculation_id: "31000000-0000-4000-8000-000000009200",
+    previous_amount: parseUsdMoney({
+      amount_minor: previous,
+      currency: "USD",
+    }),
+    delta: parseUsdMoney({ amount_minor: amount, currency: "USD" }),
+    delta_rate: parseExactRatio({ numerator: amount, denominator: previous }),
+  });
+
+  it("formats signed exact amount and percentage comparisons without inventing a missing prior", () => {
+    expect(formatCalculationComparison(comparison("7500", "75000"))).toBe(
+      "+$75.00 increase",
+    );
+    expect(formatCalculationComparison(comparison("-2500", "50000"))).toBe(
+      "-$25.00 decrease",
+    );
+    expect(formatCalculationComparison(comparison("0", "50000"))).toBe(
+      "$0.00 no change",
+    );
+    expect(
+      formatCalculationComparison({
+        status: "unavailable",
+        previous_calculation_id: null,
+        previous_amount: null,
+        delta: null,
+        delta_rate: null,
+      }),
+    ).toBe("Prior period unavailable");
+    expect(
+      formatExactDeltaRate(
+        parseExactRatio({ numerator: "1", denominator: "8" }),
+      ),
+    ).toBe("+12.50%");
+  });
+
+  it("uses literal winning-branch labels for every closed formula branch", () => {
+    expect(calculationBranchLabel("fixed")).toBe("Fixed amount selected");
+    expect(calculationBranchLabel("percentage")).toBe(
+      "Percentage candidate selected",
+    );
+    expect(calculationBranchLabel("minimum")).toBe(
+      "Minimum candidate selected",
+    );
+    expect(calculationBranchLabel("minimum_equal")).toBe(
+      "Minimum and percentage are equal; minimum selected",
+    );
+  });
+
+  it("renders exact candidates, policies, blockers, approval context, and durable adjustments", () => {
+    const preview = fs.readFileSync(
+      new URL("./BillingCalculationPreview.tsx", import.meta.url),
+      "utf8",
+    );
+    const panel = fs.readFileSync(
+      new URL("./BillingMonthlyClosePanel.tsx", import.meta.url),
+      "utf8",
+    );
+    const combined = `${preview}\n${panel}`;
+    const normalized = combined.replace(/\s+/g, " ");
+
+    for (const copy of [
+      "Exact calculation preview",
+      "Fixed candidate",
+      "Minimum candidate",
+      "Percentage candidate",
+      "Winning branch",
+      "Prior-period comparison",
+      "Policy and provenance",
+      "Automatic approval eligible",
+      "Manual approval required",
+      "Anomaly checks",
+      "Needs approval",
+      "Auto-approved",
+      "Adjustment pending",
+      "True-up",
+      "Credit candidate",
+      "Held for contract review",
+      "Original result",
+      "Actual result",
+      "Signed delta",
+      "This preview is no longer current. Refresh the period and review the new calculation before approving.",
+      "Approve calculation",
+    ]) {
+      expect(normalized).toContain(copy);
+    }
+    for (const method of [
+      "listBillingCalculations",
+      "previewBillingCalculation",
+      "createBillingCalculation",
+      "approveBillingCalculation",
+      "getBillingCalculationLineage",
+      "createBillingAdjustmentCalculation",
+    ]) {
+      expect(panel).toContain(method);
+    }
+    expect(combined).toContain("tabular-nums");
+    expect(combined).toContain("disabled={Boolean(pendingAction)}");
+    expect(combined).not.toMatch(
+      /paid|invoice issued|credit issued|reconciled/i,
+    );
   });
 });

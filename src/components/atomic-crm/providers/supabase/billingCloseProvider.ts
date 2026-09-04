@@ -3,6 +3,7 @@ import type {
   BillingAgreementEventType,
   BillingAgreementLifecycleState,
   BillingAgreementVersion,
+  BillingCalculation,
   BillingCalculationAnomaly,
   BillingCalculationComparison,
   BillingCalculationLineage,
@@ -2305,11 +2306,13 @@ function parseAdjustmentResponse(
     ),
     original_calculation_id: request.original_calculation_id,
     late_submission_id: request.late_submission_id,
+    late_review_event_id: request.late_review_event_id,
     original_amount: original,
     actual_amount: actual,
     delta,
     treatment,
     status: result,
+    reason: request.reason,
     snapshot_hash: requireHash(
       response.snapshot_hash,
       BILLING_CLOSE_INVALID_RESPONSE,
@@ -2657,6 +2660,104 @@ function parseSupportList<T>(value: unknown): T {
   }) as T;
 }
 
+function parseAdjustmentSupport(value: unknown): BillingAdjustmentCalculation {
+  const row = requireRecord(value, BILLING_CLOSE_INVALID_RESPONSE);
+  if (
+    !keysEqual(row, [
+      "id",
+      "original_calculation_id",
+      "late_submission_id",
+      "late_review_event_id",
+      "original_amount",
+      "actual_amount",
+      "delta",
+      "treatment",
+      "status",
+      "reason",
+      "snapshot_hash",
+      "relationship_hash",
+    ])
+  ) {
+    invalidResponse();
+  }
+  const parseNestedMoney = (value: unknown) => {
+    const nested = requireRecord(value, BILLING_CLOSE_INVALID_RESPONSE);
+    if (!keysEqual(nested, ["amount_minor", "currency"])) invalidResponse();
+    return money(nested.amount_minor, nested.currency);
+  };
+  const original = parseNestedMoney(row.original_amount);
+  const actual = parseNestedMoney(row.actual_amount);
+  const delta = parseNestedMoney(row.delta);
+  if (
+    BigInt(actual.amount_minor) - BigInt(original.amount_minor) !==
+    BigInt(delta.amount_minor)
+  ) {
+    invalidResponse();
+  }
+  return Object.freeze({
+    id: requireUuid(row.id, BILLING_CLOSE_INVALID_RESPONSE),
+    original_calculation_id: requireUuid(
+      row.original_calculation_id,
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    late_submission_id: requireUuid(
+      row.late_submission_id,
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    late_review_event_id: requirePositiveStringId(
+      row.late_review_event_id,
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    original_amount: original,
+    actual_amount: actual,
+    delta,
+    treatment: requireEnum(
+      row.treatment,
+      ["true_up", "no_adjustment", "credit_candidate", "held"],
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    status: requireEnum(
+      row.status,
+      ["approved", "no_adjustment", "held"],
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    reason: requireString(row.reason, 1000, BILLING_CLOSE_INVALID_RESPONSE),
+    snapshot_hash: requireHash(
+      row.snapshot_hash,
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+    relationship_hash: requireHash(
+      row.relationship_hash,
+      BILLING_CLOSE_INVALID_RESPONSE,
+    ),
+  });
+}
+
+function parseCalculationSupportList(
+  value: unknown,
+): BillingCalculationListResult {
+  const result = requireRecord(value, BILLING_CLOSE_INVALID_RESPONSE);
+  if (
+    !keysEqual(result, ["adjustments", "data", "total"]) ||
+    !Array.isArray(result.data) ||
+    !Array.isArray(result.adjustments) ||
+    typeof result.total !== "number" ||
+    !Number.isSafeInteger(result.total) ||
+    result.total < 0
+  ) {
+    invalidResponse();
+  }
+  return Object.freeze({
+    data: Object.freeze(
+      result.data.map((item) =>
+        freezeSupportWire(requireRecord(item, BILLING_CLOSE_INVALID_RESPONSE)),
+      ),
+    ) as readonly BillingCalculation[],
+    adjustments: Object.freeze(result.adjustments.map(parseAdjustmentSupport)),
+    total: result.total,
+  });
+}
+
 function freezeSupportWire(value: unknown, key = "", depth = 0): unknown {
   if (depth > 20) invalidResponse();
   const isFinancialInteger =
@@ -2857,7 +2958,7 @@ export function createSupabaseBillingCloseProvider({
         "read_billing_calculations",
         "p_request",
         request,
-        parseSupportList<BillingCalculationListResult>,
+        parseCalculationSupportList,
         BILLING_CLOSE_READ_FAILED,
       );
     },

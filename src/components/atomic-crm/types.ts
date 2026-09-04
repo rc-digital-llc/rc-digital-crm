@@ -821,11 +821,13 @@ export type BillingAdjustmentCalculation = Readonly<{
   id: string;
   original_calculation_id: string;
   late_submission_id: string;
+  late_review_event_id: string;
   original_amount: UsdMoney;
   actual_amount: UsdMoney;
   delta: UsdMoney;
   treatment: BillingAdjustmentTreatment;
   status: "approved" | "no_adjustment" | "held";
+  reason: string;
   snapshot_hash: string;
   relationship_hash: string;
 }>;
