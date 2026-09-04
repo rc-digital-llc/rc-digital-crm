@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-09-04T23:28:19.485Z"
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-09-04T23:53:27.912Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 36
   percent: 30
 ---
 
@@ -29,11 +29,11 @@ history.
 ## Current Position
 
 Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-09-04
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [██████████] 95%
 | Phase 04 P04 | 29 min | 3 tasks | 8 files |
 | Phase 04 P05 | 44 min | 3 tasks | 13 files |
 | Phase 04 P06 | 22 min | 3 tasks | 11 files |
+| Phase 04 P07 | 20 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,9 @@ security decisions:
 - [Phase 04]: Agreement lifecycle history uses a caller-scoped support-safe projection with string event IDs. — Operators need immutable actor, role, reason, and timestamp causation without evidence storage details or raw contract content.
 - [Phase 04]: Active agreement versions remain browser read-only and amendments create new drafts. — Signed calculation authority must remain immutable while operators can propose future terms through explicit server commands.
 - [Phase 04]: Agreement presentation stops offline and treats capability checks as presentation only. — Sensitive agreement data must not render from persisted cache, and the server must remain authoritative for every lifecycle command.
+- [Phase 04]: Revenue forms accept exact display strings only and never treat browser numbers or explanation text as authority.
+- [Phase 04]: Calculation presentation formats only strictly decoded server results and requires a current immutable fingerprint for approval.
+- [Phase 04]: Late adjustments use a caller-scoped support projection so durable lineage survives refresh without exposing evidence content.
 
 ### Pending Todos
 
@@ -193,6 +197,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T23:28:19.479Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-09-04T23:53:27.906Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
