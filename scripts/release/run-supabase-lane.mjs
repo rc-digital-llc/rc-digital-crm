@@ -481,6 +481,51 @@ async function runSelfTest() {
   if (redactText("token=abc eyJaa.bb.cc", ["abc"]).includes("abc")) {
     throw new Error("redaction failed");
   }
+
+  const schemaPushCalls = [];
+  const schemaPushExecute = async (command, args) => {
+    schemaPushCalls.push([command, ...args]);
+    if (command === "supabase" && args[0] === "status") {
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          API_URL: "http://127.0.0.1:54321",
+          DB_URL: "postgresql://postgres:local@127.0.0.1:54322/postgres",
+          ANON_KEY: "synthetic-local-key",
+        }),
+        stderr: "",
+      };
+    }
+    return { code: 0, stdout: "", stderr: "" };
+  };
+  const schemaPushCode = await runLane({
+    lane: "migration-clean",
+    command: [
+      "node",
+      "scripts/release/verify-migration-chain.mjs",
+      "schema-push",
+    ],
+    execute: schemaPushExecute,
+  });
+  if (schemaPushCode !== 0) throw new Error("schema-push exit code changed");
+  if (
+    schemaPushCalls.some(
+      ([command, action]) =>
+        command === "supabase" && ["start", "status", "stop"].includes(action),
+    )
+  ) {
+    throw new Error("self-isolating schema-push booted a primary local stack");
+  }
+  if (
+    schemaPushCalls.filter(
+      ([command, script, mode]) =>
+        command === "node" &&
+        script === "scripts/release/verify-migration-chain.mjs" &&
+        mode === "schema-push",
+    ).length !== 1
+  ) {
+    throw new Error("self-isolating schema-push did not execute exactly once");
+  }
   process.stdout.write("supabase lane self-test: PASS\n");
 }
 
