@@ -160,6 +160,139 @@ CREATE INDEX billing_revenue_command_events_scope_created_idx
     organization_id, account_id, created_at DESC, id DESC
   );
 
+CREATE TABLE public.billing_revenue_review_events (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  organization_id uuid NOT NULL,
+  account_id uuid NOT NULL,
+  period_id uuid NOT NULL,
+  submission_id uuid,
+  outcome text NOT NULL CHECK (
+    outcome IN ('accept', 'reject', 'request_correction', 'hold')
+  ),
+  reason_code text NOT NULL CHECK (
+    reason_code IN (
+      'REVENUE_ACCEPTED', 'MISSING_EVIDENCE', 'CONFLICTING_EVIDENCE',
+      'LATE_EVIDENCE', 'ANOMALOUS_REVENUE', 'HELD_EVIDENCE',
+      'UNVERIFIED_EVIDENCE'
+    )
+  ),
+  reviewer_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  reviewer_role text NOT NULL REFERENCES public.billing_roles(role),
+  reason text NOT NULL CHECK (
+    pg_catalog.btrim(reason) <> '' AND pg_catalog.octet_length(reason) <= 1000
+  ),
+  input_fingerprint text NOT NULL CHECK (input_fingerprint ~ '^[0-9a-f]{64}$'),
+  evidence_fingerprint text NOT NULL CHECK (evidence_fingerprint ~ '^[0-9a-f]{64}$'),
+  review_policy_version text NOT NULL DEFAULT 'revenue-review-v1'
+    CHECK (review_policy_version = 'revenue-review-v1'),
+  request_fingerprint text NOT NULL CHECK (request_fingerprint ~ '^[0-9a-f]{64}$'),
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT billing_revenue_review_events_period_scope_fk
+    FOREIGN KEY (period_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_periods(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_revenue_review_events_submission_scope_fk
+    FOREIGN KEY (submission_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_submissions(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_revenue_review_events_accept_state_check CHECK (
+    (outcome = 'accept' AND submission_id IS NOT NULL AND reason_code = 'REVENUE_ACCEPTED')
+    OR (outcome <> 'accept' AND reason_code <> 'REVENUE_ACCEPTED')
+  )
+);
+
+CREATE UNIQUE INDEX billing_revenue_review_one_accept_per_period
+  ON public.billing_revenue_review_events (period_id)
+  WHERE outcome = 'accept';
+
+CREATE INDEX billing_revenue_review_period_created_idx
+  ON public.billing_revenue_review_events (period_id, created_at DESC, id DESC);
+
+CREATE TABLE public.billing_close_exceptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  account_id uuid NOT NULL,
+  period_id uuid NOT NULL,
+  submission_id uuid,
+  reason_code text NOT NULL CHECK (
+    reason_code IN (
+      'MISSING_EVIDENCE', 'CONFLICTING_EVIDENCE', 'LATE_EVIDENCE',
+      'ANOMALOUS_REVENUE', 'HELD_EVIDENCE', 'UNVERIFIED_EVIDENCE'
+    )
+  ),
+  amount_at_risk_minor bigint CHECK (amount_at_risk_minor IS NULL OR amount_at_risk_minor >= 0),
+  currency text NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
+  owner_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  next_action text NOT NULL CHECK (
+    pg_catalog.btrim(next_action) <> ''
+    AND pg_catalog.octet_length(next_action) <= 1000
+  ),
+  due_at timestamptz NOT NULL,
+  status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved')),
+  caused_by_review_event_id bigint NOT NULL
+    REFERENCES public.billing_revenue_review_events(id) ON DELETE RESTRICT,
+  opened_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  resolved_at timestamptz,
+  resolved_by_review_event_id bigint
+    REFERENCES public.billing_revenue_review_events(id) ON DELETE RESTRICT,
+  resolution_reason text,
+  CONSTRAINT billing_close_exceptions_period_scope_fk
+    FOREIGN KEY (period_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_periods(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_close_exceptions_submission_scope_fk
+    FOREIGN KEY (submission_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_submissions(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_close_exceptions_state_check CHECK (
+    (status = 'open'
+      AND resolved_at IS NULL
+      AND resolved_by_review_event_id IS NULL
+      AND resolution_reason IS NULL)
+    OR (status = 'resolved'
+      AND resolved_at IS NOT NULL
+      AND resolved_by_review_event_id IS NOT NULL
+      AND pg_catalog.btrim(resolution_reason) <> '')
+  )
+);
+
+CREATE UNIQUE INDEX billing_close_exceptions_one_open_reason
+  ON public.billing_close_exceptions (period_id, reason_code)
+  WHERE status = 'open';
+
+CREATE INDEX billing_close_exceptions_scope_status_idx
+  ON public.billing_close_exceptions (
+    organization_id, account_id, status, due_at, id
+  );
+
+CREATE TABLE public.billing_close_exception_events (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  exception_id uuid NOT NULL REFERENCES public.billing_close_exceptions(id) ON DELETE RESTRICT,
+  organization_id uuid NOT NULL,
+  account_id uuid NOT NULL,
+  period_id uuid NOT NULL,
+  review_event_id bigint NOT NULL
+    REFERENCES public.billing_revenue_review_events(id) ON DELETE RESTRICT,
+  event_type text NOT NULL CHECK (event_type IN ('opened', 'retained', 'resolved')),
+  actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  actor_role text NOT NULL REFERENCES public.billing_roles(role),
+  reason text NOT NULL CHECK (
+    pg_catalog.btrim(reason) <> '' AND pg_catalog.octet_length(reason) <= 1000
+  ),
+  created_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT billing_close_exception_events_exception_scope_fk
+    FOREIGN KEY (exception_id)
+    REFERENCES public.billing_close_exceptions(id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_close_exception_events_period_scope_fk
+    FOREIGN KEY (period_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_periods(id, organization_id, account_id)
+    ON DELETE RESTRICT
+);
+
+CREATE INDEX billing_close_exception_events_exception_idx
+  ON public.billing_close_exception_events (exception_id, created_at, id);
+
 CREATE FUNCTION private.billing_revenue_row_immutable()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -191,6 +324,65 @@ FOR EACH ROW EXECUTE FUNCTION private.billing_revenue_row_immutable();
 CREATE TRIGGER billing_revenue_command_events_immutable
 BEFORE UPDATE OR DELETE ON public.billing_revenue_command_events
 FOR EACH ROW EXECUTE FUNCTION private.billing_revenue_row_immutable();
+
+CREATE FUNCTION private.billing_revenue_review_event_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_REVIEW_EVENT_IMMUTABLE';
+END;
+$function$;
+
+CREATE FUNCTION private.billing_close_exception_protect()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  IF TG_OP = 'DELETE'
+    OR OLD.status <> 'open'
+    OR NEW.status <> 'resolved'
+    OR ROW(
+      OLD.id, OLD.organization_id, OLD.account_id, OLD.period_id,
+      OLD.submission_id, OLD.reason_code, OLD.amount_at_risk_minor,
+      OLD.currency, OLD.owner_id, OLD.next_action, OLD.due_at,
+      OLD.caused_by_review_event_id, OLD.opened_at
+    ) IS DISTINCT FROM ROW(
+      NEW.id, NEW.organization_id, NEW.account_id, NEW.period_id,
+      NEW.submission_id, NEW.reason_code, NEW.amount_at_risk_minor,
+      NEW.currency, NEW.owner_id, NEW.next_action, NEW.due_at,
+      NEW.caused_by_review_event_id, NEW.opened_at
+    )
+  THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_EXCEPTION_IMMUTABLE';
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
+CREATE FUNCTION private.billing_close_exception_event_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_EXCEPTION_EVENT_IMMUTABLE';
+END;
+$function$;
+
+CREATE TRIGGER billing_revenue_review_events_immutable
+BEFORE UPDATE OR DELETE ON public.billing_revenue_review_events
+FOR EACH ROW EXECUTE FUNCTION private.billing_revenue_review_event_immutable();
+
+CREATE TRIGGER billing_close_exceptions_protect
+BEFORE UPDATE OR DELETE ON public.billing_close_exceptions
+FOR EACH ROW EXECUTE FUNCTION private.billing_close_exception_protect();
+
+CREATE TRIGGER billing_close_exception_events_immutable
+BEFORE UPDATE OR DELETE ON public.billing_close_exception_events
+FOR EACH ROW EXECUTE FUNCTION private.billing_close_exception_event_immutable();
 
 CREATE FUNCTION private.billing_revenue_request_fingerprint(
   p_action text,
@@ -619,6 +811,326 @@ BEGIN
 END;
 $function$;
 
+CREATE FUNCTION private.billing_revenue_evidence_fingerprint(p_submission_id uuid)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT pg_catalog.encode(
+    extensions.digest(
+      p_submission_id::text || ':' || COALESCE(
+        pg_catalog.string_agg(
+          link.evidence_id::text || ':' || link.captured_sha256,
+          ',' ORDER BY link.evidence_ordinal
+        ),
+        'missing'
+      ),
+      'sha256'
+    ),
+    'hex'
+  )
+  FROM public.billing_revenue_submission_evidence AS link
+  WHERE link.submission_id = p_submission_id;
+$function$;
+
+CREATE FUNCTION public.review_billing_revenue_revision(p_payload jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  payload_keys text[];
+  exception_keys text[];
+  period_row public.billing_revenue_periods%ROWTYPE;
+  submission_row public.billing_revenue_submissions%ROWTYPE;
+  review_row public.billing_revenue_review_events%ROWTYPE;
+  exception_row public.billing_close_exceptions%ROWTYPE;
+  actor_role_value text;
+  fingerprint_value text;
+  replay_value jsonb;
+  response_value jsonb;
+  submission_id_value uuid;
+  input_fingerprint_value text;
+  evidence_fingerprint_value text;
+  requested_outcome text;
+  actual_outcome text;
+  actual_reason_code text;
+  evidence_blocker text;
+  owner_id_value uuid;
+  next_action_value text;
+  due_at_value timestamptz;
+  amount_at_risk_value bigint;
+  exception_event_type text;
+BEGIN
+  IF (SELECT auth.uid()) IS NULL
+    OR pg_catalog.jsonb_typeof(p_payload) IS DISTINCT FROM 'object'
+  THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  SELECT COALESCE(pg_catalog.array_agg(key ORDER BY key), ARRAY[]::text[])
+  INTO payload_keys
+  FROM pg_catalog.jsonb_object_keys(p_payload) AS keys(key);
+  IF payload_keys IS DISTINCT FROM ARRAY[
+      'account_id', 'command_key', 'exception', 'outcome', 'period_id',
+      'reason', 'reason_code', 'submission_id'
+    ]::text[]
+    OR pg_catalog.jsonb_typeof(p_payload->'account_id') IS DISTINCT FROM 'string'
+    OR (p_payload->>'account_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+    OR pg_catalog.jsonb_typeof(p_payload->'period_id') IS DISTINCT FROM 'string'
+    OR (p_payload->>'period_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+    OR pg_catalog.jsonb_typeof(p_payload->'command_key') IS DISTINCT FROM 'string'
+    OR (p_payload->>'command_key') !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$'
+    OR p_payload->>'outcome' NOT IN ('accept', 'reject', 'request_correction', 'hold')
+    OR p_payload->>'reason_code' NOT IN (
+      'REVENUE_ACCEPTED', 'MISSING_EVIDENCE', 'CONFLICTING_EVIDENCE',
+      'LATE_EVIDENCE', 'ANOMALOUS_REVENUE', 'HELD_EVIDENCE',
+      'UNVERIFIED_EVIDENCE'
+    )
+    OR pg_catalog.jsonb_typeof(p_payload->'reason') IS DISTINCT FROM 'string'
+    OR NULLIF(pg_catalog.btrim(p_payload->>'reason'), '') IS NULL
+    OR pg_catalog.octet_length(p_payload->>'reason') > 1000
+    OR (
+      pg_catalog.jsonb_typeof(p_payload->'submission_id') NOT IN ('string', 'null')
+      OR (
+        pg_catalog.jsonb_typeof(p_payload->'submission_id') = 'string'
+        AND (p_payload->>'submission_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+      )
+    )
+  THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+  END IF;
+
+  requested_outcome := p_payload->>'outcome';
+  IF requested_outcome = 'accept' THEN
+    IF p_payload->>'reason_code' <> 'REVENUE_ACCEPTED'
+      OR pg_catalog.jsonb_typeof(p_payload->'submission_id') <> 'string'
+      OR p_payload->'exception' <> 'null'::jsonb
+    THEN
+      RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+    END IF;
+  ELSE
+    IF p_payload->>'reason_code' = 'REVENUE_ACCEPTED'
+      OR pg_catalog.jsonb_typeof(p_payload->'exception') <> 'object'
+    THEN
+      RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+    END IF;
+    SELECT COALESCE(pg_catalog.array_agg(key ORDER BY key), ARRAY[]::text[])
+    INTO exception_keys
+    FROM pg_catalog.jsonb_object_keys(p_payload->'exception') AS keys(key);
+    IF exception_keys IS DISTINCT FROM ARRAY[
+        'amount_at_risk', 'due_at', 'kind', 'next_action', 'owner_id'
+      ]::text[]
+      OR p_payload->'exception'->>'kind' IS DISTINCT FROM p_payload->>'reason_code'
+      OR pg_catalog.jsonb_typeof(p_payload->'exception'->'owner_id') <> 'string'
+      OR (p_payload->'exception'->>'owner_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+      OR pg_catalog.jsonb_typeof(p_payload->'exception'->'next_action') <> 'string'
+      OR NULLIF(pg_catalog.btrim(p_payload->'exception'->>'next_action'), '') IS NULL
+      OR pg_catalog.octet_length(p_payload->'exception'->>'next_action') > 1000
+      OR pg_catalog.jsonb_typeof(p_payload->'exception'->'due_at') <> 'string'
+      OR pg_catalog.jsonb_typeof(p_payload->'exception'->'amount_at_risk') NOT IN ('object', 'null')
+    THEN
+      RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+    END IF;
+  END IF;
+
+  fingerprint_value := private.billing_revenue_request_fingerprint('revision.review', p_payload);
+  replay_value := private.billing_revenue_replay(p_payload->>'command_key', fingerprint_value);
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
+
+  SELECT period.* INTO period_row
+  FROM public.billing_revenue_periods AS period
+  WHERE period.id = (p_payload->>'period_id')::uuid
+    AND period.account_id = (p_payload->>'account_id')::uuid
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  actor_role_value := private.billing_agreement_actor_role(
+    period_row.organization_id, period_row.account_id, 'revenue.review'
+  );
+  IF actor_role_value IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+
+  IF pg_catalog.jsonb_typeof(p_payload->'submission_id') = 'string' THEN
+    submission_id_value := (p_payload->>'submission_id')::uuid;
+    SELECT submission.* INTO submission_row
+    FROM public.billing_revenue_submissions AS submission
+    WHERE submission.id = submission_id_value
+      AND submission.period_id = period_row.id
+      AND submission.organization_id = period_row.organization_id
+      AND submission.account_id = period_row.account_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+    END IF;
+    input_fingerprint_value := submission_row.request_fingerprint;
+    evidence_fingerprint_value := private.billing_revenue_evidence_fingerprint(submission_row.id);
+
+    SELECT CASE
+      WHEN count(link.*) = 0 THEN 'MISSING_EVIDENCE'
+      WHEN pg_catalog.bool_or(evidence.id IS NULL) THEN 'CONFLICTING_EVIDENCE'
+      WHEN pg_catalog.bool_or(evidence.sha256 IS DISTINCT FROM link.captured_sha256)
+        THEN 'CONFLICTING_EVIDENCE'
+      WHEN pg_catalog.bool_or(
+        evidence.hold_started_at IS NOT NULL AND evidence.hold_released_at IS NULL
+      ) THEN 'HELD_EVIDENCE'
+      WHEN pg_catalog.bool_or(
+        evidence.inspection_status <> 'clean'
+        OR evidence.lifecycle_status <> 'active'
+        OR evidence.retention_expires_at <= pg_catalog.now()
+      ) THEN 'UNVERIFIED_EVIDENCE'
+      WHEN submission_row.submitted_at > period_row.submission_deadline_at
+        THEN 'LATE_EVIDENCE'
+      ELSE NULL
+    END INTO evidence_blocker
+    FROM public.billing_revenue_submission_evidence AS link
+    LEFT JOIN public.billing_evidence_objects AS evidence
+      ON evidence.id = link.evidence_id
+      AND evidence.organization_id = link.organization_id
+      AND evidence.account_id = link.account_id
+    WHERE link.submission_id = submission_row.id;
+  ELSE
+    IF requested_outcome <> 'hold'
+      OR p_payload->>'reason_code' <> 'MISSING_EVIDENCE'
+    THEN
+      RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+    END IF;
+    input_fingerprint_value := pg_catalog.encode(
+      extensions.digest(period_row.id::text || ':missing-input', 'sha256'), 'hex'
+    );
+    evidence_fingerprint_value := pg_catalog.encode(
+      extensions.digest(period_row.id::text || ':missing-evidence', 'sha256'), 'hex'
+    );
+    evidence_blocker := 'MISSING_EVIDENCE';
+  END IF;
+
+  actual_outcome := requested_outcome;
+  actual_reason_code := p_payload->>'reason_code';
+  IF requested_outcome = 'accept' AND evidence_blocker IS NOT NULL THEN
+    actual_outcome := 'hold';
+    actual_reason_code := evidence_blocker;
+  END IF;
+
+  BEGIN
+    INSERT INTO public.billing_revenue_review_events (
+      organization_id, account_id, period_id, submission_id, outcome,
+      reason_code, reviewer_id, reviewer_role, reason, input_fingerprint,
+      evidence_fingerprint, request_fingerprint
+    ) VALUES (
+      period_row.organization_id, period_row.account_id, period_row.id,
+      submission_id_value, actual_outcome, actual_reason_code,
+      (SELECT auth.uid()), actor_role_value, pg_catalog.btrim(p_payload->>'reason'),
+      input_fingerprint_value, evidence_fingerprint_value, fingerprint_value
+    ) RETURNING * INTO review_row;
+  EXCEPTION
+    WHEN unique_violation THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_REVISION_ALREADY_ACCEPTED';
+  END;
+
+  IF actual_outcome = 'accept' THEN
+    WITH resolved AS (
+      UPDATE public.billing_close_exceptions AS exception
+      SET status = 'resolved', resolved_at = pg_catalog.now(),
+          resolved_by_review_event_id = review_row.id,
+          resolution_reason = pg_catalog.btrim(p_payload->>'reason')
+      WHERE exception.period_id = period_row.id
+        AND exception.status = 'open'
+      RETURNING exception.id
+    )
+    INSERT INTO public.billing_close_exception_events (
+      exception_id, organization_id, account_id, period_id, review_event_id,
+      event_type, actor_id, actor_role, reason
+    )
+    SELECT resolved.id, period_row.organization_id, period_row.account_id,
+      period_row.id, review_row.id, 'resolved', (SELECT auth.uid()),
+      actor_role_value, pg_catalog.btrim(p_payload->>'reason')
+    FROM resolved;
+  ELSE
+    IF requested_outcome = 'accept' THEN
+      owner_id_value := (SELECT auth.uid());
+      next_action_value := 'Resolve the evidence blocker before accepting revenue';
+      due_at_value := pg_catalog.now() + interval '7 days';
+      amount_at_risk_value := submission_row.commissionable_amount_minor;
+    ELSE
+      owner_id_value := (p_payload->'exception'->>'owner_id')::uuid;
+      next_action_value := pg_catalog.btrim(p_payload->'exception'->>'next_action');
+      BEGIN
+        due_at_value := (p_payload->'exception'->>'due_at')::timestamptz;
+        IF due_at_value <= pg_catalog.now() THEN
+          RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+        END IF;
+        IF p_payload->'exception'->'amount_at_risk' <> 'null'::jsonb THEN
+          amount_at_risk_value := (
+            public.financial_parse_usd_money(
+              p_payload->'exception'->'amount_at_risk', 'usd-v1'
+            )->>'amount_minor'
+          )::bigint;
+          IF amount_at_risk_value < 0 THEN
+            RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+          END IF;
+        END IF;
+      EXCEPTION
+        WHEN SQLSTATE '22003' OR SQLSTATE '22007' OR SQLSTATE '22008'
+          OR SQLSTATE '22023' THEN
+          RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_REVIEW_INVALID';
+      END;
+    END IF;
+
+    SELECT exception.* INTO exception_row
+    FROM public.billing_close_exceptions AS exception
+    WHERE exception.period_id = period_row.id
+      AND exception.reason_code = actual_reason_code
+      AND exception.status = 'open'
+    FOR UPDATE;
+    IF FOUND THEN
+      exception_event_type := 'retained';
+    ELSE
+      INSERT INTO public.billing_close_exceptions (
+        organization_id, account_id, period_id, submission_id, reason_code,
+        amount_at_risk_minor, owner_id, next_action, due_at,
+        caused_by_review_event_id
+      ) VALUES (
+        period_row.organization_id, period_row.account_id, period_row.id,
+        submission_id_value, actual_reason_code, amount_at_risk_value,
+        owner_id_value, next_action_value, due_at_value, review_row.id
+      ) RETURNING * INTO exception_row;
+      exception_event_type := 'opened';
+    END IF;
+    INSERT INTO public.billing_close_exception_events (
+      exception_id, organization_id, account_id, period_id, review_event_id,
+      event_type, actor_id, actor_role, reason
+    ) VALUES (
+      exception_row.id, period_row.organization_id, period_row.account_id,
+      period_row.id, review_row.id, exception_event_type, (SELECT auth.uid()),
+      actor_role_value, pg_catalog.btrim(p_payload->>'reason')
+    );
+  END IF;
+
+  response_value := pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
+    'result', 'reviewed',
+    'review_event_id', review_row.id,
+    'period_id', review_row.period_id,
+    'submission_id', review_row.submission_id,
+    'outcome', review_row.outcome,
+    'reason_code', review_row.reason_code,
+    'input_fingerprint', review_row.input_fingerprint,
+    'evidence_fingerprint', review_row.evidence_fingerprint,
+    'review_policy_version', review_row.review_policy_version,
+    'exception_id', exception_row.id,
+    'exception_status', exception_row.status
+  ));
+  PERFORM private.billing_record_revenue_command(
+    period_row.organization_id, period_row.account_id, actor_role_value,
+    'revision.review', p_payload->>'command_key', fingerprint_value,
+    period_row.id, submission_id_value, response_value
+  );
+  RETURN response_value;
+END;
+$function$;
+
 ALTER TABLE public.billing_revenue_periods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_periods FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_submissions ENABLE ROW LEVEL SECURITY;
@@ -627,6 +1139,12 @@ ALTER TABLE public.billing_revenue_submission_evidence ENABLE ROW LEVEL SECURITY
 ALTER TABLE public.billing_revenue_submission_evidence FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_command_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_command_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_revenue_review_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_revenue_review_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_close_exceptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_close_exceptions FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_close_exception_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_close_exception_events FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY billing_revenue_periods_select ON public.billing_revenue_periods
 FOR SELECT TO authenticated
@@ -645,38 +1163,73 @@ CREATE POLICY billing_revenue_command_events_select ON public.billing_revenue_co
 FOR SELECT TO authenticated
 USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
 
+CREATE POLICY billing_revenue_review_events_select ON public.billing_revenue_review_events
+FOR SELECT TO authenticated
+USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
+
+CREATE POLICY billing_close_exceptions_select ON public.billing_close_exceptions
+FOR SELECT TO authenticated
+USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
+
+CREATE POLICY billing_close_exception_events_select
+ON public.billing_close_exception_events
+FOR SELECT TO authenticated
+USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
+
 ALTER FUNCTION private.billing_revenue_row_immutable() OWNER TO postgres;
+ALTER FUNCTION private.billing_revenue_review_event_immutable() OWNER TO postgres;
+ALTER FUNCTION private.billing_close_exception_protect() OWNER TO postgres;
+ALTER FUNCTION private.billing_close_exception_event_immutable() OWNER TO postgres;
 ALTER FUNCTION private.billing_revenue_request_fingerprint(text, jsonb) OWNER TO postgres;
 ALTER FUNCTION private.billing_revenue_replay(text, text) OWNER TO postgres;
 ALTER FUNCTION private.billing_record_revenue_command(uuid, uuid, text, text, text, text, uuid, uuid, jsonb) OWNER TO postgres;
+ALTER FUNCTION private.billing_revenue_evidence_fingerprint(uuid) OWNER TO postgres;
 ALTER FUNCTION public.ensure_billing_revenue_period(jsonb) OWNER TO postgres;
 ALTER FUNCTION public.submit_billing_revenue_revision(jsonb) OWNER TO postgres;
+ALTER FUNCTION public.review_billing_revenue_revision(jsonb) OWNER TO postgres;
 
 REVOKE ALL ON FUNCTION private.billing_revenue_row_immutable() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.billing_revenue_review_event_immutable() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.billing_close_exception_protect() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.billing_close_exception_event_immutable() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_revenue_request_fingerprint(text, jsonb) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_revenue_replay(text, text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_record_revenue_command(uuid, uuid, text, text, text, text, uuid, uuid, jsonb) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.billing_revenue_evidence_fingerprint(uuid) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.ensure_billing_revenue_period(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.submit_billing_revenue_revision(jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.review_billing_revenue_revision(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ensure_billing_revenue_period(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_billing_revenue_revision(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.review_billing_revenue_revision(jsonb) TO authenticated;
 
 REVOKE ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
   public.billing_revenue_submission_evidence,
-  public.billing_revenue_command_events
+  public.billing_revenue_command_events,
+  public.billing_revenue_review_events,
+  public.billing_close_exceptions,
+  public.billing_close_exception_events
   FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
   public.billing_revenue_submission_evidence,
-  public.billing_revenue_command_events
+  public.billing_revenue_command_events,
+  public.billing_revenue_review_events,
+  public.billing_close_exceptions,
+  public.billing_close_exception_events
   TO authenticated;
 GRANT ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
   public.billing_revenue_submission_evidence,
-  public.billing_revenue_command_events
+  public.billing_revenue_command_events,
+  public.billing_revenue_review_events,
+  public.billing_close_exceptions,
+  public.billing_close_exception_events
   TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.billing_revenue_command_events_id_seq
   TO service_role;
+GRANT USAGE, SELECT ON SEQUENCE public.billing_revenue_review_events_id_seq,
+  public.billing_close_exception_events_id_seq TO service_role;
 
 COMMIT;

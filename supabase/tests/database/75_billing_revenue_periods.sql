@@ -8,8 +8,12 @@ SELECT has_table('public', 'billing_revenue_periods', 'revenue periods exist');
 SELECT has_table('public', 'billing_revenue_submissions', 'immutable revenue revisions exist');
 SELECT has_table('public', 'billing_revenue_submission_evidence', 'submission evidence lineage exists');
 SELECT has_table('public', 'billing_revenue_command_events', 'revenue command replay journal exists');
+SELECT has_table('public', 'billing_revenue_review_events', 'immutable revenue reviews exist');
+SELECT has_table('public', 'billing_close_exceptions', 'durable close exceptions exist');
+SELECT has_table('public', 'billing_close_exception_events', 'exception transition history exists');
 SELECT has_function('public', 'ensure_billing_revenue_period', ARRAY['jsonb'], 'period identity command exists');
 SELECT has_function('public', 'submit_billing_revenue_revision', ARRAY['jsonb'], 'revenue revision command exists');
+SELECT has_function('public', 'review_billing_revenue_revision', ARRAY['jsonb'], 'revenue review command exists');
 
 SELECT is(
   (
@@ -314,6 +318,229 @@ SELECT is((SELECT count(*) FROM public.billing_revenue_submissions), 0::bigint,
   'wrong tenant cannot enumerate revenue submissions');
 
 RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000002', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000002","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+SELECT throws_ok(
+  $$SELECT public.review_billing_revenue_revision(jsonb_build_object(
+    'account_id', '21000000-0000-0000-0000-000000000200',
+    'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+    'submission_id', (SELECT response->>'submission_id' FROM revenue_correction_result),
+    'outcome', 'accept', 'reason_code', 'REVENUE_ACCEPTED',
+    'reason', 'Operator attempted self-review', 'exception', NULL,
+    'command_key', 'revenue-review-operator-denied-0001'
+  ))$$,
+  'P0001', 'REVENUE_NOT_AUTHORIZED',
+  'operator cannot review a revenue revision'
+);
+
+CREATE TEMP TABLE second_period_result AS
+SELECT public.ensure_billing_revenue_period(jsonb_build_object(
+  'account_id', '21000000-0000-0000-0000-000000000200',
+  'agreement_version_id', '21000000-0000-0000-0000-000000000801',
+  'period_month', '2026-11',
+  'command_key', 'revenue-period-alpha-0002'
+)) AS response;
+
+RESET ROLE;
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000003', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+CREATE TEMP TABLE correction_review_result AS
+SELECT public.review_billing_revenue_revision(jsonb_build_object(
+  'account_id', '21000000-0000-0000-0000-000000000200',
+  'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+  'submission_id', (
+    SELECT id::text FROM public.billing_revenue_submissions
+    WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+      AND revision_number = 1
+  ),
+  'outcome', 'request_correction',
+  'reason_code', 'ANOMALOUS_REVENUE',
+  'reason', 'The source delta needs an operator explanation',
+  'exception', jsonb_build_object(
+    'kind', 'ANOMALOUS_REVENUE',
+    'owner_id', '21000000-0000-0000-0000-000000000002',
+    'next_action', 'Reconcile the variance to the source statement',
+    'due_at', '2030-01-01T00:00:00Z',
+    'amount_at_risk', jsonb_build_object('amount_minor', '900000', 'currency', 'USD')
+  ),
+  'command_key', 'revenue-review-correction-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'outcome' FROM correction_review_result),
+  'request_correction',
+  'reviewer records a correction outcome with a durable exception'
+);
+
+SELECT is(
+  public.review_billing_revenue_revision(jsonb_build_object(
+    'account_id', '21000000-0000-0000-0000-000000000200',
+    'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+    'submission_id', (
+      SELECT id::text FROM public.billing_revenue_submissions
+      WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+        AND revision_number = 1
+    ),
+    'outcome', 'request_correction',
+    'reason_code', 'ANOMALOUS_REVENUE',
+    'reason', 'The source delta needs an operator explanation',
+    'exception', jsonb_build_object(
+      'kind', 'ANOMALOUS_REVENUE',
+      'owner_id', '21000000-0000-0000-0000-000000000002',
+      'next_action', 'Reconcile the variance to the source statement',
+      'due_at', '2030-01-01T00:00:00Z',
+      'amount_at_risk', jsonb_build_object('amount_minor', '900000', 'currency', 'USD')
+    ),
+    'command_key', 'revenue-review-correction-0001'
+  )),
+  (SELECT response FROM correction_review_result),
+  'identical review replay returns the original decision'
+);
+
+SELECT throws_ok(
+  $$SELECT public.review_billing_revenue_revision(jsonb_build_object(
+    'account_id', '21000000-0000-0000-0000-000000000200',
+    'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+    'submission_id', (
+      SELECT id::text FROM public.billing_revenue_submissions
+      WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+        AND revision_number = 1
+    ),
+    'outcome', 'reject', 'reason_code', 'CONFLICTING_EVIDENCE',
+    'reason', 'Changed replay',
+    'exception', jsonb_build_object(
+      'kind', 'CONFLICTING_EVIDENCE',
+      'owner_id', '21000000-0000-0000-0000-000000000002',
+      'next_action', 'Resolve source conflict',
+      'due_at', '2030-01-01T00:00:00Z',
+      'amount_at_risk', NULL
+    ),
+    'command_key', 'revenue-review-correction-0001'
+  ))$$,
+  'P0001', 'REVENUE_IDEMPOTENCY_CONFLICT',
+  'changed review reuse conflicts before new effects'
+);
+
+CREATE TEMP TABLE accepted_review_result AS
+SELECT public.review_billing_revenue_revision(jsonb_build_object(
+  'account_id', '21000000-0000-0000-0000-000000000200',
+  'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+  'submission_id', (SELECT response->>'submission_id' FROM revenue_correction_result),
+  'outcome', 'accept',
+  'reason_code', 'REVENUE_ACCEPTED',
+  'reason', 'Corrected source totals and evidence reconcile',
+  'exception', NULL,
+  'command_key', 'revenue-review-accept-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'outcome' FROM accepted_review_result),
+  'accept',
+  'reviewer accepts one clean exact revision'
+);
+
+SELECT is(
+  (
+    SELECT jsonb_build_object(
+      'reviews', count(*),
+      'accepted', count(*) FILTER (WHERE outcome = 'accept'),
+      'policy', min(review_policy_version),
+      'fingerprints', count(DISTINCT evidence_fingerprint)
+    )
+    FROM public.billing_revenue_review_events
+    WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+  ),
+  '{"reviews":2,"accepted":1,"policy":"revenue-review-v1","fingerprints":2}'::jsonb,
+  'review history preserves actor-bound outcomes and fingerprints'
+);
+
+SELECT is(
+  (
+    SELECT jsonb_build_object(
+      'status', status,
+      'reason', reason_code,
+      'event_count', (
+        SELECT count(*) FROM public.billing_close_exception_events AS event
+        WHERE event.exception_id = exception.id
+      )
+    )
+    FROM public.billing_close_exceptions AS exception
+    WHERE exception.period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+      AND exception.reason_code = 'ANOMALOUS_REVENUE'
+  ),
+  '{"status":"resolved","reason":"ANOMALOUS_REVENUE","event_count":2}'::jsonb,
+  'later acceptance resolves the owned exception with complete transition history'
+);
+
+SELECT throws_ok(
+  $$SELECT public.review_billing_revenue_revision(jsonb_build_object(
+    'account_id', '21000000-0000-0000-0000-000000000200',
+    'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+    'submission_id', (
+      SELECT id::text FROM public.billing_revenue_submissions
+      WHERE period_id = (SELECT (response->>'period_id')::uuid FROM revenue_period_result)
+        AND revision_number = 1
+    ),
+    'outcome', 'accept', 'reason_code', 'REVENUE_ACCEPTED',
+    'reason', 'Attempted replacement acceptance', 'exception', NULL,
+    'command_key', 'revenue-review-second-accept-0001'
+  ))$$,
+  'P0001', 'REVENUE_REVISION_ALREADY_ACCEPTED',
+  'a second accepted revision cannot replace the first'
+);
+
+CREATE TEMP TABLE missing_review_result AS
+SELECT public.review_billing_revenue_revision(jsonb_build_object(
+  'account_id', '21000000-0000-0000-0000-000000000200',
+  'period_id', (SELECT response->>'period_id' FROM second_period_result),
+  'submission_id', NULL,
+  'outcome', 'hold', 'reason_code', 'MISSING_EVIDENCE',
+  'reason', 'Monthly revenue evidence has not arrived',
+  'exception', jsonb_build_object(
+    'kind', 'MISSING_EVIDENCE',
+    'owner_id', '21000000-0000-0000-0000-000000000002',
+    'next_action', 'Obtain and submit the source revenue statement',
+    'due_at', '2030-01-01T00:00:00Z',
+    'amount_at_risk', NULL
+  ),
+  'command_key', 'revenue-review-missing-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'exception_status' FROM missing_review_result),
+  'open',
+  'missing evidence remains an open owned exception without an estimate'
+);
+
+RESET ROLE;
+
+SELECT ok(
+  NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND (column_name ILIKE '%estimate%' OR table_name ILIKE '%estimate%')
+      AND table_name LIKE 'billing_%'
+  ),
+  'revenue review schema contains no estimated revenue authority'
+);
+
+SELECT throws_ok(
+  $$UPDATE public.billing_revenue_review_events SET reason = 'tampered'$$,
+  'P0001', 'REVENUE_REVIEW_EVENT_IMMUTABLE',
+  'review decisions are append-only'
+);
+
+SELECT throws_ok(
+  $$DELETE FROM public.billing_close_exception_events$$,
+  'P0001', 'REVENUE_EXCEPTION_EVENT_IMMUTABLE',
+  'exception history is append-only'
+);
 
 SELECT * FROM finish();
 ROLLBACK;
