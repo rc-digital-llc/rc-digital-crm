@@ -77,6 +77,7 @@ describe("Phase 3 exact-money release coupling", () => {
       "tests/release/exact-money-release-static.test.ts",
     );
     expect(fastTests).toContain("tests/release/migration-clean.test.ts");
+    expect(fastTests).toContain("tests/release/security-gate.test.ts");
     expect(financialTargets).toMatch(
       /test-financial-fast:[\s\S]*?npm test -- --run \$\(FINANCIAL_FAST_TESTS\)/,
     );

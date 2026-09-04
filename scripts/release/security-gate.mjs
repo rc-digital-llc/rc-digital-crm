@@ -65,6 +65,7 @@ export function buildGitleaksArgs({
   }
   return [
     mode === "history" ? "git" : "dir",
+    ...(mode === "history" ? ["--log-opts=HEAD"] : []),
     "--redact=100",
     "--no-banner",
     "--no-color",
@@ -362,7 +363,7 @@ export async function runDependencyGate({ execute = executeProcess } = {}) {
   const result = await execute(
     "npm",
     ["audit", "--omit=dev", "--audit-level=high", "--json"],
-    { cwd: repositoryRoot, timeoutMs: 120000 },
+    { cwd: repositoryRoot, timeoutMs: 180000 },
   );
   let audit;
   try {

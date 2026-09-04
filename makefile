@@ -28,6 +28,7 @@ FINANCIAL_FAST_TESTS := \
 	src/components/atomic-crm/financial/exactMoney.test.ts \
 	src/components/atomic-crm/invoices/invoiceCalculations.test.ts \
 	tests/release/migration-clean.test.ts \
+	tests/release/security-gate.test.ts \
 	tests/release/exact-money-release-static.test.ts \
 	tests/release/billing-security-static.test.ts
 
