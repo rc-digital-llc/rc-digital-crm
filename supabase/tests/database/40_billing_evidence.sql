@@ -3,7 +3,7 @@ SET search_path TO public, extensions;
 
 BEGIN;
 
-SELECT plan(70);
+SELECT plan(79);
 
 SELECT is(
   (
@@ -457,6 +457,142 @@ SELECT is(
 );
 
 RESET ROLE;
+CREATE TEMP TABLE test_evidence_conflict_snapshot AS
+SELECT pg_catalog.jsonb_build_object(
+  'evidence', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(evidence) ORDER BY evidence.id)
+    FROM public.billing_evidence_objects AS evidence
+    WHERE evidence.id IN (
+      '21000000-0000-0000-0000-000000000600'::uuid,
+      '21000000-0000-0000-0000-000000000606'::uuid
+    )
+  ),
+  'audit_count', (SELECT count(*)::text FROM public.billing_audit_events),
+  'grant', (
+    SELECT pg_catalog.jsonb_build_object(
+      'actions', actions_consumed,
+      'amount_minor', total_amount_consumed_minor::text,
+      'status', status
+    )
+    FROM public.billing_automation_grants
+    WHERE id = '21000000-0000-0000-0000-000000000502'
+  ),
+  'executions', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(execution) ORDER BY execution.id)
+    FROM public.billing_automation_executions AS execution
+    WHERE execution.command_name = 'evidence.inspect'
+  )
+) AS payload;
+
+SET LOCAL ROLE authenticated;
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000606',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'reusing an inspection key for another evidence object conflicts'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'rejected', 'SCAN_REJECTED', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'reusing an inspection key for another decision and reason conflicts'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-wrong-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'reusing an inspection key with another provider conflicts'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-wrong-v9',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'reusing an inspection key with another policy conflicts'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000501',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'reusing an inspection key with another grant conflicts'
+);
+
+RESET ROLE;
+
+SELECT is(
+  (SELECT payload FROM test_evidence_conflict_snapshot),
+  pg_catalog.jsonb_build_object(
+    'evidence', (
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(evidence) ORDER BY evidence.id)
+      FROM public.billing_evidence_objects AS evidence
+      WHERE evidence.id IN (
+        '21000000-0000-0000-0000-000000000600'::uuid,
+        '21000000-0000-0000-0000-000000000606'::uuid
+      )
+    ),
+    'audit_count', (SELECT count(*)::text FROM public.billing_audit_events),
+    'grant', (
+      SELECT pg_catalog.jsonb_build_object(
+        'actions', actions_consumed,
+        'amount_minor', total_amount_consumed_minor::text,
+        'status', status
+      )
+      FROM public.billing_automation_grants
+      WHERE id = '21000000-0000-0000-0000-000000000502'
+    ),
+    'executions', (
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(execution) ORDER BY execution.id)
+      FROM public.billing_automation_executions AS execution
+      WHERE execution.command_name = 'evidence.inspect'
+    )
+  ),
+  'every inspection conflict preserves evidence, audit, grant, and execution state byte-for-byte'
+);
+SELECT is(
+  (
+    SELECT count(*) FROM pg_proc AS procedure_record
+    JOIN pg_namespace AS namespace ON namespace.oid = procedure_record.pronamespace
+    WHERE namespace.nspname = 'private'
+      AND procedure_record.proname = 'billing_consume_automation_grant'
+      AND pg_get_function_identity_arguments(procedure_record.oid) LIKE '%p_amount numeric%'
+  ),
+  0::bigint,
+  'the evidence path cannot resolve the removed numeric automation helper'
+);
+SELECT ok(
+  pg_get_functiondef('private.billing_finalize_evidence_inspection(uuid,uuid,text,text,text,text,text)'::regprocedure)
+    LIKE '%billing_consume_automation_grant%amount_minor%0%currency%USD%',
+  'the surviving private helper resolves canonical zero exact money'
+);
+SELECT is(
+  (
+    SELECT owner_role.rolname
+    FROM pg_proc AS procedure_record
+    JOIN pg_roles AS owner_role ON owner_role.oid = procedure_record.proowner
+    WHERE procedure_record.oid = 'private.billing_finalize_evidence_inspection(uuid,uuid,text,text,text,text,text)'::regprocedure
+  ),
+  'postgres',
+  'the replaced evidence helper remains owned by the locked migration owner'
+);
 
 SELECT is(
   (

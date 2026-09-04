@@ -56,10 +56,10 @@ VALUES
   )
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.billing_accounts (id, organization_id, customer_name, billing_status)
+INSERT INTO public.billing_accounts (id, organization_id, company_id, customer_name, billing_status)
 VALUES
-  ('21000000-0000-0000-0000-000000000200', '21000000-0000-0000-0000-000000000100', 'Alpha Account Fixture', 'active'),
-  ('22000000-0000-0000-0000-000000000200', '22000000-0000-0000-0000-000000000100', 'Bravo Account Fixture', 'active')
+  ('21000000-0000-0000-0000-000000000200', '21000000-0000-0000-0000-000000000100', 950001, 'Alpha Account Fixture', 'active'),
+  ('22000000-0000-0000-0000-000000000200', '22000000-0000-0000-0000-000000000100', 950002, 'Bravo Account Fixture', 'active')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.billing_automation_grants (
@@ -71,7 +71,7 @@ INSERT INTO public.billing_automation_grants (
   provider_reference,
   policy_version,
   action_kind,
-  max_amount,
+  max_amount_minor,
   max_actions
 )
 VALUES
@@ -84,7 +84,7 @@ VALUES
     'provider-alpha-fixture',
     'policy-fixture-v1',
     'record.test',
-    100.00,
+    10000,
     2
   ),
   (
@@ -96,7 +96,7 @@ VALUES
     'provider-alpha-fixture',
     'policy-fixture-v1',
     'record.concurrent',
-    1.00,
+    100,
     1
   ),
   (
@@ -108,7 +108,7 @@ VALUES
     'provider-bravo-fixture',
     'policy-fixture-v1',
     'record.test',
-    100.00,
+    10000,
     2
   ),
   (
