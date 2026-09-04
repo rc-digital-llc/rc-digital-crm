@@ -11,9 +11,11 @@ SELECT has_table('public', 'billing_revenue_command_events', 'revenue command re
 SELECT has_table('public', 'billing_revenue_review_events', 'immutable revenue reviews exist');
 SELECT has_table('public', 'billing_close_exceptions', 'durable close exceptions exist');
 SELECT has_table('public', 'billing_close_exception_events', 'exception transition history exists');
+SELECT has_table('public', 'billing_revenue_close_snapshots', 'immutable close input snapshots exist');
 SELECT has_function('public', 'ensure_billing_revenue_period', ARRAY['jsonb'], 'period identity command exists');
 SELECT has_function('public', 'submit_billing_revenue_revision', ARRAY['jsonb'], 'revenue revision command exists');
 SELECT has_function('public', 'review_billing_revenue_revision', ARRAY['jsonb'], 'revenue review command exists');
+SELECT has_function('public', 'close_billing_revenue_period', ARRAY['jsonb'], 'transactional revenue close command exists');
 
 SELECT is(
   (
@@ -540,6 +542,48 @@ SELECT throws_ok(
   $$DELETE FROM public.billing_close_exception_events$$,
   'P0001', 'REVENUE_EXCEPTION_EVENT_IMMUTABLE',
   'exception history is append-only'
+);
+
+SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000003', true);
+SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000003","role":"authenticated"}', true);
+SET LOCAL ROLE authenticated;
+
+CREATE TEMP TABLE accepted_close_result AS
+SELECT public.close_billing_revenue_period(jsonb_build_object(
+  'account_id', '21000000-0000-0000-0000-000000000200',
+  'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+  'close_mode', 'accepted_evidence',
+  'review_event_id', (SELECT response->>'review_event_id' FROM accepted_review_result),
+  'reason', 'Freeze accepted validation revenue',
+  'command_key', 'revenue-close-accepted-0001'
+)) AS response;
+
+SELECT is(
+  (SELECT response->>'close_mode' FROM accepted_close_result),
+  'accepted_evidence',
+  'accepted evidence closes into one frozen input snapshot'
+);
+
+SELECT is(
+  public.close_billing_revenue_period(jsonb_build_object(
+    'account_id', '21000000-0000-0000-0000-000000000200',
+    'period_id', (SELECT response->>'period_id' FROM revenue_period_result),
+    'close_mode', 'accepted_evidence',
+    'review_event_id', (SELECT response->>'review_event_id' FROM accepted_review_result),
+    'reason', 'Freeze accepted validation revenue',
+    'command_key', 'revenue-close-accepted-0001'
+  )),
+  (SELECT response FROM accepted_close_result),
+  'accepted close replays the exact snapshot response'
+);
+
+RESET ROLE;
+
+SELECT throws_ok(
+  $$UPDATE public.billing_revenue_close_snapshots
+    SET decision_reason = 'tampered'$$,
+  'P0001', 'REVENUE_CLOSE_SNAPSHOT_IMMUTABLE',
+  'close snapshots cannot be edited'
 );
 
 SELECT * FROM finish();

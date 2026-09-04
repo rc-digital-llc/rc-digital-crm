@@ -293,6 +293,85 @@ CREATE TABLE public.billing_close_exception_events (
 CREATE INDEX billing_close_exception_events_exception_idx
   ON public.billing_close_exception_events (exception_id, created_at, id);
 
+CREATE TABLE public.billing_revenue_close_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organization_id uuid NOT NULL,
+  account_id uuid NOT NULL,
+  period_id uuid NOT NULL,
+  agreement_id uuid NOT NULL,
+  agreement_version_id uuid NOT NULL,
+  close_mode text NOT NULL CHECK (
+    close_mode IN ('accepted_evidence', 'minimum_only')
+  ),
+  submission_id uuid,
+  review_event_id bigint NOT NULL
+    REFERENCES public.billing_revenue_review_events(id) ON DELETE RESTRICT,
+  exception_id uuid REFERENCES public.billing_close_exceptions(id) ON DELETE RESTRICT,
+  gross_amount_minor bigint,
+  excluded_amount_minor bigint,
+  commissionable_amount_minor bigint,
+  currency text NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
+  provenance_kind text,
+  provenance_source_id text,
+  evidence_snapshot jsonb NOT NULL,
+  agreement_fingerprint text NOT NULL CHECK (agreement_fingerprint ~ '^[0-9a-f]{64}$'),
+  input_fingerprint text NOT NULL CHECK (input_fingerprint ~ '^[0-9a-f]{64}$'),
+  evidence_fingerprint text NOT NULL CHECK (evidence_fingerprint ~ '^[0-9a-f]{64}$'),
+  close_input_fingerprint text NOT NULL CHECK (close_input_fingerprint ~ '^[0-9a-f]{64}$'),
+  review_policy_version text NOT NULL CHECK (review_policy_version = 'revenue-review-v1'),
+  close_policy_version text NOT NULL DEFAULT 'revenue-close-v1'
+    CHECK (close_policy_version = 'revenue-close-v1'),
+  closed_by uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
+  closed_by_role text NOT NULL REFERENCES public.billing_roles(role),
+  decision_reason text NOT NULL CHECK (
+    pg_catalog.btrim(decision_reason) <> ''
+    AND pg_catalog.octet_length(decision_reason) <= 1000
+  ),
+  request_fingerprint text NOT NULL CHECK (request_fingerprint ~ '^[0-9a-f]{64}$'),
+  closed_at timestamptz NOT NULL DEFAULT pg_catalog.now(),
+  CONSTRAINT billing_revenue_close_snapshots_period_scope_fk
+    FOREIGN KEY (period_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_periods(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_revenue_close_snapshots_version_scope_fk
+    FOREIGN KEY (agreement_version_id, organization_id, account_id)
+    REFERENCES public.billing_agreement_versions(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_revenue_close_snapshots_submission_scope_fk
+    FOREIGN KEY (submission_id, organization_id, account_id)
+    REFERENCES public.billing_revenue_submissions(id, organization_id, account_id)
+    ON DELETE RESTRICT,
+  CONSTRAINT billing_revenue_close_snapshots_scope_unique
+    UNIQUE (id, organization_id, account_id),
+  CONSTRAINT billing_revenue_close_snapshots_period_unique UNIQUE (period_id),
+  CONSTRAINT billing_revenue_close_snapshots_mode_check CHECK (
+    (close_mode = 'accepted_evidence'
+      AND submission_id IS NOT NULL
+      AND exception_id IS NULL
+      AND gross_amount_minor IS NOT NULL
+      AND excluded_amount_minor IS NOT NULL
+      AND commissionable_amount_minor IS NOT NULL
+      AND provenance_kind IN ('api', 'statement', 'portal')
+      AND pg_catalog.btrim(provenance_source_id) <> ''
+      AND pg_catalog.jsonb_typeof(evidence_snapshot) = 'array'
+      AND pg_catalog.jsonb_array_length(evidence_snapshot) > 0)
+    OR (close_mode = 'minimum_only'
+      AND submission_id IS NULL
+      AND exception_id IS NOT NULL
+      AND gross_amount_minor IS NULL
+      AND excluded_amount_minor IS NULL
+      AND commissionable_amount_minor IS NULL
+      AND provenance_kind IS NULL
+      AND provenance_source_id IS NULL
+      AND evidence_snapshot = '[]'::jsonb)
+  )
+);
+
+CREATE INDEX billing_revenue_close_snapshots_scope_closed_idx
+  ON public.billing_revenue_close_snapshots (
+    organization_id, account_id, closed_at DESC, id
+  );
+
 CREATE FUNCTION private.billing_revenue_row_immutable()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -383,6 +462,20 @@ FOR EACH ROW EXECUTE FUNCTION private.billing_close_exception_protect();
 CREATE TRIGGER billing_close_exception_events_immutable
 BEFORE UPDATE OR DELETE ON public.billing_close_exception_events
 FOR EACH ROW EXECUTE FUNCTION private.billing_close_exception_event_immutable();
+
+CREATE FUNCTION private.billing_revenue_close_snapshot_immutable()
+RETURNS trigger
+LANGUAGE plpgsql
+SET search_path = ''
+AS $function$
+BEGIN
+  RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_SNAPSHOT_IMMUTABLE';
+END;
+$function$;
+
+CREATE TRIGGER billing_revenue_close_snapshots_immutable
+BEFORE UPDATE OR DELETE ON public.billing_revenue_close_snapshots
+FOR EACH ROW EXECUTE FUNCTION private.billing_revenue_close_snapshot_immutable();
 
 CREATE FUNCTION private.billing_revenue_request_fingerprint(
   p_action text,
@@ -569,6 +662,10 @@ BEGIN
       0
     )
   );
+  replay_value := private.billing_revenue_replay(
+    p_payload->>'command_key', fingerprint_value
+  );
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
   INSERT INTO public.billing_revenue_periods (
     organization_id, account_id, agreement_id, agreement_version_id,
     period_start, period_end, timezone, submission_deadline_at,
@@ -698,11 +795,21 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
   END IF;
+  replay_value := private.billing_revenue_replay(
+    p_payload->>'command_key', fingerprint_value
+  );
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
   actor_role_value := private.billing_agreement_actor_role(
     period_row.organization_id, period_row.account_id, 'revenue.submit'
   );
   IF actor_role_value IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.billing_revenue_close_snapshots AS snapshot
+    WHERE snapshot.period_id = period_row.id
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_PERIOD_CLOSED';
   END IF;
 
   BEGIN
@@ -948,11 +1055,21 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
   END IF;
+  replay_value := private.billing_revenue_replay(
+    p_payload->>'command_key', fingerprint_value
+  );
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
   actor_role_value := private.billing_agreement_actor_role(
     period_row.organization_id, period_row.account_id, 'revenue.review'
   );
   IF actor_role_value IS NULL THEN
     RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.billing_revenue_close_snapshots AS snapshot
+    WHERE snapshot.period_id = period_row.id
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_PERIOD_CLOSED';
   END IF;
 
   IF pg_catalog.jsonb_typeof(p_payload->'submission_id') = 'string' THEN
@@ -1131,6 +1248,308 @@ BEGIN
 END;
 $function$;
 
+CREATE FUNCTION public.close_billing_revenue_period(p_payload jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+DECLARE
+  payload_keys text[];
+  period_row public.billing_revenue_periods%ROWTYPE;
+  agreement_row public.billing_agreement_versions%ROWTYPE;
+  rule_row public.billing_agreement_revenue_rules%ROWTYPE;
+  review_row public.billing_revenue_review_events%ROWTYPE;
+  submission_row public.billing_revenue_submissions%ROWTYPE;
+  exception_row public.billing_close_exceptions%ROWTYPE;
+  snapshot_row public.billing_revenue_close_snapshots%ROWTYPE;
+  actor_role_value text;
+  fingerprint_value text;
+  replay_value jsonb;
+  response_value jsonb;
+  evidence_fingerprint_value text;
+  evidence_snapshot_value jsonb := '[]'::jsonb;
+  close_input_fingerprint_value text;
+  latest_event_value text;
+  invalid_evidence_count integer;
+  linked_evidence_count integer;
+BEGIN
+  IF (SELECT auth.uid()) IS NULL
+    OR pg_catalog.jsonb_typeof(p_payload) IS DISTINCT FROM 'object'
+  THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  SELECT COALESCE(pg_catalog.array_agg(key ORDER BY key), ARRAY[]::text[])
+  INTO payload_keys
+  FROM pg_catalog.jsonb_object_keys(p_payload) AS keys(key);
+  IF payload_keys IS DISTINCT FROM ARRAY[
+      'account_id', 'close_mode', 'command_key', 'period_id', 'reason',
+      'review_event_id'
+    ]::text[]
+    OR pg_catalog.jsonb_typeof(p_payload->'account_id') <> 'string'
+    OR (p_payload->>'account_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+    OR pg_catalog.jsonb_typeof(p_payload->'period_id') <> 'string'
+    OR (p_payload->>'period_id') !~ '^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$'
+    OR p_payload->>'close_mode' NOT IN ('accepted_evidence', 'minimum_only')
+    OR pg_catalog.jsonb_typeof(p_payload->'review_event_id') <> 'string'
+    OR (p_payload->>'review_event_id') !~ '^[1-9][0-9]{0,18}$'
+    OR pg_catalog.jsonb_typeof(p_payload->'reason') <> 'string'
+    OR NULLIF(pg_catalog.btrim(p_payload->>'reason'), '') IS NULL
+    OR pg_catalog.octet_length(p_payload->>'reason') > 1000
+    OR pg_catalog.jsonb_typeof(p_payload->'command_key') <> 'string'
+    OR (p_payload->>'command_key') !~ '^[A-Za-z0-9][A-Za-z0-9_.:-]{7,127}$'
+  THEN
+    RAISE EXCEPTION USING ERRCODE = '22023', MESSAGE = 'REVENUE_CLOSE_INVALID';
+  END IF;
+
+  fingerprint_value := private.billing_revenue_request_fingerprint('period.close', p_payload);
+  replay_value := private.billing_revenue_replay(p_payload->>'command_key', fingerprint_value);
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
+
+  SELECT period.* INTO period_row
+  FROM public.billing_revenue_periods AS period
+  WHERE period.id = (p_payload->>'period_id')::uuid
+    AND period.account_id = (p_payload->>'account_id')::uuid
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  replay_value := private.billing_revenue_replay(
+    p_payload->>'command_key', fingerprint_value
+  );
+  IF replay_value IS NOT NULL THEN RETURN replay_value; END IF;
+
+  actor_role_value := private.billing_agreement_actor_role(
+    period_row.organization_id, period_row.account_id, 'revenue.review'
+  );
+  IF actor_role_value IS NULL THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_NOT_AUTHORIZED';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.billing_revenue_close_snapshots AS snapshot
+    WHERE snapshot.period_id = period_row.id
+  ) THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_PERIOD_CLOSED';
+  END IF;
+
+  SELECT version.* INTO agreement_row
+  FROM public.billing_agreement_versions AS version
+  JOIN public.billing_evidence_objects AS evidence
+    ON evidence.id = version.signed_evidence_id
+    AND evidence.organization_id = version.organization_id
+    AND evidence.account_id = version.account_id
+  WHERE version.id = period_row.agreement_version_id
+    AND version.organization_id = period_row.organization_id
+    AND version.account_id = period_row.account_id
+    AND version.agreement_id = period_row.agreement_id
+    AND version.state = 'active'
+    AND evidence.kind = 'contract'
+    AND evidence.sha256 = version.signed_evidence_sha256
+    AND evidence.inspection_status = 'clean'
+    AND evidence.lifecycle_status = 'active'
+    AND evidence.retention_expires_at > pg_catalog.now()
+    AND NOT (
+      evidence.hold_started_at IS NOT NULL AND evidence.hold_released_at IS NULL
+    )
+  FOR SHARE OF version, evidence;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_AGREEMENT_STALE';
+  END IF;
+  SELECT rule.* INTO STRICT rule_row
+  FROM public.billing_agreement_revenue_rules AS rule
+  WHERE rule.agreement_version_id = agreement_row.id
+    AND rule.organization_id = period_row.organization_id
+    AND rule.account_id = period_row.account_id;
+  IF rule_row.timezone IS DISTINCT FROM period_row.timezone THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_AGREEMENT_STALE';
+  END IF;
+  SELECT event.event_type INTO latest_event_value
+  FROM public.billing_agreement_events AS event
+  WHERE event.agreement_version_id = agreement_row.id
+  ORDER BY event.id DESC LIMIT 1;
+  IF latest_event_value IN ('paused', 'terminated') THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_AGREEMENT_STALE';
+  END IF;
+
+  SELECT review.* INTO review_row
+  FROM public.billing_revenue_review_events AS review
+  WHERE review.id = (p_payload->>'review_event_id')::bigint
+    AND review.period_id = period_row.id
+    AND review.organization_id = period_row.organization_id
+    AND review.account_id = period_row.account_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_REVIEW_STALE';
+  END IF;
+
+  IF p_payload->>'close_mode' = 'accepted_evidence' THEN
+    IF review_row.outcome <> 'accept' OR review_row.submission_id IS NULL THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_REVIEW_STALE';
+    END IF;
+    SELECT submission.* INTO submission_row
+    FROM public.billing_revenue_submissions AS submission
+    WHERE submission.id = review_row.submission_id
+      AND submission.period_id = period_row.id;
+    IF NOT FOUND
+      OR review_row.input_fingerprint IS DISTINCT FROM submission_row.request_fingerprint
+    THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_INPUT_STALE';
+    END IF;
+    evidence_fingerprint_value := private.billing_revenue_evidence_fingerprint(submission_row.id);
+    IF review_row.evidence_fingerprint IS DISTINCT FROM evidence_fingerprint_value THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_EVIDENCE_STALE';
+    END IF;
+
+    SELECT count(*), count(*) FILTER (
+      WHERE evidence.id IS NULL
+        OR evidence.sha256 IS DISTINCT FROM link.captured_sha256
+        OR evidence.inspection_status <> 'clean'
+        OR evidence.lifecycle_status <> 'active'
+        OR evidence.retention_expires_at <= pg_catalog.now()
+        OR (evidence.hold_started_at IS NOT NULL AND evidence.hold_released_at IS NULL)
+    )
+    INTO linked_evidence_count, invalid_evidence_count
+    FROM public.billing_revenue_submission_evidence AS link
+    LEFT JOIN public.billing_evidence_objects AS evidence
+      ON evidence.id = link.evidence_id
+      AND evidence.organization_id = link.organization_id
+      AND evidence.account_id = link.account_id
+    WHERE link.submission_id = submission_row.id;
+    IF linked_evidence_count = 0 OR invalid_evidence_count <> 0 THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_EVIDENCE_STALE';
+    END IF;
+    IF EXISTS (
+      SELECT 1 FROM public.billing_close_exceptions AS exception
+      WHERE exception.period_id = period_row.id AND exception.status = 'open'
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_EXCEPTION_OPEN';
+    END IF;
+    SELECT pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'evidence_id', link.evidence_id,
+        'captured_sha256', link.captured_sha256,
+        'ordinal', link.evidence_ordinal
+      ) ORDER BY link.evidence_ordinal
+    ) INTO evidence_snapshot_value
+    FROM public.billing_revenue_submission_evidence AS link
+    WHERE link.submission_id = submission_row.id;
+  ELSE
+    IF agreement_row.formula_kind NOT IN ('minimum_support', 'hybrid')
+      OR agreement_row.minimum_amount_minor IS NULL
+      OR rule_row.missing_report_policy <> 'minimum_only'
+    THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_MINIMUM_NOT_PERMITTED';
+    END IF;
+    IF pg_catalog.now() <= period_row.submission_deadline_at THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_MINIMUM_DEADLINE_PENDING';
+    END IF;
+    IF review_row.outcome <> 'hold'
+      OR review_row.reason_code <> 'MISSING_EVIDENCE'
+      OR review_row.submission_id IS NOT NULL
+    THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_MINIMUM_REVIEW_REQUIRED';
+    END IF;
+    SELECT exception.* INTO exception_row
+    FROM public.billing_close_exceptions AS exception
+    WHERE exception.period_id = period_row.id
+      AND exception.reason_code = 'MISSING_EVIDENCE'
+      AND exception.status = 'open'
+      AND exception.caused_by_review_event_id = review_row.id
+    FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_MINIMUM_EXCEPTION_REQUIRED';
+    END IF;
+    IF EXISTS (
+      SELECT 1 FROM public.billing_close_exceptions AS exception
+      WHERE exception.period_id = period_row.id
+        AND exception.status = 'open'
+        AND exception.id <> exception_row.id
+    ) THEN
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'REVENUE_CLOSE_EXCEPTION_OPEN';
+    END IF;
+    evidence_fingerprint_value := review_row.evidence_fingerprint;
+  END IF;
+
+  close_input_fingerprint_value := pg_catalog.encode(
+    extensions.digest(
+      pg_catalog.jsonb_build_object(
+        'agreement_id', agreement_row.agreement_id,
+        'agreement_version_id', agreement_row.id,
+        'agreement_fingerprint', agreement_row.terms_fingerprint,
+        'period_id', period_row.id,
+        'period_start', period_row.period_start,
+        'period_end', period_row.period_end,
+        'timezone', period_row.timezone,
+        'submission_deadline_at', period_row.submission_deadline_at,
+        'close_mode', p_payload->>'close_mode',
+        'submission_id', submission_row.id,
+        'review_event_id', review_row.id,
+        'input_fingerprint', review_row.input_fingerprint,
+        'evidence_fingerprint', evidence_fingerprint_value,
+        'exception_id', exception_row.id,
+        'gross_amount_minor', submission_row.gross_amount_minor,
+        'excluded_amount_minor', submission_row.excluded_amount_minor,
+        'commissionable_amount_minor', submission_row.commissionable_amount_minor,
+        'review_policy_version', review_row.review_policy_version,
+        'close_policy_version', 'revenue-close-v1'
+      )::text,
+      'sha256'
+    ),
+    'hex'
+  );
+
+  INSERT INTO public.billing_revenue_close_snapshots (
+    organization_id, account_id, period_id, agreement_id,
+    agreement_version_id, close_mode, submission_id, review_event_id,
+    exception_id, gross_amount_minor, excluded_amount_minor,
+    commissionable_amount_minor, provenance_kind, provenance_source_id,
+    evidence_snapshot, agreement_fingerprint, input_fingerprint,
+    evidence_fingerprint, close_input_fingerprint, review_policy_version,
+    closed_by, closed_by_role, decision_reason, request_fingerprint
+  ) VALUES (
+    period_row.organization_id, period_row.account_id, period_row.id,
+    agreement_row.agreement_id, agreement_row.id, p_payload->>'close_mode',
+    submission_row.id, review_row.id, exception_row.id,
+    submission_row.gross_amount_minor, submission_row.excluded_amount_minor,
+    submission_row.commissionable_amount_minor, submission_row.provenance_kind,
+    submission_row.provenance_source_id, evidence_snapshot_value,
+    agreement_row.terms_fingerprint, review_row.input_fingerprint,
+    evidence_fingerprint_value, close_input_fingerprint_value,
+    review_row.review_policy_version, (SELECT auth.uid()), actor_role_value,
+    pg_catalog.btrim(p_payload->>'reason'), fingerprint_value
+  ) RETURNING * INTO snapshot_row;
+
+  response_value := pg_catalog.jsonb_strip_nulls(pg_catalog.jsonb_build_object(
+    'result', 'closed',
+    'close_snapshot_id', snapshot_row.id,
+    'period_id', snapshot_row.period_id,
+    'close_mode', snapshot_row.close_mode,
+    'submission_id', snapshot_row.submission_id,
+    'review_event_id', snapshot_row.review_event_id,
+    'exception_id', snapshot_row.exception_id,
+    'exception_status', exception_row.status,
+    'gross_amount_minor', CASE WHEN snapshot_row.gross_amount_minor IS NULL
+      THEN NULL ELSE snapshot_row.gross_amount_minor::text END,
+    'excluded_amount_minor', CASE WHEN snapshot_row.excluded_amount_minor IS NULL
+      THEN NULL ELSE snapshot_row.excluded_amount_minor::text END,
+    'commissionable_amount_minor', CASE WHEN snapshot_row.commissionable_amount_minor IS NULL
+      THEN NULL ELSE snapshot_row.commissionable_amount_minor::text END,
+    'currency', snapshot_row.currency,
+    'agreement_fingerprint', snapshot_row.agreement_fingerprint,
+    'input_fingerprint', snapshot_row.input_fingerprint,
+    'evidence_fingerprint', snapshot_row.evidence_fingerprint,
+    'close_input_fingerprint', snapshot_row.close_input_fingerprint,
+    'review_policy_version', snapshot_row.review_policy_version,
+    'close_policy_version', snapshot_row.close_policy_version
+  ));
+  PERFORM private.billing_record_revenue_command(
+    period_row.organization_id, period_row.account_id, actor_role_value,
+    'period.close', p_payload->>'command_key', fingerprint_value,
+    period_row.id, snapshot_row.submission_id, response_value
+  );
+  RETURN response_value;
+END;
+$function$;
+
 ALTER TABLE public.billing_revenue_periods ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_periods FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_revenue_submissions ENABLE ROW LEVEL SECURITY;
@@ -1145,6 +1564,8 @@ ALTER TABLE public.billing_close_exceptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_close_exceptions FORCE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_close_exception_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_close_exception_events FORCE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_revenue_close_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.billing_revenue_close_snapshots FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY billing_revenue_periods_select ON public.billing_revenue_periods
 FOR SELECT TO authenticated
@@ -1176,10 +1597,16 @@ ON public.billing_close_exception_events
 FOR SELECT TO authenticated
 USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
 
+CREATE POLICY billing_revenue_close_snapshots_select
+ON public.billing_revenue_close_snapshots
+FOR SELECT TO authenticated
+USING (private.billing_has_capability(organization_id, account_id, 'revenue.read'));
+
 ALTER FUNCTION private.billing_revenue_row_immutable() OWNER TO postgres;
 ALTER FUNCTION private.billing_revenue_review_event_immutable() OWNER TO postgres;
 ALTER FUNCTION private.billing_close_exception_protect() OWNER TO postgres;
 ALTER FUNCTION private.billing_close_exception_event_immutable() OWNER TO postgres;
+ALTER FUNCTION private.billing_revenue_close_snapshot_immutable() OWNER TO postgres;
 ALTER FUNCTION private.billing_revenue_request_fingerprint(text, jsonb) OWNER TO postgres;
 ALTER FUNCTION private.billing_revenue_replay(text, text) OWNER TO postgres;
 ALTER FUNCTION private.billing_record_revenue_command(uuid, uuid, text, text, text, text, uuid, uuid, jsonb) OWNER TO postgres;
@@ -1187,11 +1614,13 @@ ALTER FUNCTION private.billing_revenue_evidence_fingerprint(uuid) OWNER TO postg
 ALTER FUNCTION public.ensure_billing_revenue_period(jsonb) OWNER TO postgres;
 ALTER FUNCTION public.submit_billing_revenue_revision(jsonb) OWNER TO postgres;
 ALTER FUNCTION public.review_billing_revenue_revision(jsonb) OWNER TO postgres;
+ALTER FUNCTION public.close_billing_revenue_period(jsonb) OWNER TO postgres;
 
 REVOKE ALL ON FUNCTION private.billing_revenue_row_immutable() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_revenue_review_event_immutable() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_close_exception_protect() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_close_exception_event_immutable() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION private.billing_revenue_close_snapshot_immutable() FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_revenue_request_fingerprint(text, jsonb) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_revenue_replay(text, text) FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION private.billing_record_revenue_command(uuid, uuid, text, text, text, text, uuid, uuid, jsonb) FROM PUBLIC, anon, authenticated, service_role;
@@ -1199,9 +1628,11 @@ REVOKE ALL ON FUNCTION private.billing_revenue_evidence_fingerprint(uuid) FROM P
 REVOKE ALL ON FUNCTION public.ensure_billing_revenue_period(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.submit_billing_revenue_revision(jsonb) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.review_billing_revenue_revision(jsonb) FROM PUBLIC, anon;
+REVOKE ALL ON FUNCTION public.close_billing_revenue_period(jsonb) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.ensure_billing_revenue_period(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_billing_revenue_revision(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.review_billing_revenue_revision(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.close_billing_revenue_period(jsonb) TO authenticated;
 
 REVOKE ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
@@ -1209,7 +1640,8 @@ REVOKE ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_command_events,
   public.billing_revenue_review_events,
   public.billing_close_exceptions,
-  public.billing_close_exception_events
+  public.billing_close_exception_events,
+  public.billing_revenue_close_snapshots
   FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
@@ -1217,7 +1649,8 @@ GRANT SELECT ON TABLE public.billing_revenue_periods,
   public.billing_revenue_command_events,
   public.billing_revenue_review_events,
   public.billing_close_exceptions,
-  public.billing_close_exception_events
+  public.billing_close_exception_events,
+  public.billing_revenue_close_snapshots
   TO authenticated;
 GRANT ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_submissions,
@@ -1225,7 +1658,8 @@ GRANT ALL ON TABLE public.billing_revenue_periods,
   public.billing_revenue_command_events,
   public.billing_revenue_review_events,
   public.billing_close_exceptions,
-  public.billing_close_exception_events
+  public.billing_close_exception_events,
+  public.billing_revenue_close_snapshots
   TO service_role;
 GRANT USAGE, SELECT ON SEQUENCE public.billing_revenue_command_events_id_seq
   TO service_role;
