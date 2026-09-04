@@ -375,6 +375,62 @@ function replaceRequired(source, search, replacement) {
   return source.replace(search, replacement);
 }
 
+function replaceSectionInteger(source, section, key, value) {
+  const header = `[${section}]`;
+  const sectionStart = source.indexOf(header);
+  if (sectionStart === -1) {
+    throw new Error(`schema-push config is missing section: ${header}`);
+  }
+  const nextSection = source.indexOf("\n[", sectionStart + header.length);
+  const sectionEnd = nextSection === -1 ? source.length : nextSection;
+  const sectionSource = source.slice(sectionStart, sectionEnd);
+  const setting = new RegExp(`^(\\s*${key}\\s*=\\s*)\\d+(\\s*(?:#.*)?)$`, "gm");
+  const matches = [...sectionSource.matchAll(setting)];
+  if (matches.length !== 1) {
+    throw new Error(
+      `schema-push config requires one ${section}.${key} integer setting`,
+    );
+  }
+  const replacedSection = sectionSource.replace(
+    setting,
+    `$1${String(value)}$2`,
+  );
+  return `${source.slice(0, sectionStart)}${replacedSection}${source.slice(sectionEnd)}`;
+}
+
+export function rewriteSchemaPushConfig({ source, projectId, ports }) {
+  assertTestScopedProject(projectId);
+  if (
+    !Array.isArray(ports) ||
+    ports.length !== 8 ||
+    new Set(ports).size !== ports.length ||
+    ports.some(
+      (port) => !Number.isSafeInteger(port) || port < 1 || port > 65535,
+    )
+  ) {
+    throw new Error("schema-push requires eight unique valid local ports");
+  }
+  let rewritten = replaceRequired(
+    source,
+    'project_id = "atomic-crm-demo"',
+    `project_id = "${projectId}"`,
+  );
+  const settings = [
+    ["api", "port"],
+    ["db", "port"],
+    ["db", "shadow_port"],
+    ["db.pooler", "port"],
+    ["studio", "port"],
+    ["inbucket", "port"],
+    ["analytics", "port"],
+    ["analytics", "vector_port"],
+  ];
+  for (const [index, [section, key]] of settings.entries()) {
+    rewritten = replaceSectionInteger(rewritten, section, key, ports[index]);
+  }
+  return rewritten;
+}
+
 async function prepareSchemaPushTarget() {
   const projectId = `rc-digital-schema-push-${process.pid}-${randomBytes(5).toString("hex")}`;
   assertTestScopedProject(projectId);
@@ -393,25 +449,12 @@ async function prepareSchemaPushTarget() {
   );
 
   const ports = await allocateLocalPorts(8);
-  const replacements = [
-    ['project_id = "atomic-crm-demo"', `project_id = "${projectId}"`],
-    ["port = 54321", `port = ${ports[0]}`],
-    ["port = 54322", `port = ${ports[1]}`],
-    ["shadow_port = 54320", `shadow_port = ${ports[2]}`],
-    ["port = 54329", `port = ${ports[3]}`],
-    ["port = 54323", `port = ${ports[4]}`],
-    ["port = 54324", `port = ${ports[5]}`],
-    ["port = 54327", `port = ${ports[6]}`],
-    ["vector_port = 54328", `vector_port = ${ports[7]}`],
-  ];
   let config = fs.readFileSync(
     path.join(repositoryRoot, "supabase/config.toml"),
     "utf8",
   );
   config = config.replace(/\n\[functions\.[\s\S]*$/, "\n");
-  for (const [search, replacement] of replacements) {
-    config = replaceRequired(config, search, replacement);
-  }
+  config = rewriteSchemaPushConfig({ source: config, projectId, ports });
   fs.writeFileSync(path.join(workdir, "supabase/config.toml"), config, {
     mode: 0o600,
   });
