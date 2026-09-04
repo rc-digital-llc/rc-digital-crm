@@ -39,6 +39,11 @@ invoice, payment-provider event, settlement, and collections history.
 - ✓ Vitest, TypeScript, ESLint/Prettier, GitHub Actions, and local Supabase
   commands provide an initial verification toolchain — existing quality
   foundation.
+- ✓ Authoritative USD money uses integer minor units with explicit currency;
+  ordinary-percentage rates use reduced rational values; and named
+  half-away-from-zero rounding is identical across TypeScript, PostgreSQL, RPC,
+  and provider boundaries — validated in Phase 3: Exact Money and Rounding
+  Contract.
 
 ### Active
 
@@ -61,9 +66,9 @@ invoice, payment-provider event, settlement, and collections history.
 - [ ] Define commissionable revenue precisely and capture monthly revenue
   periods, submissions, source provenance, evidence, attestations, review
   status, exceptions, and true-ups.
-- [ ] Calculate invoice amounts deterministically using integer minor units,
-  versioned formulas, immutable input/output snapshots, and reproducible
-  rounding rules.
+- [ ] Calculate invoice amounts deterministically using versioned formulas,
+  immutable input/output snapshots, and the validated exact money and rounding
+  contract.
 - [ ] Complete project, analytics, invoice, and billing workflows in the
   existing CRM for both intentional desktop and mobile operator use.
 - [ ] Give customer billing contacts a restricted portal for revenue reporting,
@@ -203,6 +208,7 @@ system must never silently guess customer revenue.
 | Use a provider adapter and run a GoCardless-versus-Stripe decision spike before live selection | Preserves portability and prevents current list pricing or incomplete research from becoming an irreversible architecture choice | — Pending |
 | Separate normal automation from exception policy | Allows routine human-out-of-loop operation with explicit stop conditions and later bounded promotion | — Pending |
 | Require shadow cycles before live charging | Provider, formula, delivery, reconciliation, and collections behavior must be compared without moving money first | — Pending |
+| Use integer minor-unit USD, reduced rational rates, and named half-away-from-zero rounding as the sole financial authority | JavaScript numbers and implicit rounding cannot preserve exact cross-runtime financial facts | ✓ Validated in Phase 3 |
 
 ## Required Delivery Order
 
@@ -246,4 +252,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-20 after Claude pre-roadmap audit*
+*Last updated: 2026-09-04 after Phase 3 completion*
