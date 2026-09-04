@@ -363,7 +363,7 @@ export async function runDependencyGate({ execute = executeProcess } = {}) {
   const result = await execute(
     "npm",
     ["audit", "--omit=dev", "--audit-level=high", "--json"],
-    { cwd: repositoryRoot, timeoutMs: 180000 },
+    { cwd: repositoryRoot, timeoutMs: 300000 },
   );
   let audit;
   try {

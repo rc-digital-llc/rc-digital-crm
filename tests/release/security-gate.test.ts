@@ -192,7 +192,7 @@ describe("release security dependency, bundle, and coupling gates", () => {
       {
         command: "npm",
         args: ["audit", "--omit=dev", "--audit-level=high", "--json"],
-        options: expect.objectContaining({ timeoutMs: 180000 }),
+        options: expect.objectContaining({ timeoutMs: 300000 }),
       },
     ]);
   });
