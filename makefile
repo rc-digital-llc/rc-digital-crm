@@ -21,6 +21,8 @@ FINANCIAL_FAST_TESTS := \
 	tests/release/billing-redaction.test.ts \
 	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
 	src/components/atomic-crm/billing-accounts/billingAccounts.test.ts \
+	src/components/atomic-crm/financial/exactMoney.test.ts \
+	tests/release/exact-money-release-static.test.ts \
 	tests/release/billing-security-static.test.ts
 
 .PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-database-contracts test-financial-functions test-financial-fast test-financial-concurrency-fixture test-financial-concurrency test-financial-replay-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
