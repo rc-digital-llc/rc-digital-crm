@@ -8,6 +8,53 @@ SELECT has_function(
   'private', 'billing_calculate_exact', ARRAY['jsonb'],
   'private exact billing formula kernel exists'
 );
+SELECT has_function(
+  'public', 'preview_billing_calculation', ARRAY['jsonb'],
+  'caller-bound exact calculation preview RPC exists'
+);
+SELECT has_function(
+  'public', 'create_billing_calculation', ARRAY['jsonb'],
+  'idempotent exact calculation create RPC exists'
+);
+SELECT has_function(
+  'public', 'approve_billing_calculation', ARRAY['jsonb'],
+  'policy-gated exact calculation approval RPC exists'
+);
+
+SELECT is(
+  (
+    SELECT count(*)
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_roles AS owner_role
+      ON owner_role.oid = procedure_record.proowner
+    WHERE procedure_record.oid = ANY (ARRAY[
+      'public.preview_billing_calculation(jsonb)'::regprocedure,
+      'public.create_billing_calculation(jsonb)'::regprocedure,
+      'public.approve_billing_calculation(jsonb)'::regprocedure
+    ])
+      AND procedure_record.prosecdef
+      AND owner_role.rolname = 'postgres'
+      AND COALESCE(pg_catalog.array_to_string(procedure_record.proconfig, ','), '')
+        IN ('search_path=', 'search_path=""')
+  ),
+  3::bigint,
+  'all calculation RPCs are locked security definers with empty search paths'
+);
+SELECT ok(
+  has_function_privilege(
+    'authenticated', 'public.preview_billing_calculation(jsonb)', 'EXECUTE'
+  )
+    AND has_function_privilege(
+      'authenticated', 'public.create_billing_calculation(jsonb)', 'EXECUTE'
+    )
+    AND has_function_privilege(
+      'authenticated', 'public.approve_billing_calculation(jsonb)', 'EXECUTE'
+    )
+    AND NOT has_function_privilege(
+      'anon', 'public.preview_billing_calculation(jsonb)', 'EXECUTE'
+    ),
+  'authenticated callers receive only the closed calculation RPC surface'
+);
 
 SELECT has_table(
   'public', 'billing_calculations',
