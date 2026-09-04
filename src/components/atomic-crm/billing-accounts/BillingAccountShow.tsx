@@ -30,6 +30,7 @@ import type {
 import { BillingAccountAccessPanels } from "./BillingAccountAccessPanels";
 import { BillingAccountEvidencePanel } from "./BillingAccountEvidencePanel";
 import { BillingAgreementPanel } from "./BillingAgreementPanel";
+import { BillingMonthlyClosePanel } from "./BillingMonthlyClosePanel";
 
 const statusLabels: Record<BillingAccount["billing_status"], string> = {
   active: "Active",
@@ -150,6 +151,7 @@ const BillingAccountDetailGrid = ({
     <AuthorizedContactsCard record={record} />
     <ScopedAccessSlot account={record} />
     <BillingAgreementPanel account={record} />
+    <BillingMonthlyClosePanel account={record} />
     <EvidenceSecuritySlot account={record} />
   </div>
 );

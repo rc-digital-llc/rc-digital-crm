@@ -347,10 +347,14 @@ describe("billing account detail", () => {
     expect(source).toContain('data-slot="billing-account-access"');
     expect(source).toContain('data-slot="billing-account-evidence"');
     expect(source).toContain("<BillingAgreementPanel account={record} />");
+    expect(source).toContain("<BillingMonthlyClosePanel account={record} />");
     expect(source.indexOf("<ScopedAccessSlot")).toBeLessThan(
       source.indexOf("<BillingAgreementPanel"),
     );
     expect(source.indexOf("<BillingAgreementPanel")).toBeLessThan(
+      source.indexOf("<BillingMonthlyClosePanel"),
+    );
+    expect(source.indexOf("<BillingMonthlyClosePanel")).toBeLessThan(
       source.indexOf("<EvidenceSecuritySlot"),
     );
     expect(source.match(/<h1/g)).toHaveLength(1);

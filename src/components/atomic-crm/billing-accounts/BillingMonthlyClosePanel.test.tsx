@@ -340,3 +340,66 @@ describe("exact calculation preview and adjustment presentation", () => {
     );
   });
 });
+
+describe("monthly close account-detail integration", () => {
+  it("places monthly close after Agreement and before Evidence security", () => {
+    const show = fs.readFileSync(
+      new URL("./BillingAccountShow.tsx", import.meta.url),
+      "utf8",
+    );
+    const agreement = show.indexOf("<BillingAgreementPanel");
+    const monthlyClose = show.indexOf("<BillingMonthlyClosePanel");
+    const evidence = show.indexOf("<EvidenceSecuritySlot");
+
+    expect(show).toContain("<BillingMonthlyClosePanel account={record} />");
+    expect(agreement).toBeGreaterThanOrEqual(0);
+    expect(monthlyClose).toBeGreaterThan(agreement);
+    expect(evidence).toBeGreaterThan(monthlyClose);
+    expect(show.match(/<h1/g)).toHaveLength(1);
+  });
+
+  it("preserves semantic hierarchy, narrow reflow, and accessible action surfaces", () => {
+    const panel = fs.readFileSync(
+      new URL("./BillingMonthlyClosePanel.tsx", import.meta.url),
+      "utf8",
+    );
+    const preview = fs.readFileSync(
+      new URL("./BillingCalculationPreview.tsx", import.meta.url),
+      "utf8",
+    );
+    const combined = `${panel}\n${preview}`;
+
+    expect(panel).toContain('data-slot="billing-account-monthly-close"');
+    expect(panel).toContain("md:col-span-2");
+    expect(panel).toContain("grid-cols-1");
+    expect(panel).toContain("xl:grid-cols-2");
+    expect(panel).toContain("<h2");
+    expect(combined).toContain("<h3");
+    expect(combined).toContain("<h4");
+    expect(combined).toContain("SheetTitle");
+    expect(combined).toContain("SheetDescription");
+    expect(combined).toContain("DialogTitle");
+    expect(combined).toContain("DialogDescription");
+    expect(combined.match(/h-11/g)?.length).toBeGreaterThanOrEqual(10);
+    expect(combined).not.toMatch(/overflow-x-(?:auto|scroll)|<table|<Table/i);
+  });
+
+  it("adds no route, global workspace, or later-phase financial state", () => {
+    const panel = fs.readFileSync(
+      new URL("./BillingMonthlyClosePanel.tsx", import.meta.url),
+      "utf8",
+    );
+    const preview = fs.readFileSync(
+      new URL("./BillingCalculationPreview.tsx", import.meta.url),
+      "utf8",
+    );
+    const combined = `${panel}\n${preview}`;
+
+    expect(combined).not.toMatch(
+      /<Route|createPath|Link to=|global close workspace/i,
+    );
+    expect(combined).not.toMatch(
+      /invoice issuance|payment command|customer portal|paid status|reconciled status/i,
+    );
+  });
+});
