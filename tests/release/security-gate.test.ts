@@ -8,6 +8,7 @@ import {
   assertSecretScanResult,
   assertWorkflowDecoupled,
   buildGitleaksArgs,
+  runDependencyGate,
   scanBundleTree,
   summarizeFindings,
   validateGitleaksConfig,
@@ -46,6 +47,7 @@ describe("release security secret gate", () => {
       }),
     ).toEqual([
       "git",
+      "--log-opts=HEAD",
       "--redact=100",
       "--no-banner",
       "--no-color",
@@ -159,6 +161,42 @@ describe("release security secret gate", () => {
 });
 
 describe("release security dependency, bundle, and coupling gates", () => {
+  it("allows the pinned dependency audit enough time to return JSON", async () => {
+    const calls: Array<{
+      command: string;
+      args: string[];
+      options: { timeoutMs?: number };
+    }> = [];
+    const execute = async (
+      command: string,
+      args: string[],
+      options: { timeoutMs?: number },
+    ) => {
+      calls.push({ command, args, options });
+      return {
+        code: 0,
+        stdout: JSON.stringify({
+          metadata: { vulnerabilities: { high: 0, critical: 0 } },
+        }),
+        stderr: "",
+      };
+    };
+
+    await expect(runDependencyGate({ execute })).resolves.toMatchObject({
+      mode: "dependencies",
+      status: "pass",
+      high: 0,
+      critical: 0,
+    });
+    expect(calls).toEqual([
+      {
+        command: "npm",
+        args: ["audit", "--omit=dev", "--audit-level=high", "--json"],
+        options: expect.objectContaining({ timeoutMs: 180000 }),
+      },
+    ]);
+  });
+
   it("rejects a high production advisory without exposing advisory detail", () => {
     const audit = {
       metadata: {
