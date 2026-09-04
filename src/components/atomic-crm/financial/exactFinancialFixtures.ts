@@ -41,3 +41,22 @@ export const UNSAFE_JSON_INTEGER_COLLISION = Object.freeze({
   first: "9223372036854775807",
   second: "9223372036854775808",
 });
+
+export const USD_HALF_AWAY_ROUNDING = Object.freeze({
+  currency: "USD" as const,
+  currency_exponent: "2" as const,
+  currency_policy_version: "usd-v1" as const,
+  rounding_policy_version: "half-away-from-zero-v1" as const,
+});
+
+export const SIGNED_ROUNDING_FIXTURES = Object.freeze([
+  Object.freeze({ numerator: "1", denominator: "2", expected: "1" }),
+  Object.freeze({ numerator: "-1", denominator: "2", expected: "-1" }),
+  Object.freeze({ numerator: "1", denominator: "3", expected: "0" }),
+  Object.freeze({ numerator: "-1", denominator: "3", expected: "0" }),
+  Object.freeze({ numerator: "2", denominator: "3", expected: "1" }),
+  Object.freeze({ numerator: "-2", denominator: "3", expected: "-1" }),
+  Object.freeze({ numerator: "6", denominator: "3", expected: "2" }),
+  Object.freeze({ numerator: "0", denominator: "9", expected: "0" }),
+  Object.freeze({ numerator: "710000", denominator: "800", expected: "888" }),
+]);

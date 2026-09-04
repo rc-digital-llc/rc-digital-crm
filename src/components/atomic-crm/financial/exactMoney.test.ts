@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   FinancialContractError,
+  USD_HALF_AWAY_ROUNDING_POLICY,
   areRatesFinanciallyEqual,
+  areRatiosEqual,
+  formatUsdMoney,
+  multiplyUsdMoneyByExactRatio,
   parseCanonicalIntegerText,
+  parseExactRatio,
   parseOrdinaryPercentage,
   parseOrdinaryPercentageRate,
   parseUsdMoney,
+  roundExactRatioToUsdMoney,
 } from "./exactMoney";
 import {
   INTEGER_LENGTH_BOUNDARIES,
@@ -13,16 +19,20 @@ import {
   ORDINARY_PERCENTAGE_FIXTURES,
   PERCENTAGE_LENGTH_BOUNDARIES,
   POSTGRES_BIGINT_TEXT,
+  SIGNED_ROUNDING_FIXTURES,
   UNSAFE_JSON_INTEGER_COLLISION,
+  USD_HALF_AWAY_ROUNDING,
 } from "./exactFinancialFixtures";
 
 function expectFinancialCode(
   action: () => unknown,
   code:
     | "FINANCIAL_INPUT_TOO_LONG"
+    | "FINANCIAL_DIVISION_BY_ZERO"
     | "FINANCIAL_INVALID_INTEGER"
     | "FINANCIAL_INVALID_MONEY"
     | "FINANCIAL_OVERFLOW"
+    | "FINANCIAL_POLICY_MISMATCH"
     | "FINANCIAL_RATE_OUT_OF_BOUNDS"
     | "FINANCIAL_INVALID_RATE"
     | "FINANCIAL_UNSUPPORTED_CURRENCY",
@@ -133,6 +143,154 @@ describe("exact money wire contract", () => {
       () => parseUsdMoney({ amount_minor: second, currency: "USD" }),
       "FINANCIAL_INVALID_INTEGER",
     );
+  });
+});
+
+describe("named signed rounding", () => {
+  it.each(SIGNED_ROUNDING_FIXTURES)(
+    "rounds $numerator/$denominator to $expected with signed half-away-from-zero",
+    ({ numerator, denominator, expected }) => {
+      expect(
+        roundExactRatioToUsdMoney({
+          numerator,
+          denominator,
+          ...USD_HALF_AWAY_ROUNDING,
+        }),
+      ).toEqual({ amount_minor: expected, currency: "USD" });
+    },
+  );
+
+  it("rounds a USD amount multiplied by an exact ratio once at the minor-unit boundary", () => {
+    expect(
+      multiplyUsdMoneyByExactRatio(
+        { amount_minor: "10000", currency: "USD" },
+        { numerator: "71", denominator: "800" },
+        USD_HALF_AWAY_ROUNDING,
+      ),
+    ).toEqual({ amount_minor: "888", currency: "USD" });
+  });
+
+  it("handles the full signed persistence range without negating the minimum in-range", () => {
+    expect(
+      roundExactRatioToUsdMoney({
+        numerator: POSTGRES_BIGINT_TEXT.min,
+        denominator: "1",
+        ...USD_HALF_AWAY_ROUNDING,
+      }),
+    ).toEqual({ amount_minor: POSTGRES_BIGINT_TEXT.min, currency: "USD" });
+    expect(
+      roundExactRatioToUsdMoney({
+        numerator: POSTGRES_BIGINT_TEXT.max,
+        denominator: "1",
+        ...USD_HALF_AWAY_ROUNDING,
+      }),
+    ).toEqual({ amount_minor: POSTGRES_BIGINT_TEXT.max, currency: "USD" });
+  });
+
+  it("fails closed on policy, currency, exponent, division, and final overflow", () => {
+    for (const override of [
+      { rounding_policy_version: "ambient" },
+      { currency_policy_version: "latest" },
+      { currency_exponent: "3" },
+    ]) {
+      expectFinancialCode(
+        () =>
+          roundExactRatioToUsdMoney({
+            numerator: "1",
+            denominator: "2",
+            ...USD_HALF_AWAY_ROUNDING,
+            ...override,
+          }),
+        "FINANCIAL_POLICY_MISMATCH",
+      );
+    }
+    expectFinancialCode(
+      () =>
+        roundExactRatioToUsdMoney({
+          numerator: "1",
+          denominator: "2",
+          ...USD_HALF_AWAY_ROUNDING,
+          currency: "EUR",
+        }),
+      "FINANCIAL_UNSUPPORTED_CURRENCY",
+    );
+    expectFinancialCode(
+      () =>
+        roundExactRatioToUsdMoney({
+          numerator: "1",
+          denominator: "0",
+          ...USD_HALF_AWAY_ROUNDING,
+        }),
+      "FINANCIAL_DIVISION_BY_ZERO",
+    );
+    expectFinancialCode(
+      () =>
+        multiplyUsdMoneyByExactRatio(
+          { amount_minor: POSTGRES_BIGINT_TEXT.max, currency: "USD" },
+          { numerator: "2", denominator: "1" },
+          USD_HALF_AWAY_ROUNDING,
+        ),
+      "FINANCIAL_OVERFLOW",
+    );
+  });
+
+  it("uses deterministic bigint property loops for reduction, symmetry, equality, monotonicity, and wire stability", () => {
+    let state = 0x5eedn;
+    const next = (): bigint => {
+      state = (state * 1103515245n + 12345n) % 2147483648n;
+      return state;
+    };
+
+    for (let index = 0; index < 128; index += 1) {
+      const numerator = (next() % 200001n) - 100000n;
+      const denominator = (next() % 997n) + 1n;
+      const ratio = parseExactRatio({
+        numerator: numerator.toString(),
+        denominator: denominator.toString(),
+      });
+      const sameRatio = parseExactRatio(JSON.parse(JSON.stringify(ratio)));
+      const equivalent = parseExactRatio({
+        numerator: (BigInt(ratio.numerator) * 7n).toString(),
+        denominator: (BigInt(ratio.denominator) * 7n).toString(),
+      });
+      const positive = roundExactRatioToUsdMoney({
+        numerator: numerator.toString(),
+        denominator: denominator.toString(),
+        ...USD_HALF_AWAY_ROUNDING,
+      });
+      const negative = roundExactRatioToUsdMoney({
+        numerator: (-numerator).toString(),
+        denominator: denominator.toString(),
+        ...USD_HALF_AWAY_ROUNDING,
+      });
+      const nextValue = roundExactRatioToUsdMoney({
+        numerator: (numerator + 1n).toString(),
+        denominator: denominator.toString(),
+        ...USD_HALF_AWAY_ROUNDING,
+      });
+
+      expect(sameRatio).toEqual(ratio);
+      expect(areRatiosEqual(ratio, equivalent)).toBe(true);
+      expect(BigInt(negative.amount_minor)).toBe(
+        -BigInt(positive.amount_minor),
+      );
+      expect(BigInt(nextValue.amount_minor)).toBeGreaterThanOrEqual(
+        BigInt(positive.amount_minor),
+      );
+      expect(parseUsdMoney(JSON.parse(JSON.stringify(positive)))).toEqual(
+        positive,
+      );
+    }
+  });
+
+  it("keeps presentation formatting one-way and string based", () => {
+    expect(formatUsdMoney({ amount_minor: "10888", currency: "USD" })).toBe(
+      "$108.88",
+    );
+    expect(formatUsdMoney({ amount_minor: "-5", currency: "USD" })).toBe(
+      "-$0.05",
+    );
+    expect(USD_HALF_AWAY_ROUNDING_POLICY).toEqual(USD_HALF_AWAY_ROUNDING);
   });
 });
 
