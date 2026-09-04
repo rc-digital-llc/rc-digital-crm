@@ -134,22 +134,22 @@ history.
 - [x] **CALC-01**: All authoritative money is represented as integer minor units
   with explicit currency, and all rates use an exact scaled or rational form
   without JavaScript floating-point authority.
-- [ ] **CALC-02**: The calculation engine deterministically supports fixed,
+- [x] **CALC-02**: The calculation engine deterministically supports fixed,
   percentage, minimum-support, and hybrid formulas from the effective agreement
   and accepted revenue period.
 - [x] **CALC-03**: Each formula version applies an explicitly named and tested
   rounding policy for fractional minor units, ties, negative adjustments, and
   currency boundaries.
-- [ ] **CALC-04**: Every calculation freezes its agreement version, evidence
+- [x] **CALC-04**: Every calculation freezes its agreement version, evidence
   inputs, formula/policy version, intermediate values, selected minimum or
   percentage result, final amount, currency, and human-readable explanation.
-- [ ] **CALC-05**: Replaying a calculation from its snapshot produces the exact
+- [x] **CALC-05**: Replaying a calculation from its snapshot produces the exact
   same result, and golden, property, boundary, and concurrency tests prove the
   supported formulas.
-- [ ] **CALC-06**: Duplicate runs return the existing calculation, while
+- [x] **CALC-06**: Duplicate runs return the existing calculation, while
   anomalous amounts, changed inputs, ambiguous terms, or policy violations
   pause before invoice issuance.
-- [ ] **CALC-07**: An operator can preview and compare a calculation with the
+- [x] **CALC-07**: An operator can preview and compare a calculation with the
   prior period before approving or automatically advancing it under policy.
 
 ### Invoices and Financial History
@@ -459,12 +459,12 @@ A v1 requirement is complete only when:
 | REV-08 | Phase 4 | Pending |
 | REV-09 | Phase 4 | Pending |
 | CALC-01 | Phase 3 | Complete |
-| CALC-02 | Phase 4 | Pending |
+| CALC-02 | Phase 4 | Complete |
 | CALC-03 | Phase 3 | Complete |
-| CALC-04 | Phase 4 | Pending |
-| CALC-05 | Phase 4 | Pending |
-| CALC-06 | Phase 4 | Pending |
-| CALC-07 | Phase 4 | Pending |
+| CALC-04 | Phase 4 | Complete |
+| CALC-05 | Phase 4 | Complete |
+| CALC-06 | Phase 4 | Complete |
+| CALC-07 | Phase 4 | Complete |
 | INV-01 | Phase 5 | Pending |
 | INV-02 | Phase 5 | Pending |
 | INV-03 | Phase 5 | Pending |
