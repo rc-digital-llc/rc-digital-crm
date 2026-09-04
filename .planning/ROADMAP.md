@@ -139,7 +139,7 @@ Plans:
 
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — Create the string-safe TypeScript money, rate, and named rounding authority.
+- [x] 03-01-PLAN.md — Create the string-safe TypeScript money, rate, and named rounding authority.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -289,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 0/7 | Planned    |  |
+| 3. Exact Money and Rounding Contract | 1/7 | In Progress|  |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
