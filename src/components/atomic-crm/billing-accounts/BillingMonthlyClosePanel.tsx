@@ -1393,9 +1393,11 @@ const CalculationApprovalDialog = ({
         reason: reason.trim(),
         command_key: `calculation-approve-${Date.now()}`,
       });
-    } catch {
+    } catch (error) {
       setError(
-        "This preview is no longer current. Refresh the period and review the new calculation before approving.",
+        String(error).includes("STALE")
+          ? "This preview is no longer current. Refresh the period and review the new calculation before approving."
+          : "The action could not be completed. Refresh the account and review the reason before trying again.",
       );
     }
   };
