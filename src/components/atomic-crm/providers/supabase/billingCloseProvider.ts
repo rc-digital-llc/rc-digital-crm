@@ -167,6 +167,13 @@ const EXCEPTION_REASONS = [
   "HELD_EVIDENCE",
   "UNVERIFIED_EVIDENCE",
 ] as const;
+const BILLING_ROLES = [
+  "administrator",
+  "operator",
+  "reviewer",
+  "auditor",
+  "customer",
+] as const;
 
 function fail(code: string): never {
   throw new BillingCloseProviderError(code);
@@ -605,6 +612,7 @@ const AGREEMENT_WIRE_KEYS = [
   "signed_evidence_sha256",
   "terms_fingerprint",
   "self_approved",
+  "lifecycle_events",
   "rules",
 ] as const;
 
@@ -678,6 +686,57 @@ function parseAgreement(value: unknown): BillingAgreementVersion {
   ) {
     invalidResponse();
   }
+  if (
+    !Array.isArray(row.lifecycle_events) ||
+    row.lifecycle_events.length < 1 ||
+    row.lifecycle_events.length > 100
+  ) {
+    invalidResponse();
+  }
+  const lifecycleEvents = Object.freeze(
+    row.lifecycle_events.map((value) => {
+      const event = requireRecord(value, BILLING_CLOSE_INVALID_RESPONSE);
+      if (
+        !keysEqual(event, [
+          "event_id",
+          "event_type",
+          "actor_id",
+          "actor_role",
+          "reason",
+          "created_at",
+        ])
+      ) {
+        invalidResponse();
+      }
+      return Object.freeze({
+        event_id: requirePositiveStringId(
+          event.event_id,
+          BILLING_CLOSE_INVALID_RESPONSE,
+        ),
+        event_type: requireEnum(
+          event.event_type,
+          ["draft_saved", "submitted", "activated", "paused", "terminated"],
+          BILLING_CLOSE_INVALID_RESPONSE,
+        ),
+        actor_id: requireUuid(event.actor_id, BILLING_CLOSE_INVALID_RESPONSE),
+        actor_role: requireEnum(
+          event.actor_role,
+          BILLING_ROLES,
+          BILLING_CLOSE_INVALID_RESPONSE,
+        ),
+        reason: requireString(
+          event.reason,
+          1000,
+          BILLING_CLOSE_INVALID_RESPONSE,
+        ),
+        created_at: requireTimestamp(
+          event.created_at,
+          BILLING_CLOSE_INVALID_RESPONSE,
+        ),
+      });
+    }),
+  );
+  if (lifecycleEvents[0]?.event_type !== latestEvent) invalidResponse();
   return Object.freeze({
     agreement_id: requireUuid(row.agreement_id, BILLING_CLOSE_INVALID_RESPONSE),
     version_id: requireUuid(row.version_id, BILLING_CLOSE_INVALID_RESPONSE),
@@ -724,6 +783,7 @@ function parseAgreement(value: unknown): BillingAgreementVersion {
       BILLING_CLOSE_INVALID_RESPONSE,
     ),
     self_approved: row.self_approved,
+    lifecycle_events: lifecycleEvents,
     rules: Object.freeze({
       timezone: requireString(
         rules.timezone,
@@ -1265,6 +1325,11 @@ function requirePositiveTextId(value: unknown, code: string) {
     if (error instanceof BillingCloseProviderError) throw error;
     fail(code);
   }
+}
+
+function requirePositiveStringId(value: unknown, code: string) {
+  if (typeof value !== "string") fail(code);
+  return requirePositiveTextId(value, code);
 }
 
 function requireCanonicalIntegerText(value: unknown, code: string) {

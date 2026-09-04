@@ -296,6 +296,16 @@ const rawAgreement = Object.freeze({
   signed_evidence_sha256: fingerprint,
   terms_fingerprint: fingerprint,
   self_approved: false,
+  lifecycle_events: [
+    {
+      event_id: "1",
+      event_type: "activated",
+      actor_id: "44000000-0000-4000-8000-000000000004",
+      actor_role: "administrator",
+      reason: "Approved synthetic agreement",
+      created_at: "2026-09-01T20:00:00.000Z",
+    },
+  ],
   rules: {
     timezone: "America/Chicago",
     timing_basis: "cash",
@@ -399,6 +409,27 @@ describe("Supabase Phase 4 RPC translation", () => {
       rate: { numerator: "1", denominator: "10" },
     });
     expect(Object.isFrozen(response.data[0])).toBe(true);
+  });
+
+  it("rejects numeric lifecycle identifiers in agreement history", async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        data: [
+          {
+            ...rawAgreement,
+            lifecycle_events: [
+              { ...rawAgreement.lifecycle_events[0], event_id: 1 },
+            ],
+          },
+        ],
+      },
+      error: null,
+    }));
+    const provider = createSupabaseBillingCloseProvider({ rpc });
+
+    await expect(
+      provider.listBillingAgreements({ account_id: uuid }),
+    ).rejects.toThrow("BILLING_CLOSE_INVALID_RESPONSE");
   });
 
   it("reconciles every exact preview candidate before returning it", async () => {

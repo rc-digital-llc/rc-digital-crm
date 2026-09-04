@@ -157,8 +157,8 @@ export function validateBillingAgreementForm(
   } catch {
     errors.excluded_amounts = "Use unique snake_case excluded amounts.";
   }
-  if (!/^(?:[1-9]|[12][0-9]|3[01])$/.test(trim(values.cutoff_day))) {
-    errors.cutoff_day = "Enter a cutoff day from 1 through 31.";
+  if (!/^(?:[1-9]|1[0-9]|2[0-8])$/.test(trim(values.cutoff_day))) {
+    errors.cutoff_day = "Enter a cutoff day from 1 through 28.";
   }
   try {
     const priorities = splitTokens(values.evidence_priority);

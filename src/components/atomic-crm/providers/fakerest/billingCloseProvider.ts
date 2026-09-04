@@ -245,6 +245,16 @@ function seedAgreement(scenario: DemoBillingCloseScenario): AgreementRecord {
         formula_kind: scenario.formula_kind,
       }),
       self_approved: false,
+      lifecycle_events: [
+        {
+          event_id: `5${scenario.account_id.slice(-3)}`,
+          event_type: "activated",
+          actor_id: "31000000-0000-4000-8000-000000000001",
+          actor_role: "administrator",
+          reason: "Activated synthetic agreement",
+          created_at: DEMO_EVIDENCE_NOW,
+        },
+      ],
       rules: {
         timezone: "America/Chicago",
         timing_basis: "cash",
@@ -725,6 +735,19 @@ export function createFakeBillingCloseProvider(
             signed_evidence_sha256: syntheticHash(request.signed_evidence_id),
             terms_fingerprint: syntheticHash(request),
             self_approved: false,
+            lifecycle_events: [
+              {
+                event_id: nextEventId(state),
+                event_type: "draft_saved",
+                actor_id: "31000000-0000-4000-8000-000000000001",
+                actor_role: "administrator",
+                reason: existing
+                  ? "Updated agreement draft"
+                  : "Created agreement draft",
+                created_at: DEMO_EVIDENCE_NOW,
+              },
+              ...(existing?.version.lifecycle_events ?? []),
+            ],
             rules: {
               timezone: request.timezone,
               timing_basis: request.timing_basis,
@@ -773,6 +796,17 @@ export function createFakeBillingCloseProvider(
             ...record.version,
             state: "pending_review",
             latest_event: "submitted",
+            lifecycle_events: [
+              {
+                event_id: nextEventId(state),
+                event_type: "submitted",
+                actor_id: "31000000-0000-4000-8000-000000000001",
+                actor_role: "administrator",
+                reason: request.reason,
+                created_at: DEMO_EVIDENCE_NOW,
+              },
+              ...record.version.lifecycle_events,
+            ],
           };
           return agreementResponse("submitted", record.version);
         },
@@ -807,6 +841,17 @@ export function createFakeBillingCloseProvider(
             ...record.version,
             state: "active",
             latest_event: "activated",
+            lifecycle_events: [
+              {
+                event_id: nextEventId(state),
+                event_type: "activated",
+                actor_id: "31000000-0000-4000-8000-000000000001",
+                actor_role: "administrator",
+                reason: request.reason,
+                created_at: DEMO_EVIDENCE_NOW,
+              },
+              ...record.version.lifecycle_events,
+            ],
           };
           return agreementResponse("activated", record.version);
         },
@@ -833,6 +878,17 @@ export function createFakeBillingCloseProvider(
             ...record.version,
             state: "paused",
             latest_event: "paused",
+            lifecycle_events: [
+              {
+                event_id: nextEventId(state),
+                event_type: "paused",
+                actor_id: "31000000-0000-4000-8000-000000000001",
+                actor_role: "administrator",
+                reason: request.reason,
+                created_at: DEMO_EVIDENCE_NOW,
+              },
+              ...record.version.lifecycle_events,
+            ],
           };
           return agreementResponse("paused", record.version);
         },
@@ -864,6 +920,17 @@ export function createFakeBillingCloseProvider(
             ...record.version,
             state: "terminated",
             latest_event: "terminated",
+            lifecycle_events: [
+              {
+                event_id: nextEventId(state),
+                event_type: "terminated",
+                actor_id: "31000000-0000-4000-8000-000000000001",
+                actor_role: "administrator",
+                reason: request.reason,
+                created_at: DEMO_EVIDENCE_NOW,
+              },
+              ...record.version.lifecycle_events,
+            ],
           };
           return agreementResponse("terminated", record.version);
         },

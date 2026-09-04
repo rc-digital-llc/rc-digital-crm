@@ -567,6 +567,15 @@ export type BillingAgreementRevenueRules = Readonly<{
   evidence_priority: readonly BillingRevenueProvenance[];
 }>;
 
+export type BillingAgreementLifecycleEvent = Readonly<{
+  event_id: string;
+  event_type: BillingAgreementEventType;
+  actor_id: string;
+  actor_role: BillingRoleName;
+  reason: string;
+  created_at: string;
+}>;
+
 export type BillingAgreementVersion = Readonly<{
   agreement_id: string;
   version_id: string;
@@ -590,6 +599,7 @@ export type BillingAgreementVersion = Readonly<{
   signed_evidence_sha256: string;
   terms_fingerprint: string;
   self_approved: boolean;
+  lifecycle_events: readonly BillingAgreementLifecycleEvent[];
   rules: BillingAgreementRevenueRules;
 }>;
 
