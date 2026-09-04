@@ -138,6 +138,34 @@ describe("Phase 3 exact-money release coupling", () => {
     ).toBe("740ac8cc9c5955c3e64c837082402f0d7f94e5fe2f145d88489d22b010dc48c0");
   });
 
+  it("routes the authoritative invoice provider through validated exact RPCs", () => {
+    const sharedTypes = readSource("src/components/atomic-crm/types.ts");
+    const providerTypes = readSource(
+      "src/components/atomic-crm/providers/types.ts",
+    );
+    const provider = readSource(
+      "src/components/atomic-crm/providers/supabase/dataProvider.ts",
+    );
+
+    expect(sharedTypes).toContain("export type ExactBillingInvoice");
+    expect(sharedTypes).toContain("amount: UsdMoney");
+    expect(sharedTypes).toContain("tax_rate: OrdinaryPercentageRate");
+    expect(providerTypes).toContain("billingInvoiceProviderMethodKeys");
+    for (const method of [
+      "listExactBillingInvoices",
+      "getExactBillingInvoice",
+      "saveExactBillingInvoice",
+    ]) {
+      expect(providerTypes, method).toContain(method);
+      expect(provider, method).toContain(method);
+    }
+    expect(provider).toContain('supabase.rpc("read_billing_invoices_exact"');
+    expect(provider).toContain('supabase.rpc("save_billing_invoice_exact"');
+    expect(provider).toContain("parseExactBillingInvoiceResponse");
+    expect(provider).not.toMatch(/\.from\(["']invoices["']\)/);
+    expect(provider).not.toContain("execute_billing_automation_command");
+  });
+
   it("protects the closed exact upgrade verifier and immutable history pins", () => {
     const makefile = readSource("makefile");
     const financialTargets = makefile.slice(0, makefile.indexOf("\ninstall:"));
