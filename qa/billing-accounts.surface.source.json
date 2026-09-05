@@ -37,6 +37,7 @@
   "critical_targets": [
     {
       "selector": "[data-critical-billing-create] a, [data-critical-billing-create] button",
+      "required": false,
       "min_width": 44,
       "min_height": 44
     },

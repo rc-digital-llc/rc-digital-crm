@@ -12,6 +12,10 @@ const sourcePort = 4179;
 const sourceBaseUrl = `http://127.0.0.1:${sourcePort}`;
 const maximumCapturedOutput = 1024 * 1024;
 const allowedRuntimeDirtyPaths = new Set([".planning/config.json"]);
+const isAllowedRuntimePath = (relativePath) =>
+  allowedRuntimeDirtyPaths.has(relativePath) ||
+  relativePath === "artifacts/surface/phase-04-source.json" ||
+  relativePath.startsWith("artifacts/surface/phase-04-source-screenshots/");
 
 export const redactOutput = (value) =>
   String(value)
@@ -166,7 +170,7 @@ const resolveImplementationHead = async () => {
     .split(/\r?\n/)
     .filter(Boolean)
     .map((line) => line.slice(3))
-    .filter((relativePath) => !allowedRuntimeDirtyPaths.has(relativePath));
+    .filter((relativePath) => !isAllowedRuntimePath(relativePath));
   if (unexpected.length > 0) {
     throw new Error(
       `source surface requires committed implementation files: ${unexpected[0]}`,
