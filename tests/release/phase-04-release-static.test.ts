@@ -257,4 +257,65 @@ describe("Phase 4 protected release coupling", () => {
     expect(runner).toContain("surface_gate.py");
     expect(runner).not.toMatch(/execSync|execFileSync|shell:\s*true/);
   });
+
+  it("pins the passing source receipt and every screenshot by SHA-256", () => {
+    const receipt = readJson("artifacts/surface/phase-04-source.json") as {
+      verdict: string;
+      contract_sha256: string;
+      contract_snapshot: Record<string, unknown>;
+      implementation_head: string;
+      implementation_head_marker: string;
+      implementation_tree: string;
+      summary: Record<string, number>;
+      runs: Array<{ screenshot: { path: string; sha256: string } }>;
+    };
+    const canonicalize = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value.map(canonicalize);
+      if (value && typeof value === "object") {
+        return Object.fromEntries(
+          Object.entries(value as Record<string, unknown>)
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([key, nested]) => [key, canonicalize(nested)]),
+        );
+      }
+      return value;
+    };
+    expect(receipt.verdict).toBe("pass");
+    expect(receipt.summary).toEqual({
+      checks: 150,
+      failures: 0,
+      routes: 3,
+      viewports: 2,
+    });
+    expect(receipt.implementation_head).toMatch(/^[0-9a-f]{40}$/);
+    expect(receipt.implementation_head_marker).toBe(
+      `phase-04-agreement-close@${receipt.implementation_head}`,
+    );
+    expect(receipt.implementation_tree).toBe("committed-except-runtime-config");
+    expect(receipt.contract_sha256).toBe(
+      createHash("sha256")
+        .update(JSON.stringify(canonicalize(receipt.contract_snapshot)))
+        .digest("hex"),
+    );
+    expect(receipt.runs).toHaveLength(6);
+    for (const run of receipt.runs) {
+      const filename = run.screenshot.path.split("/").at(-1);
+      expect(filename).toBeTruthy();
+      expect(
+        createHash("sha256")
+          .update(
+            readFileSync(
+              new URL(
+                `../../artifacts/surface/phase-04-source-screenshots/${filename}`,
+                import.meta.url,
+              ),
+            ),
+          )
+          .digest("hex"),
+      ).toBe(run.screenshot.sha256);
+    }
+    expect(JSON.stringify(receipt)).not.toMatch(
+      /password|credential|secret|bearer|cookie|customer_name|contact@/i,
+    );
+  });
 });

@@ -1,0 +1,1148 @@
+{
+  "schema_version": "1.0",
+  "contract": "rc-digital-billing-accounts-source",
+  "contract_sha256": "9c1e94d859f2b54c7541d370a26fe55410c1f2ba0a0b5fb62d71ba2d3af7390e",
+  "contract_snapshot": {
+    "schema_version": "1.0",
+    "name": "rc-digital-billing-accounts-source",
+    "expected_serving_origin": "http://127.0.0.1:4179",
+    "expected_canonical_origin": "https://atomic-crm-sigma-one.vercel.app",
+    "canonical_policy": "match",
+    "freshness_markers": ["phase-04-agreement-close-v1"],
+    "max_redirects": 0,
+    "min_touch_target_css_px": 44,
+    "max_fixed_viewport_ratio": 0.13,
+    "max_landscape_fixed_viewport_ratio": 0.18,
+    "max_console_errors": 0,
+    "max_page_errors": 0,
+    "max_focus_steps": 12,
+    "stability_wait_ms": 500,
+    "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+    "locale": "en-US",
+    "timezone": "America/Los_Angeles",
+    "viewports": [
+      {
+        "name": "small-320",
+        "width": 320,
+        "height": 568
+      },
+      {
+        "name": "desktop-1280",
+        "width": 1280,
+        "height": 800
+      }
+    ],
+    "routes": [
+      {
+        "path": "/billing_accounts",
+        "expected_canonical_path": "/billing_accounts"
+      },
+      {
+        "path": "/billing_accounts/create",
+        "expected_canonical_path": "/billing_accounts/create"
+      },
+      {
+        "path": "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+        "expected_canonical_path": "/billing_accounts/31000000-0000-0000-0000-000000000200/show"
+      }
+    ],
+    "critical_targets": [
+      {
+        "selector": "[data-critical-billing-create] a, [data-critical-billing-create] button",
+        "required": false,
+        "min_width": 44,
+        "min_height": 44
+      },
+      {
+        "selector": "a[aria-label=\"Open billing account details\"] >> nth=0",
+        "required": false,
+        "min_width": 44,
+        "min_height": 44,
+        "max_viewport_width": 767
+      },
+      {
+        "selector": "nav[aria-label=\"CRM navigation\"] a[href=\"/\"]",
+        "min_width": 44,
+        "min_height": 44,
+        "max_viewport_width": 767
+      },
+      {
+        "selector": "button[data-critical-phase4-agreement-action]",
+        "required": false,
+        "min_width": 44,
+        "min_height": 44
+      },
+      {
+        "selector": "button[data-critical-phase4-revenue-action]",
+        "required": false,
+        "min_width": 44,
+        "min_height": 44
+      }
+    ],
+    "fixed_elements": [
+      {
+        "selector": "nav[aria-label=\"CRM navigation\"]",
+        "max_viewport_ratio": 0.13,
+        "max_landscape_viewport_ratio": 0.18,
+        "max_viewport_width": 767
+      },
+      {
+        "selector": "header.fixed.top-0",
+        "required": false,
+        "max_viewport_ratio": 0.13,
+        "max_landscape_viewport_ratio": 0.18,
+        "max_viewport_width": 767
+      }
+    ],
+    "forbidden_visible_selectors": [
+      "[role=\"dialog\"][data-state=\"open\"]",
+      "[role=\"alertdialog\"]",
+      "[data-vaul-drawer][data-state=\"open\"]",
+      "[data-slot=\"sheet-content\"][data-state=\"open\"]"
+    ],
+    "allowed_console_error_patterns": []
+  },
+  "stage": "source",
+  "base_url": "http://127.0.0.1:4179",
+  "observed_at": "2026-09-05T00:16:17.347195Z",
+  "verdict": "pass",
+  "summary": {
+    "checks": 150,
+    "failures": 0,
+    "routes": 3,
+    "viewports": 2
+  },
+  "runs": [
+    {
+      "route": "/billing_accounts",
+      "viewport": {
+        "name": "small-320",
+        "width": 320,
+        "height": 568
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=320 innerWidth=320"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:17 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts--400a48f6ed67--small-320.png",
+        "sha256": "508dc7069c22b4c60886e101c6e3b1f15f8f09eb9c0c1117767cd2b2c939bd8b",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    },
+    {
+      "route": "/billing_accounts",
+      "viewport": {
+        "name": "desktop-1280",
+        "width": 1280,
+        "height": 800
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=1280 innerWidth=1280"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:19 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts--400a48f6ed67--desktop-1280.png",
+        "sha256": "1609a6fe99670860f15fa0f635c8fc735da5459384e30181f155d0bf14097812",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    },
+    {
+      "route": "/billing_accounts/create",
+      "viewport": {
+        "name": "small-320",
+        "width": 320,
+        "height": 568
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts/create",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts/create' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts/create'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=320 innerWidth=320"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts/create",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:20 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts-create--8393cf4bc8d6--small-320.png",
+        "sha256": "db54c5f4745587c161f9c34b97b82182724c6402de362df550b883b7eaee1187",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    },
+    {
+      "route": "/billing_accounts/create",
+      "viewport": {
+        "name": "desktop-1280",
+        "width": 1280,
+        "height": 800
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts/create",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts/create' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts/create'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=1280 innerWidth=1280"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts/create",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:22 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts-create--8393cf4bc8d6--desktop-1280.png",
+        "sha256": "67e33f496cec3a7a67ef75dfe88cec12e8483bfa5bda1cb66caaef08c2307d02",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    },
+    {
+      "route": "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      "viewport": {
+        "name": "small-320",
+        "width": 320,
+        "height": 568
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts/31000000-0000-0000-0000-000000000200/show' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts/31000000-0000-0000-0000-000000000200/show'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=320 innerWidth=320"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0",
+          "pass": true,
+          "detail": "present and within orientation budget"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:23 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts-31000000-0000-0000-0000-000000000200-show--dcbb81259596--small-320.png",
+        "sha256": "c040099eabe209a24ac796a1cf7c350b35914422ee888cc8a313a1db14acee51",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    },
+    {
+      "route": "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      "viewport": {
+        "name": "desktop-1280",
+        "width": 1280,
+        "height": 800
+      },
+      "url": "http://127.0.0.1:4179/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      "checks": [
+        {
+          "name": "http-200",
+          "pass": true,
+          "detail": "status=200"
+        },
+        {
+          "name": "redirect-budget",
+          "pass": true,
+          "detail": "redirects=0 cap=0"
+        },
+        {
+          "name": "serving-origin",
+          "pass": true,
+          "detail": "final=http://127.0.0.1:4179 expected=http://127.0.0.1:4179"
+        },
+        {
+          "name": "viewport-meta",
+          "pass": true,
+          "detail": "content='minimum-scale=1,initial-scale=1,width=device-width'"
+        },
+        {
+          "name": "canonical",
+          "pass": true,
+          "detail": "count=1 actual='https://atomic-crm-sigma-one.vercel.app/billing_accounts/31000000-0000-0000-0000-000000000200/show' expected='https://atomic-crm-sigma-one.vercel.app/billing_accounts/31000000-0000-0000-0000-000000000200/show'"
+        },
+        {
+          "name": "freshness:phase-04-agreement-close-v1",
+          "pass": true,
+          "detail": "marker present"
+        },
+        {
+          "name": "horizontal-reflow",
+          "pass": true,
+          "detail": "scrollWidth=1280 innerWidth=1280"
+        },
+        {
+          "name": "critical-target:[data-critical-billing-create] a, [data-critical-billing-create] button",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:a[aria-label=\"Open billing account details\"] >> nth=0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:nav[aria-label=\"CRM navigation\"] a[href=\"/\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-agreement-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "critical-target:button[data-critical-phase4-revenue-action]",
+          "pass": true,
+          "detail": "present, sized, hittable, and href-valid"
+        },
+        {
+          "name": "fixed-element:nav[aria-label=\"CRM navigation\"]:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "fixed-element:header.fixed.top-0:not-applicable",
+          "pass": true,
+          "detail": "viewport-width=1280"
+        },
+        {
+          "name": "forbidden-visible:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "focus-not-obscured",
+          "pass": true,
+          "detail": "sampled keyboard focus is exposed"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"dialog\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[role=\"alertdialog\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-vaul-drawer][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "forbidden-visible-post-focus:[data-slot=\"sheet-content\"][data-state=\"open\"]",
+          "pass": true,
+          "detail": "visible=0"
+        },
+        {
+          "name": "console-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[] guard_suppressed=0"
+        },
+        {
+          "name": "page-errors",
+          "pass": true,
+          "detail": "count=0 cap=0 errors=[]"
+        }
+      ],
+      "failures": [],
+      "http": {
+        "status": 200,
+        "final_url": "http://127.0.0.1:4179/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+        "redirects": 0,
+        "headers": {
+          "cache-control": "no-cache",
+          "connection": "keep-alive",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sat, 05 Sep 2026 00:16:25 GMT",
+          "etag": "W/\"c82-ZeW9ssBbZIzz1kNWHQMz5b8UD64\"",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "vary": "Origin"
+        }
+      },
+      "screenshot": {
+        "path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source-screenshots/billing_accounts-31000000-0000-0000-0000-000000000200-show--dcbb81259596--desktop-1280.png",
+        "sha256": "3f6ba4fded544e2ea5410f585079b83d0478612a60bfda5cb0a69ae0653d8061",
+        "captured_scroll_y": 0
+      },
+      "network_guard": {
+        "mode": "read_only",
+        "auth_bootstrap_used": false,
+        "protection_bypass_used": false,
+        "preview_toolbar_suppression_requested": false,
+        "service_workers_blocked": true,
+        "websockets_blocked": true,
+        "stability_wait_ms": 500,
+        "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
+        "blocked_count": 0,
+        "blocked": [],
+        "console_errors_suppressed": 0
+      }
+    }
+  ],
+  "duration_seconds": 10.905,
+  "receipt_path": "/Users/agenticmac/projects/rc-digital-crm/artifacts/surface/phase-04-source.json",
+  "implementation_head": "759d30c3824410e9cd62c1fb4a0fb64243006483",
+  "implementation_head_marker": "phase-04-agreement-close@759d30c3824410e9cd62c1fb4a0fb64243006483",
+  "implementation_tree": "committed-except-runtime-config"
+}

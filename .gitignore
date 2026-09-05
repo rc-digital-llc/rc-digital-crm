@@ -11,6 +11,7 @@
 # testing
 /coverage
 .planning/evidence/**/.receipt.json.lock
+artifacts/surface/.*.json.lock
 
 # production
 /build
