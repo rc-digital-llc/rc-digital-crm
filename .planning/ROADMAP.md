@@ -291,7 +291,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
 | 3. Exact Money and Rounding Contract | 7/7 | Complete    | 2026-09-04 |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 8/8 | Complete   | 2026-09-05 |
-| 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
+| 5. Immutable Invoicing and Durable Provider Operations | 0/14 | Planned    |  |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
 | 7. Controls, Observability, and Recovery | 0/TBD | Not started | - |
 | 8. Restricted Customer Portal and Dispute Holds | 0/TBD | Not started | - |

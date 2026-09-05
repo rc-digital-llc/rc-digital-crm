@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: planning
-stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-09-05T00:37:20.985Z"
-last_activity: 2026-09-05
+status: Planned — baseline reconciliation required before execution
+stopped_at: Phase 5 planning complete; Phase 3/4 baseline reconciliation required
+last_updated: "2026-09-05T18:44:45.040Z"
+last_activity: 2026-09-05 -- Phase 05 planning complete
 progress:
   total_phases: 10
   completed_phases: 4
-  total_plans: 37
+  total_plans: 51
   completed_plans: 37
   percent: 40
 ---
@@ -30,10 +30,10 @@ history.
 
 Phase: 5
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-05
+Status: Planned — baseline reconciliation required before execution
+Last activity: 2026-09-05 -- Phase 05 planning complete
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -194,6 +194,8 @@ security decisions:
 - The Vite build retains non-blocking CSS import-order, bundle-size, and stale
   Browserslist advisories for later cleanup.
 
+- Phase 5 implementation entry: reconcile local Phase 4 head 977dbc22 with reviewed Phase 3 PR #24 head 362fd9d3, preserve migration/registry lineage, and prove the integrated exact head. See 05-BASELINE-PREFLIGHT.md. No production authority implied.
+
 ## Deferred Items
 
 | Category | Item | Status | Deferred At |
@@ -202,6 +204,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-05T00:33:14.076Z
-Stopped at: Completed 04-08-PLAN.md
-Resume file: None
+Last session: 2026-09-05T18:44:09.421Z
+Stopped at: Phase 5 planning complete; Phase 3/4 baseline reconciliation required
+Resume file: .planning/phases/05-immutable-invoicing-and-durable-provider-operations/05-BASELINE-PREFLIGHT.md
