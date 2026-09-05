@@ -200,4 +200,17 @@ describe("Phase 4 protected release coupling", () => {
     );
     expect(ui).not.toMatch(/parseFloat|parseInt|Number\s*\(/);
   });
+
+  it("binds schema push to a disposable loopback target and registry 004", () => {
+    const verifier = readSource("scripts/release/verify-migration-chain.mjs");
+    expect(verifier).toContain(
+      '["db", "push", "--db-url", target.databaseUrl, "--include-all"]',
+    );
+    expect(verifier).toContain('category.startsWith("agreement_close_")');
+    expect(verifier).toContain('registry_id: "004-agreement-close"');
+    expect(verifier).toContain("phase4_fingerprints");
+    expect(verifier).toContain("schemaPushProjectPattern");
+    expect(verifier).toContain("loopbackHosts");
+    expect(verifier).not.toMatch(/supabase["',\s]+link/);
+  });
 });

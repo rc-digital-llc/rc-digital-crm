@@ -8,6 +8,13 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import {
+  PHASE4_CATEGORY_NAMES,
+  captureFingerprints,
+  loadTransformationRegistries,
+  loadUpgradeExpectation,
+} from "./fingerprint-upgrade.mjs";
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
 const migrationsDirectory = path.join(repositoryRoot, "supabase/migrations");
@@ -329,9 +336,40 @@ export async function verifySchemaPushTarget({
     );
   }
 
+  let phase4Fingerprints;
+  if (migrations.some(({ version }) => version === "20260904000007")) {
+    const schemaPushCategories = PHASE4_CATEGORY_NAMES.filter((category) =>
+      category.startsWith("agreement_close_"),
+    );
+    const expectedUpgrade = loadTransformationRegistries({
+      baselineExpected: loadUpgradeExpectation(),
+    });
+    phase4Fingerprints = await captureFingerprints(
+      `supabase_db_${target.projectId}`,
+      execute,
+      schemaPushCategories,
+    );
+    for (const category of schemaPushCategories) {
+      const expectedHash =
+        expectedUpgrade.transformations[category]?.after_sha256;
+      if (!expectedHash || phase4Fingerprints[category] !== expectedHash) {
+        throw new Error(
+          `schema-push registry fingerprint differs: ${category} ` +
+            `(expected ${expectedHash}, received ${phase4Fingerprints[category]})`,
+        );
+      }
+    }
+  }
+
   return {
     project_id: target.projectId,
     ...historySummary(migrations),
+    ...(phase4Fingerprints
+      ? {
+          registry_id: "004-agreement-close",
+          phase4_fingerprints: phase4Fingerprints,
+        }
+      : {}),
   };
 }
 
