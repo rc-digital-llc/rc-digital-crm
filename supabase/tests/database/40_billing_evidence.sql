@@ -3,7 +3,7 @@ SET search_path TO public, extensions;
 
 BEGIN;
 
-SELECT plan(70);
+SELECT plan(82);
 
 SELECT is(
   (
@@ -165,6 +165,40 @@ SELECT ok(
     WHERE oid = 'private.billing_finalize_evidence_inspection(uuid,uuid,text,text,text,text,text)'::regprocedure
   ),
   'private inspection helper has an empty search_path'
+);
+SELECT ok(
+  pg_catalog.to_regprocedure(
+    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,jsonb,text,jsonb)'
+  ) IS NOT NULL
+  AND pg_catalog.to_regprocedure(
+    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,numeric,text)'
+  ) IS NULL,
+  'evidence inspection resolves only the exact automation kernel'
+);
+SELECT ok(
+  (
+    SELECT owner_role.rolname = 'postgres'
+      AND procedure.prosecdef
+      AND coalesce(array_to_string(procedure.proconfig, ','), '')
+        IN ('search_path=', 'search_path=""')
+    FROM pg_catalog.pg_proc AS procedure
+    JOIN pg_catalog.pg_roles AS owner_role ON owner_role.oid = procedure.proowner
+    WHERE procedure.oid =
+      'private.billing_finalize_evidence_inspection(uuid,uuid,text,text,text,text,text)'::regprocedure
+  ),
+  'surviving evidence inspection helper has locked owner and execution context'
+);
+SELECT ok(
+  (
+    SELECT pg_catalog.pg_get_functiondef(procedure.oid) LIKE
+        '%private.billing_consume_automation_grant%'
+      AND pg_catalog.pg_get_functiondef(procedure.oid) LIKE '%amount_minor%'
+      AND pg_catalog.pg_get_functiondef(procedure.oid) LIKE '%effect_context_value%'
+    FROM pg_catalog.pg_proc AS procedure
+    WHERE procedure.oid =
+      'private.billing_finalize_evidence_inspection(uuid,uuid,text,text,text,text,text)'::regprocedure
+  ),
+  'evidence inspection records canonical zero through an explicit effect discriminator'
 );
 SELECT ok(
   (
@@ -405,6 +439,32 @@ SELECT is(
 );
 
 -- Automation: exact scanner grant is mandatory and inspection is atomic.
+INSERT INTO public.billing_automation_principals (
+  id, organization_id, auth_user_id, name, status, disabled_at, disabled_reason
+) VALUES (
+  '21000000-0000-0000-0000-000000000401',
+  '21000000-0000-0000-0000-000000000100',
+  '21000000-0000-0000-0000-000000000006',
+  'Alpha Automation Retired Fixture',
+  'disabled',
+  '2026-09-01T19:00:00Z',
+  'rotated before current scanner principal'
+);
+
+SELECT is(
+  (
+    SELECT pg_catalog.jsonb_object_agg(status, principal_count ORDER BY status)
+    FROM (
+      SELECT status, pg_catalog.count(*) AS principal_count
+      FROM public.billing_automation_principals
+      WHERE auth_user_id = '21000000-0000-0000-0000-000000000006'
+      GROUP BY status
+    ) AS principal_states
+  ),
+  '{"active":1,"disabled":1}'::jsonb,
+  'scanner identity rotation retains one disabled predecessor and one active principal'
+);
+
 SELECT set_config('request.jwt.claim.sub', '21000000-0000-0000-0000-000000000006', true);
 SELECT set_config('request.jwt.claims', '{"sub":"21000000-0000-0000-0000-000000000006","role":"authenticated"}', true);
 SET LOCAL ROLE authenticated;
@@ -453,10 +513,141 @@ SELECT is(
     'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
   )->>'result',
   'duplicate',
-  'inspection replay returns the prior command outcome without a second transition'
+  'inspection replay resolves the active principal despite a disabled predecessor'
 );
 
 RESET ROLE;
+
+CREATE TEMP TABLE evidence_conflict_snapshot AS
+SELECT pg_catalog.jsonb_build_object(
+  'evidence', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(evidence) ORDER BY evidence.id)
+    FROM public.billing_evidence_objects AS evidence
+    WHERE evidence.id IN (
+      '21000000-0000-0000-0000-000000000600',
+      '21000000-0000-0000-0000-000000000606'
+    )
+  ),
+  'audit', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(audit) ORDER BY audit.id)
+    FROM public.billing_audit_events AS audit
+    WHERE audit.actor_id = '21000000-0000-0000-0000-000000000400'
+  ),
+  'grant', (
+    SELECT pg_catalog.to_jsonb(grant_row)
+    FROM public.billing_automation_grants AS grant_row
+    WHERE grant_row.id = '21000000-0000-0000-0000-000000000502'
+  ),
+  'executions', (
+    SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(execution) ORDER BY execution.id)
+    FROM public.billing_automation_executions AS execution
+    WHERE execution.principal_id = '21000000-0000-0000-0000-000000000400'
+  )
+) AS state;
+
+SET LOCAL ROLE authenticated;
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000606',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence identity drift is rejected'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'rejected', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence decision drift is rejected'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_REJECTED', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence reason drift is rejected'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000500',
+    'scanner-alpha-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence grant drift is rejected before grant lookup'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-wrong-fixture', 'scanner-fixture-v1',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence provider drift is rejected before authority lookup'
+);
+SELECT is(
+  public.finalize_billing_evidence_inspection(
+    '21000000-0000-0000-0000-000000000600',
+    '21000000-0000-0000-0000-000000000502',
+    'scanner-alpha-fixture', 'scanner-wrong-v9',
+    'clean', 'SCAN_CLEAN', 'inspection-applied-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key evidence policy drift is rejected before authority lookup'
+);
+RESET ROLE;
+
+SELECT is(
+  pg_catalog.jsonb_build_object(
+    'evidence', (
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(evidence) ORDER BY evidence.id)
+      FROM public.billing_evidence_objects AS evidence
+      WHERE evidence.id IN (
+        '21000000-0000-0000-0000-000000000600',
+        '21000000-0000-0000-0000-000000000606'
+      )
+    ),
+    'audit', (
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(audit) ORDER BY audit.id)
+      FROM public.billing_audit_events AS audit
+      WHERE audit.actor_id = '21000000-0000-0000-0000-000000000400'
+    ),
+    'grant', (
+      SELECT pg_catalog.to_jsonb(grant_row)
+      FROM public.billing_automation_grants AS grant_row
+      WHERE grant_row.id = '21000000-0000-0000-0000-000000000502'
+    ),
+    'executions', (
+      SELECT pg_catalog.jsonb_agg(pg_catalog.to_jsonb(execution) ORDER BY execution.id)
+      FROM public.billing_automation_executions AS execution
+      WHERE execution.principal_id = '21000000-0000-0000-0000-000000000400'
+    )
+  ),
+  (SELECT state FROM evidence_conflict_snapshot),
+  'all evidence, audit, grant, execution, and protected-effect state survives conflicts byte-for-byte'
+);
+SELECT ok(
+  (
+    SELECT execution.amount_minor = 0
+      AND execution.currency = 'USD'
+      AND execution.request_fingerprint ~ '^[0-9a-f]{64}$'
+      AND execution.effect_fingerprint ~ '^[0-9a-f]{64}$'
+    FROM public.billing_automation_executions AS execution
+    WHERE execution.idempotency_key = 'inspection-applied-0001'
+  ),
+  'successful evidence inspection records canonical zero and both SHA-256 fingerprints'
+);
 
 SELECT is(
   (

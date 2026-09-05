@@ -71,7 +71,8 @@ INSERT INTO public.billing_automation_grants (
   provider_reference,
   policy_version,
   action_kind,
-  max_amount,
+  max_amount_minor,
+  currency,
   max_actions
 )
 VALUES
@@ -84,7 +85,8 @@ VALUES
     'provider-alpha-fixture',
     'policy-fixture-v1',
     'record.test',
-    100.00,
+    10000,
+    'USD',
     2
   ),
   (
@@ -96,7 +98,8 @@ VALUES
     'provider-alpha-fixture',
     'policy-fixture-v1',
     'record.concurrent',
-    1.00,
+    100,
+    'USD',
     1
   ),
   (
@@ -108,7 +111,8 @@ VALUES
     'provider-bravo-fixture',
     'policy-fixture-v1',
     'record.test',
-    100.00,
+    10000,
+    'USD',
     2
   ),
   (
@@ -121,6 +125,7 @@ VALUES
     'scanner-fixture-v1',
     'evidence.inspection',
     NULL,
+    'USD',
     100
   ),
   (
@@ -133,6 +138,7 @@ VALUES
     'scanner-fixture-v1',
     'evidence.inspection',
     NULL,
+    'USD',
     100
   )
 ON CONFLICT (id) DO NOTHING;

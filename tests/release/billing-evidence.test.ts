@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -20,7 +21,13 @@ type UploadCapability = {
 };
 
 const repositoryRoot = path.resolve(__dirname, "../..");
-const expectedContainer = "supabase_db_atomic-crm-demo";
+const projectId = fs
+  .readFileSync(path.join(repositoryRoot, "supabase/config.toml"), "utf8")
+  .match(/^project_id\s*=\s*"([^"]+)"/m)?.[1];
+if (!projectId) {
+  throw new Error("supabase project_id is unavailable");
+}
+const expectedContainer = `supabase_db_${projectId}`;
 const apiUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const activePrincipals: Principal[] = [];
@@ -268,12 +275,12 @@ async function setupPrincipals() {
     );
     INSERT INTO public.billing_automation_grants
       (id, organization_id, account_id, principal_id, command_name,
-       provider_reference, policy_version, action_kind, max_actions)
+       provider_reference, policy_version, action_kind, currency, max_actions)
     VALUES (
       '${automationGrantId}', '${tenants.alpha.organizationId}',
       '${tenants.alpha.accountId}', '${automationPrincipalId}',
       'evidence.inspect', 'scanner-http-fixture', 'scanner-http-v1',
-      'evidence.inspection', 2
+      'evidence.inspection', 'USD', 2
     );
   COMMIT;`);
 }
@@ -365,6 +372,46 @@ async function evidenceState(evidenceId: string) {
   )::text
   FROM public.billing_evidence_objects
   WHERE id = '${evidenceId}'`);
+}
+
+async function evidenceConflictSnapshot(
+  evidenceIds: string[],
+  idempotencyKey: string,
+) {
+  if (evidenceIds.length === 0) {
+    throw new Error("evidence conflict snapshot requires evidence");
+  }
+  const ids = evidenceIds.map(assertUuid);
+  if (!/^[a-z0-9][a-z0-9-]{7,127}$/.test(idempotencyKey)) {
+    throw new Error("evidence conflict key is invalid");
+  }
+  return serviceJson<Record<string, unknown>>(`SELECT jsonb_build_object(
+    'evidence', (
+      SELECT jsonb_agg(to_jsonb(evidence) ORDER BY evidence.id)
+      FROM public.billing_evidence_objects AS evidence
+      WHERE evidence.id IN (${ids.map((id) => `'${id}'`).join(",")})
+    ),
+    'grant', (
+      SELECT to_jsonb(grant_row)
+      FROM public.billing_automation_grants AS grant_row
+      WHERE grant_row.id = '${automationGrantId}'
+    ),
+    'executions', (
+      SELECT jsonb_agg(to_jsonb(execution) ORDER BY execution.id)
+      FROM public.billing_automation_executions AS execution
+      WHERE execution.principal_id = '${automationPrincipalId}'
+    ),
+    'audit', (
+      SELECT jsonb_agg(to_jsonb(audit) ORDER BY audit.id)
+      FROM public.billing_audit_events AS audit
+      WHERE audit.actor_id = '${automationPrincipalId}'
+    ),
+    'key_execution_count', (
+      SELECT count(*)
+      FROM public.billing_automation_executions
+      WHERE idempotency_key = '${idempotencyKey}'
+    )
+  )::text`);
 }
 
 async function countWhere(table: string, predicate: string) {
@@ -703,6 +750,29 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
            AND result = 'succeeded'`,
         ),
       ).toBe(1);
+
+      const conflictBefore = await evidenceConflictSnapshot(
+        [cleanUpload.evidenceId, rejectedUpload.evidenceId],
+        cleanIdempotencyKey,
+      );
+      const conflictingReplay = await invokeEvidence(automation.accessToken, {
+        command: "inspection",
+        evidence_id: cleanUpload.evidenceId,
+        decision: "rejected",
+        reason_code: "SCAN_REJECTED",
+        idempotency_key: cleanIdempotencyKey,
+      });
+      expect(conflictingReplay.status).toBe(200);
+      expect(await responseJson(conflictingReplay)).toEqual({
+        result: "denied",
+        reason_code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      expect(
+        await evidenceConflictSnapshot(
+          [cleanUpload.evidenceId, rejectedUpload.evidenceId],
+          cleanIdempotencyKey,
+        ),
+      ).toEqual(conflictBefore);
 
       const rejectedInspection = await invokeEvidence(automation.accessToken, {
         command: "inspection",

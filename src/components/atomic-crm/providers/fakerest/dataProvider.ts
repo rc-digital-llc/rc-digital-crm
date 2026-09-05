@@ -14,6 +14,7 @@ import type {
   BillingAutomationPrincipal,
   BillingContact,
   BillingEvidenceMetadata,
+  BillingInvoice,
   BillingRoleAssignment,
   Company,
   Contact,
@@ -25,6 +26,18 @@ import type {
   SignUpData,
   Task,
 } from "../../types";
+import {
+  HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+  USD_CURRENCY_POLICY_VERSION,
+  parseCanonicalIntegerText,
+  parseOrdinaryPercentageRateWire,
+  parseUsdMoney,
+  reduceExactRatio,
+  roundExactRatioToUsdMoney,
+  type ExactRatio,
+  type OrdinaryPercentageRate,
+  type UsdMoney,
+} from "../../financial/exactMoney";
 import type { ConfigurationContextValue } from "../../root/ConfigurationContext";
 import { getActivityLog } from "../commons/activity";
 import { getCompanyAvatar } from "../commons/getCompanyAvatar";
@@ -41,16 +54,490 @@ import type {
   BillingEvidenceInspectionResponse,
   BillingEvidenceUploadRequest,
   BillingEvidenceUploadResponse,
+  ExactBillingInvoiceGetResponse,
+  ExactBillingInvoiceListFilter,
+  ExactBillingInvoiceListRequest,
+  ExactBillingInvoiceListResponse,
+  ExactBillingInvoiceSaveRequest,
+  ExactBillingInvoiceSaveResponse,
+} from "../types";
+import {
+  EXACT_BILLING_INVOICE_MAX_PAGE,
+  isCanonicalExactBillingInvoiceDate,
 } from "../types";
 import { authProvider, USER_STORAGE_KEY } from "./authProvider";
 import generateData from "./dataGenerator";
 import {
+  DEMO_BILLING_ACCOUNT_ID,
+  DEMO_BILLING_ORGANIZATION_ID,
   DEMO_EVIDENCE_EXPIRES_AT,
   DEMO_EVIDENCE_NOW,
+  generateExactBillingInvoices,
 } from "./dataGenerator/billingAccounts";
 import { withSupabaseFilterAdapter } from "./internal/supabaseAdapter";
 
 const baseDataProvider = fakeRestDataProvider(generateData(), true, 300);
+
+const invoiceReadSortFields = [
+  "id",
+  "invoice_number",
+  "status",
+  "issue_date",
+  "created_at",
+  "total_amount_minor",
+] as const;
+const invoiceReadFilterFields = [
+  "billing_account_id",
+  "status",
+  "invoice_number",
+] as const;
+const invoiceSaveFields = [
+  "id",
+  "billing_account_id",
+  "invoice_number",
+  "description",
+  "amount",
+  "currency_policy_version",
+  "tax_rate",
+  "rounding_policy_version",
+  "line_items",
+  "status",
+  "issue_date",
+  "due_date",
+  "payment_method",
+  "payment_reference",
+  "notes",
+  "terms",
+] as const;
+const invoiceRequiredSaveFields = [
+  "billing_account_id",
+  "invoice_number",
+  "amount",
+  "currency_policy_version",
+  "tax_rate",
+  "rounding_policy_version",
+  "line_items",
+  "issue_date",
+] as const;
+const invoiceUuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const invoiceIdPattern = /^[1-9][0-9]{0,18}$/;
+
+type UnknownRecord = Record<string, unknown>;
+
+function isUnknownRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasOnlyFields(
+  value: UnknownRecord,
+  allowed: readonly string[],
+): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+
+function hasRequiredFields(
+  value: UnknownRecord,
+  required: readonly string[],
+): boolean {
+  return required.every((key) => Object.hasOwn(value, key));
+}
+
+function failInvoiceRead(code: "REQUEST" | "RESPONSE" | "NOT_FOUND"): never {
+  throw new Error(`INVOICE_READ_INVALID_${code}`);
+}
+
+function failInvoiceSave(code: "REQUEST" | "RESPONSE"): never {
+  throw new Error(`INVOICE_SAVE_INVALID_${code}`);
+}
+
+function parseInvoiceId(value: unknown, failure: () => never): string {
+  if (typeof value !== "string" || !invoiceIdPattern.test(value)) failure();
+  try {
+    return parseCanonicalIntegerText(value);
+  } catch {
+    return failure();
+  }
+}
+
+function parseInvoiceUuid(value: unknown, failure: () => never): string {
+  if (typeof value !== "string" || !invoiceUuidPattern.test(value)) failure();
+  return value;
+}
+
+function parseOptionalString(
+  value: unknown,
+  failure: () => never,
+): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") failure();
+  return value;
+}
+
+function parseOptionalNullableString(
+  value: unknown,
+  failure: () => never,
+): string | null | undefined {
+  if (value === undefined || value === null) return value;
+  if (typeof value !== "string") failure();
+  return value;
+}
+
+function parseInvoiceDate(
+  value: unknown,
+  failure: () => never,
+): string | undefined {
+  const parsed = parseOptionalString(value, failure);
+  if (parsed === undefined) return undefined;
+  if (!isCanonicalExactBillingInvoiceDate(parsed)) failure();
+  return parsed;
+}
+
+function parseRequiredInvoiceDate(
+  value: unknown,
+  failure: () => never,
+): string {
+  const parsed = parseInvoiceDate(value, failure);
+  if (parsed === undefined) return failure();
+  return parsed;
+}
+
+function parseExactInvoiceLineItem(
+  value: unknown,
+  failure: () => never,
+): BillingInvoice["line_items"][number] {
+  const expectedFields = [
+    "quantity_ratio",
+    "unit_price",
+    "extended_amount",
+    "currency_policy_version",
+    "rounding_policy_version",
+  ] as const;
+  if (
+    !isUnknownRecord(value) ||
+    !hasRequiredFields(value, expectedFields) ||
+    !hasOnlyFields(value, expectedFields) ||
+    value.currency_policy_version !== USD_CURRENCY_POLICY_VERSION ||
+    value.rounding_policy_version !==
+      HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION
+  ) {
+    return failure();
+  }
+
+  let quantityRatio: ExactRatio;
+  let unitPrice: UsdMoney;
+  let extendedAmount: UsdMoney;
+  try {
+    if (!isUnknownRecord(value.quantity_ratio)) return failure();
+    const numerator = parseCanonicalIntegerText(value.quantity_ratio.numerator);
+    const denominator = parseCanonicalIntegerText(
+      value.quantity_ratio.denominator,
+    );
+    quantityRatio = reduceExactRatio({ numerator, denominator });
+    if (
+      quantityRatio.numerator !== numerator ||
+      quantityRatio.denominator !== denominator
+    ) {
+      return failure();
+    }
+    unitPrice = parseUsdMoney(value.unit_price);
+    extendedAmount = parseUsdMoney(value.extended_amount);
+    const calculated = roundExactRatioToUsdMoney({
+      numerator: (
+        BigInt(unitPrice.amount_minor) * BigInt(quantityRatio.numerator)
+      ).toString(),
+      denominator: quantityRatio.denominator,
+      currency: "USD",
+      currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+      currency_exponent: 2,
+      rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+    });
+    if (calculated.amount_minor !== extendedAmount.amount_minor) {
+      return failure();
+    }
+  } catch {
+    return failure();
+  }
+
+  return Object.freeze({
+    quantity_ratio: quantityRatio,
+    unit_price: unitPrice,
+    extended_amount: extendedAmount,
+    currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+    rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+  });
+}
+
+function parseExactInvoiceLineItems(
+  value: unknown,
+  failure: () => never,
+): BillingInvoice["line_items"] {
+  if (!Array.isArray(value)) return failure();
+  return Object.freeze(
+    value.map((item) => parseExactInvoiceLineItem(item, failure)),
+  );
+}
+
+function parseInvoiceListRequest(
+  params: Parameters<CrmDataProvider["getList"]>[1],
+): ExactBillingInvoiceListRequest {
+  const page = params.pagination?.page ?? 1;
+  const perPage = params.pagination?.perPage ?? 50;
+  const sort = params.sort?.field ?? "created_at";
+  const order = params.sort?.order ?? "DESC";
+  const filter: unknown = params.filter ?? {};
+  if (
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    page > EXACT_BILLING_INVOICE_MAX_PAGE ||
+    !Number.isSafeInteger(perPage) ||
+    perPage < 1 ||
+    perPage > 100 ||
+    !invoiceReadSortFields.includes(
+      sort as (typeof invoiceReadSortFields)[number],
+    ) ||
+    (order !== "ASC" && order !== "DESC") ||
+    !isUnknownRecord(filter) ||
+    !hasOnlyFields(filter, invoiceReadFilterFields)
+  ) {
+    return failInvoiceRead("REQUEST");
+  }
+
+  const filters: ExactBillingInvoiceListFilter = Object.freeze({
+    billing_account_id:
+      filter.billing_account_id === undefined
+        ? undefined
+        : parseInvoiceUuid(filter.billing_account_id, () =>
+            failInvoiceRead("REQUEST"),
+          ),
+    status: parseOptionalString(filter.status, () =>
+      failInvoiceRead("REQUEST"),
+    ),
+    invoice_number: parseOptionalString(filter.invoice_number, () =>
+      failInvoiceRead("REQUEST"),
+    ),
+  });
+  return Object.freeze({
+    mode: "list",
+    page,
+    per_page: perPage,
+    sort: sort as ExactBillingInvoiceListRequest["sort"],
+    order,
+    filters,
+  });
+}
+
+function parseExactBillingInvoiceSaveRequest(
+  value: unknown,
+): ExactBillingInvoiceSaveRequest {
+  const failure = () => failInvoiceSave("REQUEST");
+  if (
+    !isUnknownRecord(value) ||
+    !hasRequiredFields(value, invoiceRequiredSaveFields) ||
+    !hasOnlyFields(value, invoiceSaveFields) ||
+    value.currency_policy_version !== USD_CURRENCY_POLICY_VERSION ||
+    value.rounding_policy_version !==
+      HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION ||
+    (value.status !== undefined && value.status !== "Draft") ||
+    typeof value.invoice_number !== "string" ||
+    value.invoice_number.trim().length === 0 ||
+    new TextEncoder().encode(value.invoice_number).byteLength > 128
+  ) {
+    return failure();
+  }
+
+  let amount: UsdMoney;
+  let taxRate: OrdinaryPercentageRate;
+  try {
+    amount = parseUsdMoney(value.amount);
+    taxRate = parseOrdinaryPercentageRateWire(value.tax_rate);
+  } catch {
+    return failure();
+  }
+  const lineItems = parseExactInvoiceLineItems(value.line_items, failure);
+  const lineTotal = lineItems.reduce(
+    (sum, item) => sum + BigInt(item.extended_amount.amount_minor),
+    0n,
+  );
+  if (lineTotal !== BigInt(amount.amount_minor)) return failure();
+
+  const optionalDate = (candidate: unknown): string | null | undefined => {
+    if (candidate === null || candidate === undefined) return candidate;
+    return parseInvoiceDate(candidate, failure);
+  };
+  return Object.freeze({
+    id: value.id === undefined ? undefined : parseInvoiceId(value.id, failure),
+    billing_account_id: parseInvoiceUuid(value.billing_account_id, failure),
+    invoice_number: value.invoice_number,
+    description: parseOptionalNullableString(value.description, failure),
+    amount,
+    currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+    tax_rate: taxRate,
+    rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+    line_items: lineItems,
+    status: value.status === undefined ? undefined : "Draft",
+    issue_date: parseRequiredInvoiceDate(value.issue_date, failure),
+    due_date: optionalDate(value.due_date),
+    payment_method: parseOptionalNullableString(value.payment_method, failure),
+    payment_reference: parseOptionalNullableString(
+      value.payment_reference,
+      failure,
+    ),
+    notes: parseOptionalNullableString(value.notes, failure),
+    terms: parseOptionalNullableString(value.terms, failure),
+  });
+}
+
+function compareInvoices(
+  left: BillingInvoice,
+  right: BillingInvoice,
+  sort: ExactBillingInvoiceListRequest["sort"],
+): number {
+  if (sort === "id" || sort === "total_amount_minor") {
+    const leftValue =
+      sort === "id" ? BigInt(left.id) : BigInt(left.total_amount.amount_minor);
+    const rightValue =
+      sort === "id"
+        ? BigInt(right.id)
+        : BigInt(right.total_amount.amount_minor);
+    return leftValue < rightValue ? -1 : leftValue > rightValue ? 1 : 0;
+  }
+  return String(left[sort] ?? "").localeCompare(String(right[sort] ?? ""));
+}
+
+export function createFakeRestExactInvoiceProvider(): Pick<
+  CrmDataProvider,
+  | "listExactBillingInvoices"
+  | "getExactBillingInvoice"
+  | "saveExactBillingInvoice"
+> {
+  const invoices = generateExactBillingInvoices();
+
+  return {
+    async listExactBillingInvoices(
+      params,
+    ): Promise<ExactBillingInvoiceListResponse> {
+      const request = parseInvoiceListRequest(params);
+      const selected = invoices
+        .filter(
+          (invoice) =>
+            (request.filters.billing_account_id === undefined ||
+              invoice.billing_account_id ===
+                request.filters.billing_account_id) &&
+            (request.filters.status === undefined ||
+              invoice.status === request.filters.status) &&
+            (request.filters.invoice_number === undefined ||
+              invoice.invoice_number === request.filters.invoice_number),
+        )
+        .sort((left, right) => {
+          const compared = compareInvoices(left, right, request.sort);
+          if (compared !== 0)
+            return request.order === "ASC" ? compared : -compared;
+          return BigInt(left.id) < BigInt(right.id) ? -1 : 1;
+        });
+      const offset = (request.page - 1) * request.per_page;
+      return Object.freeze({
+        data: selected.slice(offset, offset + request.per_page),
+        total: selected.length,
+      });
+    },
+    async getExactBillingInvoice(
+      invoiceId,
+    ): Promise<ExactBillingInvoiceGetResponse> {
+      const parsedId = parseInvoiceId(invoiceId, () =>
+        failInvoiceRead("REQUEST"),
+      );
+      const invoice = invoices.find((candidate) => candidate.id === parsedId);
+      if (!invoice) return failInvoiceRead("NOT_FOUND");
+      return Object.freeze({ data: invoice });
+    },
+    async saveExactBillingInvoice(
+      value,
+    ): Promise<ExactBillingInvoiceSaveResponse> {
+      const request = parseExactBillingInvoiceSaveRequest(value);
+      if (request.billing_account_id !== DEMO_BILLING_ACCOUNT_ID) {
+        return failInvoiceSave("RESPONSE");
+      }
+      const previous =
+        request.id === undefined
+          ? undefined
+          : invoices.find((invoice) => invoice.id === request.id);
+      if (request.id !== undefined && previous === undefined) {
+        return failInvoiceSave("RESPONSE");
+      }
+      if (previous !== undefined && previous.status !== "Draft") {
+        return failInvoiceSave("RESPONSE");
+      }
+
+      let taxAmount: UsdMoney;
+      let totalAmount: UsdMoney;
+      try {
+        taxAmount = roundExactRatioToUsdMoney({
+          numerator: (
+            BigInt(request.amount.amount_minor) *
+            BigInt(request.tax_rate.numerator)
+          ).toString(),
+          denominator: request.tax_rate.denominator,
+          currency: "USD",
+          currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+          currency_exponent: 2,
+          rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+        });
+        totalAmount = parseUsdMoney({
+          amount_minor: (
+            BigInt(request.amount.amount_minor) + BigInt(taxAmount.amount_minor)
+          ).toString(),
+          currency: "USD",
+        });
+      } catch {
+        return failInvoiceSave("RESPONSE");
+      }
+
+      const nextId = previous
+        ? previous.id
+        : (
+            invoices.reduce(
+              (largest, invoice) =>
+                BigInt(invoice.id) > largest ? BigInt(invoice.id) : largest,
+              0n,
+            ) + 1n
+          ).toString();
+      const invoice = Object.freeze({
+        id: nextId,
+        organization_id: DEMO_BILLING_ORGANIZATION_ID,
+        billing_account_id: DEMO_BILLING_ACCOUNT_ID,
+        company_id: previous?.company_id ?? "1",
+        sales_id: previous?.sales_id ?? "1",
+        invoice_number: request.invoice_number,
+        description: request.description ?? undefined,
+        amount: request.amount,
+        currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+        tax_rate: request.tax_rate,
+        tax_amount: taxAmount,
+        total_amount: totalAmount,
+        rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+        line_items: request.line_items,
+        status: "Draft",
+        issue_date: request.issue_date,
+        due_date: request.due_date ?? undefined,
+        payment_method: request.payment_method ?? undefined,
+        payment_reference: request.payment_reference ?? undefined,
+        notes: request.notes ?? undefined,
+        terms: request.terms ?? "Payment due within 30 days of invoice date.",
+        created_at: previous?.created_at ?? DEMO_EVIDENCE_NOW,
+        updated_at: DEMO_EVIDENCE_NOW,
+      }) satisfies BillingInvoice;
+      if (previous) {
+        invoices[invoices.indexOf(previous)] = invoice;
+      } else {
+        invoices.push(invoice);
+      }
+      return Object.freeze({ result: "saved", data: invoice });
+    },
+  };
+}
+
+const exactInvoiceProvider = createFakeRestExactInvoiceProvider();
 
 const TASK_MARKED_AS_DONE = "TASK_MARKED_AS_DONE";
 const TASK_MARKED_AS_UNDONE = "TASK_MARKED_AS_UNDONE";
@@ -152,6 +639,38 @@ async function fetchAndUpdateCompanyData(
 
 const dataProviderWithCustomMethod: CrmDataProvider = {
   ...baseDataProvider,
+  ...exactInvoiceProvider,
+  async getList(resource, params) {
+    if (resource === "invoices") {
+      return exactInvoiceProvider.listExactBillingInvoices(params);
+    }
+    return baseDataProvider.getList(resource, params);
+  },
+  async getOne(resource, params) {
+    if (resource === "invoices") {
+      return exactInvoiceProvider.getExactBillingInvoice(params.id);
+    }
+    return baseDataProvider.getOne(resource, params);
+  },
+  async create(resource, params) {
+    if (resource === "invoices") {
+      const result = await exactInvoiceProvider.saveExactBillingInvoice(
+        params.data,
+      );
+      return { data: result.data };
+    }
+    return baseDataProvider.create(resource, params);
+  },
+  async update(resource, params) {
+    if (resource === "invoices") {
+      const result = await exactInvoiceProvider.saveExactBillingInvoice({
+        ...params.data,
+        id: params.id,
+      });
+      return { data: result.data };
+    }
+    return baseDataProvider.update(resource, params);
+  },
   unarchiveDeal: async (deal: Deal) => {
     // get all deals where stage is the same as the deal to unarchive
     const { data: deals } = await baseDataProvider.getList<Deal>("deals", {

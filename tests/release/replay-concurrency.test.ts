@@ -22,7 +22,12 @@ type AutomationCommandResult = {
 };
 
 const repositoryRoot = path.resolve(__dirname, "../..");
-const projectId = "atomic-crm-demo";
+const projectId = fs
+  .readFileSync(path.join(repositoryRoot, "supabase/config.toml"), "utf8")
+  .match(/^project_id\s*=\s*"([^"]+)"/m)?.[1];
+if (!projectId) {
+  throw new Error("supabase project_id is unavailable");
+}
 const expectedContainer = `supabase_db_${projectId}`;
 
 function redact(value: string) {
@@ -190,8 +195,12 @@ async function countEffects(
 async function applyAutomationCommand(
   container: string,
   idempotencyKey: string,
+  amountMinor = "100",
 ) {
   assertIdentifier(idempotencyKey);
+  if (!/^(0|-?[1-9][0-9]{0,18})$/.test(amountMinor)) {
+    throw new Error("test automation money is invalid");
+  }
   const output = await psql(
     container,
     `BEGIN;
@@ -204,7 +213,7 @@ async function applyAutomationCommand(
        'provider-alpha-fixture',
        'policy-fixture-v1',
        'record.concurrent',
-       1.00,
+       '{"amount_minor":"${amountMinor}","currency":"USD"}'::jsonb,
        '${idempotencyKey}'
      )::text;
      COMMIT;`,
@@ -379,14 +388,20 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
             container,
             `SELECT jsonb_build_object(
                'actions', actions_consumed,
-               'amount', total_amount_consumed::text,
+               'amount_minor', total_amount_consumed_minor::text,
+               'currency', currency,
                'status', status
              )::text
              FROM public.billing_automation_grants
              WHERE id = '21000000-0000-0000-0000-000000000501'`,
           ),
         ),
-      ).toEqual({ actions: 1, amount: "1.00", status: "exhausted" });
+      ).toEqual({
+        actions: 1,
+        amount_minor: "100",
+        currency: "USD",
+        status: "exhausted",
+      });
       expect(
         Number(
           await psql(
@@ -399,6 +414,92 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
           ),
         ),
       ).toBe(1);
+
+      const stateBeforeConflict = await psql(
+        container,
+        `SELECT jsonb_build_object(
+           'grant', (
+             SELECT jsonb_build_object(
+               'actions', actions_consumed,
+               'amount_minor', total_amount_consumed_minor::text,
+               'status', status
+             )
+             FROM public.billing_automation_grants
+             WHERE id = '21000000-0000-0000-0000-000000000501'
+           ),
+           'execution', (
+             SELECT jsonb_build_object(
+               'count', count(*),
+               'amount_minor', min(amount_minor)::text,
+               'request_fingerprints', count(DISTINCT request_fingerprint),
+               'effect_fingerprints', count(DISTINCT effect_fingerprint)
+             )
+             FROM public.billing_automation_executions
+             WHERE idempotency_key = '${idempotencyKey}'
+           ),
+           'audit_count', (
+             SELECT count(*)
+             FROM public.billing_audit_events
+             WHERE actor_id = '21000000-0000-0000-0000-000000000400'
+               AND action = 'automation.command'
+               AND subject_id = '${idempotencyKey}'
+           )
+         )::text`,
+      );
+      await expect(
+        applyAutomationCommand(container, idempotencyKey, "101"),
+      ).resolves.toEqual({
+        result: "denied",
+        reason_code: "IDEMPOTENCY_KEY_CONFLICT",
+      });
+      await expect(
+        applyAutomationCommand(container, "automation-negative", "-1"),
+      ).resolves.toEqual({
+        result: "denied",
+        reason_code: "FINANCIAL_INVALID_MONEY",
+      });
+      expect(
+        await psql(
+          container,
+          `SELECT jsonb_build_object(
+             'grant', (
+               SELECT jsonb_build_object(
+                 'actions', actions_consumed,
+                 'amount_minor', total_amount_consumed_minor::text,
+                 'status', status
+               )
+               FROM public.billing_automation_grants
+               WHERE id = '21000000-0000-0000-0000-000000000501'
+             ),
+             'execution', (
+               SELECT jsonb_build_object(
+                 'count', count(*),
+                 'amount_minor', min(amount_minor)::text,
+                 'request_fingerprints', count(DISTINCT request_fingerprint),
+                 'effect_fingerprints', count(DISTINCT effect_fingerprint)
+               )
+               FROM public.billing_automation_executions
+               WHERE idempotency_key = '${idempotencyKey}'
+             ),
+             'audit_count', (
+               SELECT count(*)
+               FROM public.billing_audit_events
+               WHERE actor_id = '21000000-0000-0000-0000-000000000400'
+                 AND action = 'automation.command'
+                 AND subject_id = '${idempotencyKey}'
+             )
+           )::text`,
+        ),
+      ).toBe(stateBeforeConflict);
+      expect(
+        Number(
+          await psql(
+            container,
+            `SELECT count(*) FROM public.billing_automation_executions
+             WHERE idempotency_key = 'automation-negative'`,
+          ),
+        ),
+      ).toBe(0);
     }, 30000);
   },
 );

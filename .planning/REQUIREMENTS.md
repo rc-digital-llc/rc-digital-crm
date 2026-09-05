@@ -131,13 +131,13 @@ history.
 
 ### Exact Calculations
 
-- [ ] **CALC-01**: All authoritative money is represented as integer minor units
+- [x] **CALC-01**: All authoritative money is represented as integer minor units
   with explicit currency, and all rates use an exact scaled or rational form
   without JavaScript floating-point authority.
 - [ ] **CALC-02**: The calculation engine deterministically supports fixed,
   percentage, minimum-support, and hybrid formulas from the effective agreement
   and accepted revenue period.
-- [ ] **CALC-03**: Each formula version applies an explicitly named and tested
+- [x] **CALC-03**: Each formula version applies an explicitly named and tested
   rounding policy for fractional minor units, ties, negative adjustments, and
   currency boundaries.
 - [ ] **CALC-04**: Every calculation freezes its agreement version, evidence
@@ -458,9 +458,9 @@ A v1 requirement is complete only when:
 | REV-07 | Phase 4 | Pending |
 | REV-08 | Phase 4 | Pending |
 | REV-09 | Phase 4 | Pending |
-| CALC-01 | Phase 3 | Pending |
+| CALC-01 | Phase 3 | Complete |
 | CALC-02 | Phase 4 | Pending |
-| CALC-03 | Phase 3 | Pending |
+| CALC-03 | Phase 3 | Complete |
 | CALC-04 | Phase 4 | Pending |
 | CALC-05 | Phase 4 | Pending |
 | CALC-06 | Phase 4 | Pending |

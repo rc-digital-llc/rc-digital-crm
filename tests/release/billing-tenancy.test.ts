@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -14,8 +15,7 @@ type BillingResource =
   | "billing_account_owners"
   | "billing_contacts"
   | "billing_role_assignments"
-  | "billing_audit_events"
-  | "invoices";
+  | "billing_audit_events";
 
 type Principal = {
   accessToken: string;
@@ -67,15 +67,29 @@ type ProtectedState = {
     effective_until: string | null;
     id: string;
   }[];
+  invoices: {
+    amount_minor: string;
+    id: string;
+    invoice_number: string;
+    total_amount_minor: string;
+  }[];
 };
 
 const apiUrl = process.env.SUPABASE_URL;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const activePrincipals: Principal[] = [];
 const repositoryRoot = path.resolve(__dirname, "../..");
-const expectedContainer = "supabase_db_atomic-crm-demo";
+const projectId = fs
+  .readFileSync(path.join(repositoryRoot, "supabase/config.toml"), "utf8")
+  .match(/^project_id\s*=\s*"([^"]+)"/m)?.[1];
+if (!projectId) throw new Error("supabase project_id is unavailable");
+const expectedContainer = `supabase_db_${projectId}`;
 let databaseContainer: string | undefined;
 const mutationContactId = "21000000-0000-0000-0000-000000000320";
+const tenantInvoiceIds: Record<TenantName, string> = {
+  alpha: "210001",
+  bravo: "220001",
+};
 const tenants: Record<TenantName, TenantFixture> = {
   alpha: {
     organizationId: "21000000-0000-0000-0000-000000000100",
@@ -99,7 +113,6 @@ const resources: BillingResource[] = [
   "billing_contacts",
   "billing_role_assignments",
   "billing_audit_events",
-  "invoices",
 ];
 const sameTenantVisibility: Record<BillingRole, Set<BillingResource>> = {
   administrator: new Set(resources),
@@ -282,6 +295,13 @@ async function restRequest(
   });
 }
 
+async function invoiceRpcRequest(token: string | undefined, body: unknown) {
+  return restRequest("rpc/read_billing_invoices_exact", token, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 async function createPrincipal(
   tenant: TenantName,
   role: BillingRole,
@@ -378,12 +398,23 @@ function fixtureSql(principals: Map<string, Principal>) {
     END
     WHERE id IN ('${tenants.alpha.accountId}', '${tenants.bravo.accountId}');
 
-    INSERT INTO public.invoices
-      (id, company_id, sales_id, invoice_number, amount, total_amount, status,
-       organization_id, billing_account_id)
+    INSERT INTO public.invoices (
+      id, company_id, sales_id, organization_id, billing_account_id,
+      invoice_number, amount_minor, currency, currency_policy_version,
+      tax_rate_kind, tax_rate_numerator, tax_rate_denominator,
+      submitted_percentage, rate_policy_version, tax_amount_minor,
+      total_amount_minor, rounding_policy_version, line_items_exact,
+      line_items_legacy_evidence, status
+    )
     VALUES
-      (210001, 210001, ${assertSalesId(alphaOperator.salesId)}, 'HTTP-ALPHA', 100.00, 100.00, 'Draft', '${tenants.alpha.organizationId}', '${tenants.alpha.accountId}'),
-      (220001, 220001, ${assertSalesId(bravoOperator.salesId)}, 'HTTP-BRAVO', 200.00, 200.00, 'Draft', '${tenants.bravo.organizationId}', '${tenants.bravo.accountId}');
+      (210001, 210001, ${assertSalesId(alphaOperator.salesId)}, '${tenants.alpha.organizationId}', '${tenants.alpha.accountId}',
+       'HTTP-ALPHA', 10000, 'USD', 'usd-v1', 'ordinary_percentage', 0, 1,
+       '0%', 'ordinary-percentage-v1', 0, 10000, 'half-away-from-zero-v1',
+       '[]'::jsonb, '[]'::jsonb, 'Draft'),
+      (220001, 220001, ${assertSalesId(bravoOperator.salesId)}, '${tenants.bravo.organizationId}', '${tenants.bravo.accountId}',
+       'HTTP-BRAVO', 20000, 'USD', 'usd-v1', 'ordinary_percentage', 0, 1,
+       '0%', 'ordinary-percentage-v1', 0, 20000, 'half-away-from-zero-v1',
+       '[]'::jsonb, '[]'::jsonb, 'Draft');
   COMMIT;`;
 }
 
@@ -420,12 +451,7 @@ async function setupHumanWorld(): Promise<Map<string, Principal>> {
 }
 
 function resourceQuery(resource: BillingResource, accountId: string) {
-  const key =
-    resource === "billing_accounts"
-      ? "id"
-      : resource === "invoices"
-        ? "billing_account_id"
-        : "account_id";
+  const key = resource === "billing_accounts" ? "id" : "account_id";
   return `${resource}?select=id&${key}=eq.${encodeURIComponent(accountId)}`;
 }
 
@@ -499,6 +525,16 @@ async function protectedState(): Promise<ProtectedState> {
       FROM public.billing_role_assignments AS assignment
       WHERE assignment.account_id IN ('${tenants.alpha.accountId}', '${tenants.bravo.accountId}')
     ),
+    'invoices', (
+      SELECT COALESCE(jsonb_agg(jsonb_build_object(
+        'id', invoice.id::text,
+        'invoice_number', invoice.invoice_number,
+        'amount_minor', invoice.amount_minor::text,
+        'total_amount_minor', invoice.total_amount_minor::text
+      ) ORDER BY invoice.id), '[]'::jsonb)
+      FROM public.invoices AS invoice
+      WHERE invoice.id IN (${tenantInvoiceIds.alpha}, ${tenantInvoiceIds.bravo})
+    ),
     'audit_count', (SELECT count(*) FROM public.billing_audit_events)
   )::text`);
 }
@@ -516,6 +552,14 @@ async function expectDeniedMutation(
   } else {
     expectSafePublicFailure(response, body);
   }
+  expect(await protectedState()).toEqual(before);
+}
+
+async function expectDeniedInvoiceTableMutation(
+  response: Response,
+  before: ProtectedState,
+) {
+  expectSafePublicFailure(response, await responseJson(response));
   expect(await protectedState()).toEqual(before);
 }
 
@@ -584,7 +628,7 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
 
     it("human roles obey the complete two-tenant read registry", async () => {
       const registry = humanReadRegistry();
-      expect(registry).toHaveLength(120);
+      expect(registry).toHaveLength(100);
       expect(principals.size).toBe(10);
 
       for (const testCase of registry) {
@@ -605,12 +649,77 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
         expect(rows.length > 0).toBe(testCase.expectedVisibility);
       }
 
+      for (const principalTenant of Object.keys(tenants) as TenantName[]) {
+        for (const role of roles) {
+          const principal = principals.get(`${principalTenant}-${role}`)!;
+          for (const targetTenant of Object.keys(tenants) as TenantName[]) {
+            const expectedVisibility =
+              principalTenant === targetTenant && role !== "customer";
+            const list = await invoiceRpcRequest(principal.accessToken, {
+              mode: "list",
+              page: 1,
+              per_page: 10,
+              sort: "id",
+              order: "ASC",
+              filters: {
+                billing_account_id: tenants[targetTenant].accountId,
+              },
+            });
+            expect(
+              list.status,
+              `${principalTenant}-${role} invoice list for ${targetTenant}`,
+            ).toBe(200);
+            const listBody = (await responseJson(list)) as {
+              data: Array<{ id: string }>;
+              total: number;
+            };
+            expect(listBody.total).toBe(expectedVisibility ? 1 : 0);
+            expect(listBody.data.map(({ id }) => id)).toEqual(
+              expectedVisibility ? [tenantInvoiceIds[targetTenant]] : [],
+            );
+
+            const get = await invoiceRpcRequest(principal.accessToken, {
+              mode: "get",
+              invoice_id: tenantInvoiceIds[targetTenant],
+            });
+            expect(
+              get.status,
+              `${principalTenant}-${role} invoice get for ${targetTenant}`,
+            ).toBe(200);
+            const getBody = (await responseJson(get)) as {
+              data: null | { id: string };
+            };
+            expect(getBody.data?.id ?? null).toEqual(
+              expectedVisibility ? tenantInvoiceIds[targetTenant] : null,
+            );
+          }
+        }
+      }
+
       for (const resource of resources) {
         const response = await restRequest(
           resourceQuery(resource, tenants.alpha.accountId),
         );
         expectSafePublicFailure(response, await responseJson(response));
       }
+
+      const anonymousInvoice = await invoiceRpcRequest(undefined, {
+        mode: "list",
+        page: 1,
+        per_page: 10,
+        sort: "id",
+        order: "ASC",
+        filters: { billing_account_id: tenants.alpha.accountId },
+      });
+      expectSafePublicFailure(
+        anonymousInvoice,
+        await responseJson(anonymousInvoice),
+      );
+      const directInvoice = await restRequest(
+        `invoices?select=id&billing_account_id=eq.${tenants.alpha.accountId}`,
+        principals.get("alpha-operator")!.accessToken,
+      );
+      expectSafePublicFailure(directInvoice, await responseJson(directInvoice));
 
       expect(activePrincipals).toHaveLength(10);
       expect(
@@ -629,9 +738,10 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
         "cross-tenant",
         "wrong-role",
         "browser-authored-tenant",
+        "direct-invoice-table",
         "hard-delete",
       ];
-      expect(requiredCaseClasses).toHaveLength(7);
+      expect(requiredCaseClasses).toHaveLength(8);
       expect(principals.size).toBe(10);
 
       const operator = principals.get("alpha-operator")!;
@@ -789,6 +899,38 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
         ),
         beforeDenied,
       );
+
+      for (const [pathName, init] of [
+        [
+          "invoices",
+          {
+            method: "POST",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ invoice_number: "DIRECT-DENIED" }),
+          },
+        ],
+        [
+          `invoices?id=eq.${tenantInvoiceIds.alpha}`,
+          {
+            method: "PATCH",
+            headers: { Prefer: "return=representation" },
+            body: JSON.stringify({ invoice_number: "DIRECT-DENIED" }),
+          },
+        ],
+        [
+          `invoices?id=eq.${tenantInvoiceIds.alpha}`,
+          {
+            method: "DELETE",
+            headers: { Prefer: "return=representation" },
+          },
+        ],
+      ] satisfies Array<[string, RequestInit]>) {
+        beforeDenied = await protectedState();
+        await expectDeniedInvoiceTableMutation(
+          await restRequest(pathName, operator.accessToken, init),
+          beforeDenied,
+        );
+      }
 
       for (const pathName of [
         `billing_accounts?id=eq.${tenants.alpha.accountId}`,

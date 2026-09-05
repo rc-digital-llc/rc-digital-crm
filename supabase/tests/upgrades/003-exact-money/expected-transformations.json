@@ -1,0 +1,76 @@
+{
+  "version": "1.0.0",
+  "registry_id": "003-exact-money",
+  "sequence": 3,
+  "baseline_id": "002-pre-financial-pg17",
+  "migrations": ["20260902000001", "20260902000002"],
+  "transformations": {
+    "invoice_exact_values": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "e07790fdba15bf3360d53ff2a403d6218c1d8423f0ddd6f6d4a97fe0666cda36"
+    },
+    "invoice_exact_line_items": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "3758a3f8cde952aac76bfd6095324ad8d2d2b486b08a27ef1061b46e013eca6f"
+    },
+    "automation_exact_values": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "20821389737d854852ce8ba28e6dc9c01b34d45120c3902385c802964db54a4b"
+    },
+    "automation_request_effect_fingerprints": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "9da747f793eef564837f881298e20c2774de3f2e868abf0420a67f9da3d72fc3"
+    },
+    "evidence_finalization_exact": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "082b5f2d7cc83108fb3fe7acd99e0138c6f3f0cb7afbf35c2c50c528034fa733"
+    },
+    "invoice_rpc_contracts": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "1c686ec92abc22e2ec1a0244cbd71eaea4d1409473c18c25854e302cec33b12b"
+    },
+    "invoice_acl_contract": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "8882dd2601acdc6bda6062e54e454a84fbdf05166c574be30c9a73485852003c"
+    },
+    "exact_billing_constraints": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "70ee94ecc19e76f35a3da47023f5ad21e08b14c893caeae33b9490c31d1022da"
+    },
+    "exact_billing_counts_ids": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "94059a47e2554d492b3273d980551fb9eda5d6e0422663e90f8c4b611e674ca7"
+    },
+    "money_compatibility": {
+      "migration": "20260902000002",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "e42f5ddeb295ea0e1febd04ffe942c4f43fa6540c5b7a179d01e3f4f5dc13288"
+    }
+  },
+  "semantic_invariants": [
+    "exact_invoice_values_canonical",
+    "exact_invoice_line_items_canonical",
+    "exact_automation_values_non_negative",
+    "exact_automation_fingerprints_canonical",
+    "exact_evidence_wrapper_replaced",
+    "exact_invoice_rpcs_caller_bound",
+    "exact_invoice_acl_least_privilege",
+    "exact_billing_constraints_valid",
+    "exact_billing_counts_ids_preserved",
+    "exact_money_compatibility_preserved",
+    "tax_rate_compatibility_exact",
+    "crm_informational_payloads_preserved",
+    "accepted_upgrade_history_immutable",
+    "legacy_evidence_replay_preserved",
+    "legacy_issue_date_preflight_atomic"
+  ]
+}
