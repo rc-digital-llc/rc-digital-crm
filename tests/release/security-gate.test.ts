@@ -22,6 +22,20 @@ const provenLocalSecretFingerprints = [
 ];
 const reviewedDocumentationFalsePositiveFingerprint =
   "8a90ce12bd295350c07bc10b978f234d5883802c:.planning/phases/02-tenant-role-and-evidence-security/02-07-SUMMARY.md:generic-api-key:78";
+const reviewedPhase4CommandKeyFalsePositives = [
+  "7b7dcbb18b672ed13a7631b44a2e3c207fd6668f:supabase/tests/database/70_billing_agreements.sql:generic-api-key:270",
+  "7b7dcbb18b672ed13a7631b44a2e3c207fd6668f:supabase/tests/database/70_billing_agreements.sql:generic-api-key:422",
+  "aee2b0c76ca05e7ef2bf06b686fdf585951da49f:src/components/atomic-crm/financial/billingCloseProviderContract.test.ts:generic-api-key:22",
+  "aee2b0c76ca05e7ef2bf06b686fdf585951da49f:src/components/atomic-crm/financial/billingCloseProviderContract.test.ts:generic-api-key:58",
+  "fbaa162ef8a65fbbc305b6ec2bde1bf23bf0ba5f:supabase/tests/database/75_billing_revenue_periods.sql:generic-api-key:558",
+  "fbaa162ef8a65fbbc305b6ec2bde1bf23bf0ba5f:supabase/tests/database/75_billing_revenue_periods.sql:generic-api-key:574",
+  "src/components/atomic-crm/financial/billingCloseProviderContract.test.ts:generic-api-key:25",
+  "src/components/atomic-crm/financial/billingCloseProviderContract.test.ts:generic-api-key:61",
+  "supabase/tests/database/70_billing_agreements.sql:generic-api-key:270",
+  "supabase/tests/database/70_billing_agreements.sql:generic-api-key:422",
+  "supabase/tests/database/75_billing_revenue_periods.sql:generic-api-key:585",
+  "supabase/tests/database/75_billing_revenue_periods.sql:generic-api-key:601",
+];
 
 const syntheticFinding = {
   RuleID: "generic-api-key",
@@ -123,6 +137,9 @@ describe("release security secret gate", () => {
       expect.arrayContaining(provenLocalSecretFingerprints),
     );
     expect(entries).toContain(reviewedDocumentationFalsePositiveFingerprint);
+    expect(entries).toEqual(
+      expect.arrayContaining(reviewedPhase4CommandKeyFalsePositives),
+    );
     expect(
       fs.readFileSync(
         path.join(
