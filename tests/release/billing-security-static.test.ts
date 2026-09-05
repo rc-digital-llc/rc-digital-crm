@@ -62,6 +62,9 @@ describe("billing resource registration", () => {
     expect(
       releaseMetadataSource.match(/auth-confirmation-redirect-v1/g),
     ).toHaveLength(1);
+    expect(
+      releaseMetadataSource.match(/phase-04-agreement-close-v1/g),
+    ).toHaveLength(1);
     expect(metadataSource).toContain("scrollPaddingBottom");
     expect(metadataSource).toContain('"9.5rem"');
     expect(metadataSource).toContain("ReleaseSurfaceMetadata");
@@ -187,7 +190,7 @@ describe("billing surface contracts", () => {
         "https://atomic-crm-sigma-one.vercel.app",
       );
       expect(contract.freshness_markers).toEqual([
-        "auth-confirmation-redirect-v1",
+        "phase-04-agreement-close-v1",
       ]);
       expect(routes).toEqual([
         {
@@ -198,9 +201,14 @@ describe("billing surface contracts", () => {
           path: "/billing_accounts/create",
           expected_canonical_path: "/billing_accounts/create",
         },
+        {
+          path: "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+          expected_canonical_path:
+            "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+        },
       ]);
       expect(contract.readiness_selector).toBe(
-        '[data-surface-version="auth-confirmation-redirect-v1"]',
+        '[data-phase4-surface-version="phase-04-agreement-close-v1"]',
       );
       expect(contract.min_touch_target_css_px).toBe(44);
       expect(contract.max_console_errors).toBe(0);
@@ -211,6 +219,16 @@ describe("billing surface contracts", () => {
       expect(
         targets.some(({ selector }) =>
           String(selector).includes("Open billing account details"),
+        ),
+      ).toBe(true);
+      expect(
+        targets.some(({ selector }) =>
+          String(selector).includes("phase4-agreement-action"),
+        ),
+      ).toBe(true);
+      expect(
+        targets.some(({ selector }) =>
+          String(selector).includes("phase4-revenue-action"),
         ),
       ).toBe(true);
       expect(fixed).toHaveLength(2);

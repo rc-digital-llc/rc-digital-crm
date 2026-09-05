@@ -213,4 +213,48 @@ describe("Phase 4 protected release coupling", () => {
     expect(verifier).toContain("loopbackHosts");
     expect(verifier).not.toMatch(/supabase["',\s]+link/);
   });
+
+  it("keeps source, preview, and production as independent Phase 4 surface stages", () => {
+    const contracts = [
+      readJson("qa/billing-accounts.surface.source.json"),
+      readJson("qa/billing-accounts.surface.preview.json"),
+      readJson("qa/billing-accounts.surface.production.json"),
+    ];
+    expect((contracts[0].viewports as unknown[]).length).toBe(2);
+    expect((contracts[1].viewports as unknown[]).length).toBe(5);
+    expect((contracts[2].viewports as unknown[]).length).toBe(5);
+    for (const contract of contracts) {
+      expect(contract.freshness_markers).toEqual([
+        "phase-04-agreement-close-v1",
+      ]);
+      expect(contract.readiness_selector).toBe(
+        '[data-phase4-surface-version="phase-04-agreement-close-v1"]',
+      );
+      expect(contract.min_touch_target_css_px).toBe(44);
+      expect(JSON.stringify(contract.routes)).toContain(
+        "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      );
+      expect(JSON.stringify(contract.critical_targets)).toContain(
+        "data-critical-phase4-agreement-action",
+      );
+      expect(JSON.stringify(contract.critical_targets)).toContain(
+        "data-critical-phase4-revenue-action",
+      );
+    }
+    expect(contracts[0].expected_serving_origin).toBe("http://127.0.0.1:4179");
+    expect(contracts[1].expected_serving_origin).not.toBe(
+      contracts[2].expected_serving_origin,
+    );
+  });
+
+  it("records the exact committed implementation head in the source receipt", () => {
+    const runner = readSource("scripts/release/run-billing-source-surface.mjs");
+    expect(runner).toContain('runBuffered("git", ["rev-parse", "HEAD"])');
+    expect(runner).toContain("implementation_head_marker");
+    expect(runner).toContain("committed-except-runtime-config");
+    expect(runner).toContain("artifacts/surface/phase-04-source.json");
+    expect(runner).toContain("artifacts/surface/phase-04-source-screenshots");
+    expect(runner).toContain("surface_gate.py");
+    expect(runner).not.toMatch(/execSync|execFileSync|shell:\s*true/);
+  });
 });

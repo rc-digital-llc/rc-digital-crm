@@ -862,6 +862,7 @@ const RevisionEvidenceCard = ({
               type="button"
               variant="outline"
               className="h-11"
+              data-critical-phase4-revenue-action
               disabled={pending}
               onClick={onAddRevision}
             >

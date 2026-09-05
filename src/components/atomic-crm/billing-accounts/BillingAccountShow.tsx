@@ -31,6 +31,7 @@ import { BillingAccountAccessPanels } from "./BillingAccountAccessPanels";
 import { BillingAccountEvidencePanel } from "./BillingAccountEvidencePanel";
 import { BillingAgreementPanel } from "./BillingAgreementPanel";
 import { BillingMonthlyClosePanel } from "./BillingMonthlyClosePanel";
+import { BillingSurfaceMetadata } from "./BillingSurfaceMetadata";
 
 const statusLabels: Record<BillingAccount["billing_status"], string> = {
   active: "Active",
@@ -73,6 +74,7 @@ const BillingAccountShowController = () => {
 
 const BillingAccountShowDesktop = ({ record }: { record: BillingAccount }) => (
   <div className="min-w-0 space-y-4 pb-8">
+    <BillingSurfaceMetadata />
     <BillingAccountShowActions record={record} />
     <BillingAccountDetailGrid record={record} />
   </div>
@@ -80,6 +82,7 @@ const BillingAccountShowDesktop = ({ record }: { record: BillingAccount }) => (
 
 const BillingAccountShowMobile = ({ record }: { record: BillingAccount }) => (
   <div className="min-w-0 bg-white dark:bg-[#111113]">
+    <BillingSurfaceMetadata />
     <MobileHeader>
       <div className="[&_button]:!size-11">
         <MobileBackButton resource="billing_accounts" />

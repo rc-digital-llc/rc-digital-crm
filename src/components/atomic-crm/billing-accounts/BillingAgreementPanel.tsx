@@ -496,6 +496,7 @@ const AgreementActionCard = ({
         type="button"
         variant="outline"
         className="h-11"
+        data-critical-phase4-agreement-action
         onClick={onAmend}
       >
         Amend agreement

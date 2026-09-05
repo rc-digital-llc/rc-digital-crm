@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { once } from "node:events";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -10,6 +11,7 @@ const repositoryRoot = path.resolve(import.meta.dirname, "../..");
 const sourcePort = 4179;
 const sourceBaseUrl = `http://127.0.0.1:${sourcePort}`;
 const maximumCapturedOutput = 1024 * 1024;
+const allowedRuntimeDirtyPaths = new Set([".planning/config.json"]);
 
 export const redactOutput = (value) =>
   String(value)
@@ -145,7 +147,46 @@ const gateArguments = (options) => {
   ];
 };
 
+const resolveImplementationHead = async () => {
+  const head = await runBuffered("git", ["rev-parse", "HEAD"]);
+  if (head.code !== 0 || !/^[0-9a-f]{40}\n?$/.test(head.stdout)) {
+    throw new Error(
+      "source surface could not resolve an exact implementation head",
+    );
+  }
+  const dirty = await runBuffered("git", [
+    "status",
+    "--porcelain",
+    "--untracked-files=all",
+  ]);
+  if (dirty.code !== 0) {
+    throw new Error("source surface could not verify the implementation tree");
+  }
+  const unexpected = dirty.stdout
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => line.slice(3))
+    .filter((relativePath) => !allowedRuntimeDirtyPaths.has(relativePath));
+  if (unexpected.length > 0) {
+    throw new Error(
+      `source surface requires committed implementation files: ${unexpected[0]}`,
+    );
+  }
+  return head.stdout.trim();
+};
+
+const appendImplementationProvenance = (receiptPath, implementationHead) => {
+  const receipt = JSON.parse(fs.readFileSync(receiptPath, "utf8"));
+  receipt.implementation_head = implementationHead;
+  receipt.implementation_head_marker = `phase-04-agreement-close@${implementationHead}`;
+  receipt.implementation_tree = "committed-except-runtime-config";
+  fs.writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, {
+    mode: 0o600,
+  });
+};
+
 const runSource = async (options) => {
+  const implementationHead = await resolveImplementationHead();
   const build = await runBuffered("npm", ["run", "build:demo"]);
   if (build.code !== 0) {
     process.stderr.write(redactOutput(build.stderr || build.stdout));
@@ -185,6 +226,9 @@ const runSource = async (options) => {
     const gate = await runBuffered("python3", gateArguments(options));
     if (gate.stdout) process.stdout.write(redactOutput(gate.stdout));
     if (gate.stderr) process.stderr.write(redactOutput(gate.stderr));
+    if (gate.code === 0) {
+      appendImplementationProvenance(options.receipt, implementationHead);
+    }
     return gate.code;
   } catch (error) {
     if (serverOutput) process.stderr.write(redactOutput(serverOutput));
@@ -224,6 +268,23 @@ const main = async () => {
   if (process.argv.length === 3 && process.argv[2] === "--self-test") {
     runSelfTest();
     return 0;
+  }
+  if (process.argv.length === 2) {
+    return runSource({
+      stage: "source",
+      contract: path.resolve(
+        repositoryRoot,
+        "qa/billing-accounts.surface.source.json",
+      ),
+      receipt: path.resolve(
+        repositoryRoot,
+        "artifacts/surface/phase-04-source.json",
+      ),
+      screenshots: path.resolve(
+        repositoryRoot,
+        "artifacts/surface/phase-04-source-screenshots",
+      ),
+    });
   }
   if (process.argv[2] !== "run") {
     throw new Error(

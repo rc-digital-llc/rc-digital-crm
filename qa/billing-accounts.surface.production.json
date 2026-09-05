@@ -4,7 +4,7 @@
   "expected_serving_origin": "https://atomic-crm-sigma-one.vercel.app",
   "expected_canonical_origin": "https://atomic-crm-sigma-one.vercel.app",
   "canonical_policy": "match",
-  "freshness_markers": ["auth-confirmation-redirect-v1"],
+  "freshness_markers": ["phase-04-agreement-close-v1"],
   "max_redirects": 0,
   "min_touch_target_css_px": 44,
   "max_fixed_viewport_ratio": 0.13,
@@ -13,7 +13,7 @@
   "max_page_errors": 0,
   "max_focus_steps": 12,
   "stability_wait_ms": 500,
-  "readiness_selector": "[data-surface-version=\"auth-confirmation-redirect-v1\"]",
+  "readiness_selector": "[data-phase4-surface-version=\"phase-04-agreement-close-v1\"]",
   "locale": "en-US",
   "timezone": "America/Los_Angeles",
   "viewports": [
@@ -31,6 +31,10 @@
     {
       "path": "/billing_accounts/create",
       "expected_canonical_path": "/billing_accounts/create"
+    },
+    {
+      "path": "/billing_accounts/31000000-0000-0000-0000-000000000200/show",
+      "expected_canonical_path": "/billing_accounts/31000000-0000-0000-0000-000000000200/show"
     }
   ],
   "critical_targets": [
@@ -51,6 +55,18 @@
       "min_width": 44,
       "min_height": 44,
       "max_viewport_width": 767
+    },
+    {
+      "selector": "button[data-critical-phase4-agreement-action]",
+      "required": false,
+      "min_width": 44,
+      "min_height": 44
+    },
+    {
+      "selector": "button[data-critical-phase4-revenue-action]",
+      "required": false,
+      "min_width": 44,
+      "min_height": 44
     }
   ],
   "fixed_elements": [
