@@ -1,10 +1,16 @@
 import type {
   BillingAccount,
   BillingAccountStatus,
+  BillingInvoice,
   BillingContactMethod,
   BillingEvidenceAccessPurpose,
   BillingEvidenceInspectionStatus,
 } from "../types";
+import type {
+  OrdinaryPercentageRate,
+  UsdMoney,
+  ExactRatio,
+} from "../financial/exactMoney";
 
 export type BillingAccessRoleSummary = Readonly<{
   assignment_id: string;
@@ -74,6 +80,92 @@ export type BillingAccountBoundaryResponse = BillingAccount;
 
 export const billingAccountProviderMethodKeys = [
   "saveBillingAccountBoundary",
+] as const;
+
+export type ExactBillingInvoiceListFilter = Readonly<{
+  billing_account_id?: string;
+  status?: string;
+  invoice_number?: string;
+}>;
+
+export const EXACT_BILLING_INVOICE_MAX_PAGE = 1_000_000;
+
+// PostgreSQL's canonical AD invoice-date range is represented on the wire as
+// four-digit years 0001 through 9999. Year 0000 is not a supported SQL date.
+const exactBillingInvoiceDatePattern = /^(?!0000)\d{4}-\d{2}-\d{2}$/;
+
+export function isCanonicalExactBillingInvoiceDate(value: string): boolean {
+  if (!exactBillingInvoiceDatePattern.test(value)) return false;
+  const timestamp = Date.parse(`${value}T00:00:00Z`);
+  return (
+    !Number.isNaN(timestamp) &&
+    new Date(timestamp).toISOString().slice(0, 10) === value
+  );
+}
+
+export type ExactBillingInvoiceListRequest = Readonly<{
+  mode: "list";
+  page: number;
+  per_page: number;
+  sort:
+    | "id"
+    | "invoice_number"
+    | "status"
+    | "issue_date"
+    | "created_at"
+    | "total_amount_minor";
+  order: "ASC" | "DESC";
+  filters: ExactBillingInvoiceListFilter;
+}>;
+
+export type ExactBillingInvoiceGetRequest = Readonly<{
+  mode: "get";
+  invoice_id: string;
+}>;
+
+export type ExactBillingInvoiceSaveRequest = Readonly<{
+  id?: string;
+  billing_account_id: string;
+  invoice_number: string;
+  description?: string | null;
+  amount: UsdMoney;
+  currency_policy_version: "usd-v1";
+  tax_rate: OrdinaryPercentageRate;
+  rounding_policy_version: "half-away-from-zero-v1";
+  line_items: readonly Readonly<{
+    quantity_ratio: ExactRatio;
+    unit_price: UsdMoney;
+    extended_amount: UsdMoney;
+    currency_policy_version: "usd-v1";
+    rounding_policy_version: "half-away-from-zero-v1";
+  }>[];
+  status?: "Draft";
+  issue_date: string;
+  due_date?: string | null;
+  payment_method?: string | null;
+  payment_reference?: string | null;
+  notes?: string | null;
+  terms?: string | null;
+}>;
+
+export type ExactBillingInvoiceListResponse = Readonly<{
+  data: BillingInvoice[];
+  total: number;
+}>;
+
+export type ExactBillingInvoiceGetResponse = Readonly<{
+  data: BillingInvoice;
+}>;
+
+export type ExactBillingInvoiceSaveResponse = Readonly<{
+  result: "saved";
+  data: BillingInvoice;
+}>;
+
+export const billingInvoiceProviderMethodKeys = [
+  "listExactBillingInvoices",
+  "getExactBillingInvoice",
+  "saveExactBillingInvoice",
 ] as const;
 
 export type BillingEvidenceKind =

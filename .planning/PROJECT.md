@@ -39,6 +39,10 @@ invoice, payment-provider event, settlement, and collections history.
 - ✓ Vitest, TypeScript, ESLint/Prettier, GitHub Actions, and local Supabase
   commands provide an initial verification toolchain — existing quality
   foundation.
+- ✓ Authoritative USD values now use exact integer minor units across
+  PostgreSQL, provider, and browser boundaries; percentage rates remain exact
+  rationals and every minor-unit rounding boundary names its tested policy —
+  validated in Phase 3: Exact Money and Rounding Contract.
 
 ### Active
 
