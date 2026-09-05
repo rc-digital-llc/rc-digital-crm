@@ -44,6 +44,17 @@ invoice, payment-provider event, settlement, and collections history.
   half-away-from-zero rounding is identical across TypeScript, PostgreSQL, RPC,
   and provider boundaries — validated in Phase 3: Exact Money and Rounding
   Contract.
+- ✓ Immutable, non-overlapping agreement versions encode fixed, percentage,
+  minimum-support, and hybrid commercial terms with exact commissionable-
+  revenue definitions and append-only lifecycle causation — validated in Phase
+  4: Agreements, Revenue Evidence, and Calculation Close.
+- ✓ Monthly revenue periods retain provenance, evidence, attestations,
+  immutable revisions, reviewer decisions, owned exceptions, minimum-only
+  policy, and linked late adjustments without estimating missing revenue —
+  validated in Phase 4.
+- ✓ Fixed, percentage, minimum, and hybrid calculations freeze exact terms,
+  inputs, named policies, intermediates, results, explanations, comparisons,
+  anomalies, approvals, and replay authority — validated in Phase 4.
 
 ### Active
 
@@ -61,14 +72,6 @@ invoice, payment-provider event, settlement, and collections history.
   comparing GoCardless and Stripe on hosted authorization, variable charges,
   webhooks, reconciliation data, failure handling, portability, residual
   compliance obligations, and effective cost.
-- [ ] Model immutable, versioned customer billing agreements covering fixed,
-  percentage-of-revenue, minimum-support, and hybrid compensation plans.
-- [ ] Define commissionable revenue precisely and capture monthly revenue
-  periods, submissions, source provenance, evidence, attestations, review
-  status, exceptions, and true-ups.
-- [ ] Calculate invoice amounts deterministically using versioned formulas,
-  immutable input/output snapshots, and the validated exact money and rounding
-  contract.
 - [ ] Complete project, analytics, invoice, and billing workflows in the
   existing CRM for both intentional desktop and mobile operator use.
 - [ ] Give customer billing contacts a restricted portal for revenue reporting,
@@ -203,7 +206,7 @@ system must never silently guess customer revenue.
 | Start with fail-closed autonomy | Routine work can be unattended without letting ambiguous exceptions move money or damage customer relationships | — Pending |
 | Treat maximum autonomy as a promotion target | Higher autonomy should be earned with measured reliability, not assumed at launch | — Pending |
 | Include a restricted customer portal in v1 | Revenue evidence and disputes need a secure fallback when direct customer-system access is unavailable | — Pending |
-| Use immutable agreement and calculation versions | Historical invoices must remain reproducible after terms or formulas change | — Pending |
+| Use immutable agreement and calculation versions | Historical invoices must remain reproducible after terms or formulas change | ✓ Validated in Phase 4 |
 | Build a financial subledger beside invoice documents | A mutable invoice status cannot prove payment, refund, dispute, or settlement history | — Pending |
 | Use a provider adapter and run a GoCardless-versus-Stripe decision spike before live selection | Preserves portability and prevents current list pricing or incomplete research from becoming an irreversible architecture choice | — Pending |
 | Separate normal automation from exception policy | Allows routine human-out-of-loop operation with explicit stop conditions and later bounded promotion | — Pending |
@@ -252,4 +255,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-04 after Phase 3 completion*
+*Last updated: 2026-09-05 after Phase 4 completion*
