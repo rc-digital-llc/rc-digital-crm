@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
+status: planning
 stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-09-05T00:33:14.082Z"
+last_updated: "2026-09-05T00:37:20.985Z"
 last_activity: 2026-09-05
 progress:
   total_phases: 10
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 37
-  completed_plans: 36
-  percent: 30
+  completed_plans: 37
+  percent: 40
 ---
 
 # Project State
@@ -24,22 +24,22 @@ See: .planning/PROJECT.md (updated 2026-09-04)
 to the applicable agreement version, verified revenue evidence, deterministic
 calculation, invoice, payment-provider event, settlement, and collections
 history.
-**Current focus:** Phase 04 — agreements-revenue-evidence-and-calculation-close
+**Current focus:** Phase 5 — immutable invoicing and durable provider operations
 
 ## Current Position
 
-Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
-Plan: 8 of 8
-Status: Phase complete — ready for verification
+Phase: 5
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-09-05
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 29
+- Total plans completed: 37
 - Average duration: 26 min
 - Total execution time: 12.6 hours
 
@@ -50,6 +50,7 @@ Progress: [██████████] 97%
 | Phase 01 | 10 | 371 min | 37 min |
 | Phase 02 | 12 | 212 min | 18 min |
 | Phase 03 | 7 | 173 min | 25 min |
+| 04 | 8 | - | - |
 
 **Recent Trend:**
 
