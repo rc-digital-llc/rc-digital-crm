@@ -18,7 +18,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-04)
+See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core value:** Every dollar billed and collected is automatically traceable
 to the applicable agreement version, verified revenue evidence, deterministic
