@@ -4,11 +4,19 @@ import type {
   BillingContact,
   BillingEvidenceAccessEvent,
   BillingEvidenceMetadata,
+  BillingInvoice,
   BillingOrganization,
   BillingRole,
   BillingRoleAssignment,
   BillingRoleCapability,
 } from "../../../types";
+import {
+  HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+  USD_CURRENCY_POLICY_VERSION,
+  parseOrdinaryPercentageRate,
+  parseUsdMoney,
+  reduceExactRatio,
+} from "../../../financial/exactMoney";
 import type { Db } from "./types";
 
 export const DEMO_BILLING_ORGANIZATION_ID =
@@ -19,6 +27,7 @@ export const DEMO_QUARANTINED_EVIDENCE_ID =
   "31000000-0000-0000-0000-000000000601";
 export const DEMO_EVIDENCE_NOW = "2026-09-01T20:00:00.000Z";
 export const DEMO_EVIDENCE_EXPIRES_AT = "2026-09-01T20:01:00.000Z";
+export const DEMO_EXACT_INVOICE_ID = "310001";
 
 type BillingData = Pick<
   Db,
@@ -130,6 +139,21 @@ const capabilities: Array<BillingRoleCapability & { id: string }> = [
     capability: "account.create",
   },
   {
+    id: "administrator:invoice.read",
+    role: "administrator",
+    capability: "invoice.read",
+  },
+  {
+    id: "administrator:invoice.create",
+    role: "administrator",
+    capability: "invoice.create",
+  },
+  {
+    id: "administrator:invoice.update",
+    role: "administrator",
+    capability: "invoice.update",
+  },
+  {
     id: "operator:evidence.access",
     role: "operator",
     capability: "evidence.access",
@@ -204,6 +228,93 @@ const accessEvent: BillingEvidenceAccessEvent = {
   capability_expires_at: DEMO_EVIDENCE_EXPIRES_AT,
   created_at: DEMO_EVIDENCE_NOW,
 };
+
+const zeroRate = parseOrdinaryPercentageRate("0%");
+const rate8875 = parseOrdinaryPercentageRate("8.875%");
+
+function exactLineItem(amountMinor: string) {
+  return Object.freeze({
+    quantity_ratio: reduceExactRatio({ numerator: "1", denominator: "1" }),
+    unit_price: parseUsdMoney({
+      amount_minor: amountMinor,
+      currency: "USD",
+    }),
+    extended_amount: parseUsdMoney({
+      amount_minor: amountMinor,
+      currency: "USD",
+    }),
+    currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+    rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+  });
+}
+
+function exactInvoice(
+  id: string,
+  invoiceNumber: string,
+  amountMinor: string,
+  taxAmountMinor: string,
+  totalAmountMinor: string,
+  taxRate: BillingInvoice["tax_rate"],
+  status: BillingInvoice["status"],
+): BillingInvoice {
+  return Object.freeze({
+    id,
+    organization_id: DEMO_BILLING_ORGANIZATION_ID,
+    billing_account_id: DEMO_BILLING_ACCOUNT_ID,
+    company_id: "1",
+    sales_id: "1",
+    invoice_number: invoiceNumber,
+    description: "Deterministic exact invoice fixture",
+    amount: parseUsdMoney({ amount_minor: amountMinor, currency: "USD" }),
+    currency_policy_version: USD_CURRENCY_POLICY_VERSION,
+    tax_rate: taxRate,
+    tax_amount: parseUsdMoney({
+      amount_minor: taxAmountMinor,
+      currency: "USD",
+    }),
+    total_amount: parseUsdMoney({
+      amount_minor: totalAmountMinor,
+      currency: "USD",
+    }),
+    rounding_policy_version: HALF_AWAY_FROM_ZERO_ROUNDING_POLICY_VERSION,
+    line_items: Object.freeze([exactLineItem(amountMinor)]),
+    status,
+    issue_date: "2026-09-04",
+    terms: "Payment due within 30 days of invoice date.",
+    created_at: DEMO_EVIDENCE_NOW,
+    updated_at: DEMO_EVIDENCE_NOW,
+  });
+}
+
+export const generateExactBillingInvoices = (): BillingInvoice[] => [
+  exactInvoice(
+    DEMO_EXACT_INVOICE_ID,
+    "DEMO-EXACT-8875",
+    "10000",
+    "888",
+    "10888",
+    rate8875,
+    "Draft",
+  ),
+  exactInvoice(
+    "310002",
+    "DEMO-EXACT-MAX",
+    "9223372036854775807",
+    "0",
+    "9223372036854775807",
+    zeroRate,
+    "Sent",
+  ),
+  exactInvoice(
+    "310003",
+    "DEMO-EXACT-MIN",
+    "-9223372036854775808",
+    "0",
+    "-9223372036854775808",
+    zeroRate,
+    "Paid",
+  ),
+];
 
 export const generateBillingAccounts = (): BillingData => ({
   billing_organizations: [{ ...organization }],

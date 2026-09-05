@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Executable Financial Test and Release Gate** - Prove migrations, authorization, integration behavior, and staged releases before financial schema can ship.
 - [x] **Phase 2: Tenant, Role, and Evidence Security** - Establish the account boundary, least privilege, private evidence, and real cross-tenant denial.
-- [ ] **Phase 3: Exact Money and Rounding Contract** - Give every later financial workflow one exact minor-unit and rounding vocabulary.
+- [x] **Phase 3: Exact Money and Rounding Contract** - Give every later financial workflow one exact minor-unit and rounding vocabulary. (completed 2026-09-04)
 - [ ] **Phase 4: Agreements, Revenue Evidence, and Calculation Close** - Make the signed terms and accepted evidence produce frozen, reproducible monthly calculations.
 - [ ] **Phase 5: Immutable Invoicing and Durable Provider Operations** - Create immutable obligations, durable payment commands, and a sandbox-backed provider decision.
 - [ ] **Phase 6: Provider-to-Bank Reconciliation** - Derive balances from complete provider and bank evidence with durable exception handling.
@@ -143,27 +143,27 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-02-PLAN.md — Install immutable PostgreSQL policies and the hardened exact-arithmetic kernel.
+- [x] 03-02-PLAN.md — Install immutable PostgreSQL policies and the hardened exact-arithmetic kernel.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-03-PLAN.md — Prepare and protect the closed immutable upgrade verifier before database cutover.
+- [x] 03-03-PLAN.md — Prepare and protect the closed immutable upgrade verifier before database cutover.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 03-04-PLAN.md — Atomically convert invoices, automation, and evidence finalization behind caller-bound exact RPCs.
+- [x] 03-04-PLAN.md — Atomically convert invoices, automation, and evidence finalization behind caller-bound exact RPCs.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-05-PLAN.md — Cut live Supabase and React Admin invoice reads/writes over to caller-bound exact RPCs.
+- [x] 03-05-PLAN.md — Cut live Supabase and React Admin invoice reads/writes over to caller-bound exact RPCs.
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 03-06-PLAN.md — Match FakeRest and invoice preview to the proven exact production boundary.
+- [x] 03-06-PLAN.md — Match FakeRest and invoice preview to the proven exact production boundary.
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 03-07-PLAN.md — Audit rolling protection and record integrated exact-head release proof.
+- [x] 03-07-PLAN.md — Audit rolling protection and record integrated exact-head release proof.
 
 ### Phase 4: Agreements, Revenue Evidence, and Calculation Close
 
@@ -289,7 +289,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 |-------|----------------|--------|-----------|
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
-| 3. Exact Money and Rounding Contract | 1/7 | In Progress|  |
+| 3. Exact Money and Rounding Contract | 7/7 | Complete   | 2026-09-04 |
 | 4. Agreements, Revenue Evidence, and Calculation Close | 0/TBD | Not started | - |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |

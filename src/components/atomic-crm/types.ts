@@ -2,6 +2,11 @@ import type { Identifier, RaRecord } from "ra-core";
 import type { ComponentType } from "react";
 
 import type {
+  ExactRatio,
+  OrdinaryPercentageRate,
+  UsdMoney,
+} from "./financial/exactMoney";
+import type {
   COMPANY_CREATED,
   CONTACT_CREATED,
   CONTACT_NOTE_CREATED,
@@ -468,6 +473,43 @@ export type BillingAutomationGrant = {
   created_at: string;
   updated_at: string;
 };
+
+export type ExactBillingInvoiceLineItem = Readonly<{
+  quantity_ratio: ExactRatio;
+  unit_price: UsdMoney;
+  extended_amount: UsdMoney;
+  currency_policy_version: "usd-v1";
+  rounding_policy_version: "half-away-from-zero-v1";
+}>;
+
+export type BillingInvoice = Readonly<{
+  id: string;
+  organization_id: string;
+  billing_account_id: string;
+  company_id: string;
+  project_id?: string;
+  deal_id?: string;
+  sales_id: string;
+  invoice_number: string;
+  description?: string;
+  amount: UsdMoney;
+  currency_policy_version: "usd-v1";
+  tax_rate: OrdinaryPercentageRate;
+  tax_amount: UsdMoney;
+  total_amount: UsdMoney;
+  rounding_policy_version: "half-away-from-zero-v1";
+  line_items: readonly ExactBillingInvoiceLineItem[];
+  status: string;
+  issue_date?: string;
+  due_date?: string;
+  paid_date?: string;
+  payment_method?: string;
+  payment_reference?: string;
+  notes?: string;
+  terms?: string;
+  created_at: string;
+  updated_at: string;
+}>;
 
 /** Safe `billing_evidence_support_safe` projection. Raw paths and hashes are server-only. */
 export type BillingEvidenceMetadata = {

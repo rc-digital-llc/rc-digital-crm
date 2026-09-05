@@ -3,7 +3,7 @@ SET search_path TO public, extensions;
 
 BEGIN;
 
-SELECT plan(48);
+SELECT plan(53);
 
 SELECT is(
   (
@@ -35,7 +35,7 @@ SELECT ok(
   (
     SELECT coalesce(array_to_string(proconfig, ','), '') IN ('search_path=', 'search_path=""')
     FROM pg_proc
-    WHERE oid = 'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,numeric,text)'::regprocedure
+    WHERE oid = 'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,jsonb,text,jsonb)'::regprocedure
   ),
   'private automation grant helper has an empty search_path'
 );
@@ -43,14 +43,14 @@ SELECT ok(
   (
     SELECT coalesce(array_to_string(proconfig, ','), '') IN ('search_path=', 'search_path=""')
     FROM pg_proc
-    WHERE oid = 'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,numeric,text)'::regprocedure
+    WHERE oid = 'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,jsonb,text)'::regprocedure
   ),
   'public effect entry point has an empty search_path'
 );
 SELECT ok(
   NOT has_function_privilege(
     'public',
-    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,numeric,text)',
+    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,jsonb,text,jsonb)',
     'EXECUTE'
   ),
   'PUBLIC cannot execute the private grant helper'
@@ -58,7 +58,7 @@ SELECT ok(
 SELECT ok(
   NOT has_function_privilege(
     'authenticated',
-    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,numeric,text)',
+    'private.billing_consume_automation_grant(uuid,uuid,text,text,text,text,jsonb,text,jsonb)',
     'EXECUTE'
   ),
   'authenticated callers cannot bypass the public effect entry point'
@@ -66,7 +66,7 @@ SELECT ok(
 SELECT ok(
   has_function_privilege(
     'authenticated',
-    'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,numeric,text)',
+    'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,jsonb,text)',
     'EXECUTE'
   ),
   'authenticated callers can execute only the public effect entry point'
@@ -74,7 +74,7 @@ SELECT ok(
 SELECT ok(
   NOT has_function_privilege(
     'anon',
-    'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,numeric,text)',
+    'public.execute_billing_automation_command(uuid,uuid,text,text,text,text,jsonb,text)',
     'EXECUTE'
   ),
   'anonymous callers cannot execute the automation entry point'
@@ -113,7 +113,7 @@ SELECT is(
     '22000000-0000-0000-0000-000000000500',
     '22000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-bravo-fixture', 'policy-fixture-v1',
-    'record.test', 1.00, 'alpha-cross-org-001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-cross-org-001'
   )->>'result',
   'denied',
   'automation cannot consume another organization grant'
@@ -123,7 +123,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '22000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 1.00, 'alpha-wrong-account-001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-wrong-account-001'
   )->>'result',
   'denied',
   'automation cannot substitute another account'
@@ -133,7 +133,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-wrong-fixture', 'policy-fixture-v1',
-    'record.test', 1.00, 'alpha-wrong-provider-001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-wrong-provider-001'
   )->>'result',
   'denied',
   'automation cannot substitute provider authority'
@@ -143,7 +143,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-wrong-v9',
-    'record.test', 1.00, 'alpha-wrong-policy-001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-wrong-policy-001'
   )->>'result',
   'denied',
   'automation cannot substitute a policy version'
@@ -153,7 +153,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.wrong', 1.00, 'alpha-wrong-action-001'
+    'record.wrong', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-wrong-action-001'
   )->>'result',
   'denied',
   'automation cannot substitute an action kind'
@@ -163,7 +163,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000599',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 1.00, 'alpha-missing-grant-001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'alpha-missing-grant-001'
   )->>'result',
   'denied',
   'a missing grant fails closed'
@@ -196,7 +196,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 25.00, 'alpha-command-0001'
+    'record.test', '{"amount_minor":"2500","currency":"USD"}'::jsonb, 'alpha-command-0001'
   )->>'result',
   'applied',
   'an exact grant applies one synthetic nonfinancial command'
@@ -209,12 +209,16 @@ SELECT is(
 );
 SELECT is(
   (
-    SELECT jsonb_build_object('actions', actions_consumed, 'amount', total_amount_consumed::text)
+    SELECT jsonb_build_object(
+      'actions', actions_consumed,
+      'amount_minor', total_amount_consumed_minor::text,
+      'currency', currency
+    )
     FROM public.billing_automation_grants
     WHERE id = '21000000-0000-0000-0000-000000000500'
   ),
-  '{"actions": 1, "amount": "25.00"}'::jsonb,
-  'an allowed command consumes the exact action and numeric amount'
+  '{"actions":1,"amount_minor":"2500","currency":"USD"}'::jsonb,
+  'an allowed command consumes the exact action and canonical money'
 );
 SELECT is(
   (
@@ -252,7 +256,7 @@ SELECT throws_ok(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 10.00, 'alpha-retry-0001'
+    'record.test', '{"amount_minor":"1000","currency":"USD"}'::jsonb, 'alpha-retry-0001'
   )$$,
   'P0001',
   'synthetic retryable automation failure',
@@ -290,7 +294,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 10.00, 'alpha-retry-0001'
+    'record.test', '{"amount_minor":"1000","currency":"USD"}'::jsonb, 'alpha-retry-0001'
   )->>'result',
   'applied',
   'the rolled-back command key is explicitly retryable'
@@ -300,13 +304,13 @@ SELECT is(
   (
     SELECT jsonb_build_object(
       'actions', actions_consumed,
-      'amount', total_amount_consumed::text,
+      'amount_minor', total_amount_consumed_minor::text,
       'status', status
     )
     FROM public.billing_automation_grants
     WHERE id = '21000000-0000-0000-0000-000000000500'
   ),
-  '{"actions": 2, "amount": "35.00", "status": "exhausted"}'::jsonb,
+  '{"actions":2,"amount_minor":"3500","status":"exhausted"}'::jsonb,
   'the successful retry consumes the final exact allowance'
 );
 
@@ -316,7 +320,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000500',
     '21000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.test', 10.00, 'alpha-retry-0001'
+    'record.test', '{"amount_minor":"1000","currency":"USD"}'::jsonb, 'alpha-retry-0001'
   )->>'result',
   'duplicate',
   'a completed command key is idempotently recognized after exhaustion'
@@ -336,20 +340,76 @@ SELECT is(
       AND result = 'ignored'
       AND reason = 'DUPLICATE_COMMAND'
   ),
-  1::bigint,
-  'a duplicate command appends one exact ignored audit'
+  0::bigint,
+  'an identical duplicate adds no second audit effect'
+);
+
+SET LOCAL ROLE authenticated;
+SELECT is(
+  public.execute_billing_automation_command(
+    '21000000-0000-0000-0000-000000000500',
+    '21000000-0000-0000-0000-000000000200',
+    'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
+    'record.test', '{"amount_minor":"1001","currency":"USD"}'::jsonb, 'alpha-retry-0001'
+  )->>'reason_code',
+  'IDEMPOTENCY_KEY_CONFLICT',
+  'same-key exact money drift is rejected before any effect'
+);
+SELECT is(
+  public.execute_billing_automation_command(
+    '21000000-0000-0000-0000-000000000500',
+    '21000000-0000-0000-0000-000000000200',
+    'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
+    'record.test', '{"amount_minor":"-1","currency":"USD"}'::jsonb, 'alpha-negative-0001'
+  )->>'reason_code',
+  'FINANCIAL_INVALID_MONEY',
+  'negative automation money fails before grant or audit effects'
+);
+SELECT is(
+  public.execute_billing_automation_command(
+    '21000000-0000-0000-0000-000000000500',
+    '21000000-0000-0000-0000-000000000200',
+    'test.nonfinancial', 'provider-alpha-fixture', 'policy-fixture-v1',
+    'record.test', '{"amount_minor":"9223372036854775808","currency":"USD"}'::jsonb, 'alpha-overflow-0001'
+  )->>'reason_code',
+  'FINANCIAL_INVALID_MONEY',
+  'overflow automation money fails before grant or audit effects'
+);
+RESET ROLE;
+SELECT is(
+  (
+    SELECT pg_catalog.jsonb_build_object(
+      'executions', pg_catalog.count(*),
+      'request_fingerprints', pg_catalog.count(DISTINCT request_fingerprint),
+      'effect_fingerprints', pg_catalog.count(DISTINCT effect_fingerprint),
+      'amount_minor', pg_catalog.min(amount_minor)::text
+    )
+    FROM public.billing_automation_executions
+    WHERE idempotency_key = 'alpha-retry-0001'
+  ),
+  '{"executions":1,"request_fingerprints":1,"effect_fingerprints":1,"amount_minor":"1000"}'::jsonb,
+  'duplicates, conflicts, and invalid money preserve one fingerprinted execution'
+);
+SELECT is(
+  (
+    SELECT pg_catalog.count(*)
+    FROM public.billing_automation_executions
+    WHERE idempotency_key IN ('alpha-negative-0001', 'alpha-overflow-0001')
+  ),
+  0::bigint,
+  'negative and overflow requests create no execution receipt'
 );
 
 INSERT INTO public.billing_automation_grants (
   id, organization_id, account_id, principal_id, command_name,
-  provider_reference, policy_version, action_kind, max_amount, max_actions
+  provider_reference, policy_version, action_kind, max_amount_minor, currency, max_actions
 ) VALUES (
   '21000000-0000-0000-0000-000000000510',
   '21000000-0000-0000-0000-000000000100',
   '21000000-0000-0000-0000-000000000200',
   '21000000-0000-0000-0000-000000000400',
   'test.amount-limit', 'provider-alpha-fixture', 'policy-fixture-v1',
-  'record.amount-limit', 10.00, 5
+  'record.amount-limit', 1000, 'USD', 5
 );
 SET LOCAL ROLE authenticated;
 SELECT is(
@@ -357,7 +417,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000510',
     '21000000-0000-0000-0000-000000000200',
     'test.amount-limit', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.amount-limit', 10.01, 'alpha-amount-limit-0001'
+    'record.amount-limit', '{"amount_minor":"1001","currency":"USD"}'::jsonb, 'alpha-amount-limit-0001'
   )->>'reason_code',
   'GRANT_LIMIT_EXCEEDED',
   'an amount above the exact remaining limit is denied'
@@ -365,11 +425,14 @@ SELECT is(
 RESET ROLE;
 SELECT is(
   (
-    SELECT jsonb_build_object('actions', actions_consumed, 'amount', total_amount_consumed::text)
+    SELECT jsonb_build_object(
+      'actions', actions_consumed,
+      'amount_minor', total_amount_consumed_minor::text
+    )
     FROM public.billing_automation_grants
     WHERE id = '21000000-0000-0000-0000-000000000510'
   ),
-  '{"actions": 0, "amount": "0.00"}'::jsonb,
+  '{"actions":0,"amount_minor":"0"}'::jsonb,
   'a limit denial consumes no counters'
 );
 SELECT is(
@@ -396,7 +459,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000511',
     '21000000-0000-0000-0000-000000000200',
     'test.expired', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.expired', 0, 'alpha-expired-0001'
+    'record.expired', '{"amount_minor":"0","currency":"USD"}'::jsonb, 'alpha-expired-0001'
   )->>'result',
   'denied',
   'an expired exact grant is denied'
@@ -426,7 +489,7 @@ SELECT is(
     '21000000-0000-0000-0000-000000000512',
     '21000000-0000-0000-0000-000000000200',
     'test.disabled', 'provider-alpha-fixture', 'policy-fixture-v1',
-    'record.disabled', 0, 'alpha-disabled-0001'
+    'record.disabled', '{"amount_minor":"0","currency":"USD"}'::jsonb, 'alpha-disabled-0001'
   )->>'result',
   'denied',
   'a disabled exact grant is denied'
@@ -450,7 +513,7 @@ SELECT is(
     '22000000-0000-0000-0000-000000000500',
     '22000000-0000-0000-0000-000000000200',
     'test.nonfinancial', 'provider-bravo-fixture', 'policy-fixture-v1',
-    'record.test', 1, 'bravo-disabled-principal-0001'
+    'record.test', '{"amount_minor":"100","currency":"USD"}'::jsonb, 'bravo-disabled-principal-0001'
   )->>'result',
   'denied',
   'a disabled principal receives no grant authority'

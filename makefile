@@ -7,11 +7,15 @@ FINANCIAL_DATABASE_SQL_TESTS := \
 	supabase/tests/database/40_billing_evidence.sql \
 	supabase/tests/database/45_billing_account_commands.sql \
 	supabase/tests/database/50_billing_access_commands.sql \
-	supabase/tests/database/55_billing_evidence_presentation.sql
+	supabase/tests/database/55_billing_evidence_presentation.sql \
+	supabase/tests/database/60_exact_financial_primitives.sql \
+	supabase/tests/database/65_exact_billing_conversion.sql
 
 FINANCIAL_DATABASE_HTTP_TESTS := \
 	tests/release/auth-rls-rpc-trigger.test.ts \
-	tests/release/billing-tenancy.test.ts
+	tests/release/exact-money-boundaries.test.ts \
+	tests/release/billing-tenancy.test.ts \
+	src/components/atomic-crm/financial/exactProviderContract.test.ts
 
 FINANCIAL_FUNCTION_TESTS := \
 	tests/release/edge-webhook-provider.test.ts \
@@ -19,6 +23,7 @@ FINANCIAL_FUNCTION_TESTS := \
 
 FINANCIAL_FAST_TESTS := \
 	src/components/atomic-crm/financial/exactMoney.test.ts \
+	src/components/atomic-crm/invoices/invoiceCalculations.test.ts \
 	tests/release/exact-money-release-static.test.ts \
 	tests/release/billing-redaction.test.ts \
 	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
@@ -42,6 +47,7 @@ test-financial-schema-push: ## prove schema push against an isolated loopback da
 
 test-financial-migration-upgrade: ## apply pending migrations to the checked-in baseline and verify fingerprints
 	node scripts/release/run-supabase-lane.mjs run --lane migration-upgrade -- node scripts/release/fingerprint-upgrade.mjs
+	npm test -- --run tests/release/migration-upgrade.test.ts
 
 test-financial-database-sql: ## execute live PostgreSQL authorization, RLS, RPC, and trigger contracts
 	node scripts/release/run-supabase-lane.mjs run --lane database-contracts -- supabase test db $(FINANCIAL_DATABASE_SQL_TESTS) --local
