@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-09-04T23:53:27.912Z"
-last_activity: 2026-09-04
+status: verifying
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-09-05T00:33:14.082Z"
+last_activity: 2026-09-05
 progress:
   total_phases: 10
   completed_phases: 3
@@ -30,8 +30,8 @@ history.
 
 Phase: 04 (agreements-revenue-evidence-and-calculation-close) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-09-04
+Status: Phase complete — ready for verification
+Last activity: 2026-09-05
 
 Progress: [██████████] 97%
 
@@ -70,6 +70,7 @@ Progress: [██████████] 97%
 | Phase 04 P05 | 44 min | 3 tasks | 13 files |
 | Phase 04 P06 | 22 min | 3 tasks | 11 files |
 | Phase 04 P07 | 20 min | 3 tasks | 13 files |
+| Phase 04 P08 | 40 min | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,9 @@ security decisions:
 - [Phase 04]: Revenue forms accept exact display strings only and never treat browser numbers or explanation text as authority.
 - [Phase 04]: Calculation presentation formats only strictly decoded server results and requires a current immutable fingerprint for approval.
 - [Phase 04]: Late adjustments use a caller-scoped support projection so durable lineage survives refresh without exposing evidence content.
+- [Phase 04]: Phase 4 release authority is append-only registry 004: all seven migrations, final schema/RPC/ACL/capability hashes, and accepted registries 001-003 are pinned together.
+- [Phase 04]: Schema-push proof is valid only against an isolated disposable loopback project; hosted or linked Supabase targets remain outside local execution authority.
+- [Phase 04]: Source, immutable preview, and canonical production remain independent surface stages; the passing Phase 4 source receipt cannot satisfy either deployed stage.
 
 ### Pending Todos
 
@@ -197,6 +201,6 @@ security decisions:
 
 ## Session Continuity
 
-Last session: 2026-09-04T23:53:27.906Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-09-05T00:33:14.076Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None

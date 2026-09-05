@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Executable Financial Test and Release Gate** - Prove migrations, authorization, integration behavior, and staged releases before financial schema can ship.
 - [x] **Phase 2: Tenant, Role, and Evidence Security** - Establish the account boundary, least privilege, private evidence, and real cross-tenant denial.
 - [x] **Phase 3: Exact Money and Rounding Contract** - Give every later financial workflow one exact minor-unit and rounding vocabulary. (completed 2026-09-04)
-- [ ] **Phase 4: Agreements, Revenue Evidence, and Calculation Close** - Make the signed terms and accepted evidence produce frozen, reproducible monthly calculations.
+- [x] **Phase 4: Agreements, Revenue Evidence, and Calculation Close** - Make the signed terms and accepted evidence produce frozen, reproducible monthly calculations. (completed 2026-09-05)
 - [ ] **Phase 5: Immutable Invoicing and Durable Provider Operations** - Create immutable obligations, durable payment commands, and a sandbox-backed provider decision.
 - [ ] **Phase 6: Provider-to-Bank Reconciliation** - Derive balances from complete provider and bank evidence with durable exception handling.
 - [ ] **Phase 7: Controls, Observability, and Recovery** - Make financial automation stoppable, diagnosable, auditable, and recoverable before live use.
@@ -290,7 +290,7 @@ inside a phase only after shared schemas and command contracts stabilize.
 | 1. Executable Financial Test and Release Gate | 10/10 | Complete | 2026-09-01 |
 | 2. Tenant, Role, and Evidence Security | 12/12 | Complete | 2026-09-01 |
 | 3. Exact Money and Rounding Contract | 7/7 | Complete    | 2026-09-04 |
-| 4. Agreements, Revenue Evidence, and Calculation Close | 7/8 | In Progress|  |
+| 4. Agreements, Revenue Evidence, and Calculation Close | 8/8 | Complete   | 2026-09-05 |
 | 5. Immutable Invoicing and Durable Provider Operations | 0/TBD | Not started | - |
 | 6. Provider-to-Bank Reconciliation | 0/TBD | Not started | - |
 | 7. Controls, Observability, and Recovery | 0/TBD | Not started | - |
