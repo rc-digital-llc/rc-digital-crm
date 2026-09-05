@@ -359,3 +359,36 @@ describe("phase 2 blocking lanes", () => {
     expect(isFinancial("README.md")).toBe(false);
   });
 });
+
+describe("Phase 4 support boundary", () => {
+  it("uses only explicit support reads and keeps generic mutation unavailable", () => {
+    const providerTypes = readSource(
+      "src/components/atomic-crm/providers/types.ts",
+    );
+    const liveProvider = readSource(
+      "src/components/atomic-crm/providers/supabase/billingCloseProvider.ts",
+    );
+    const migrations = [
+      "20260904000001_billing_agreements.sql",
+      "20260904000002_billing_revenue_periods.sql",
+      "20260904000003_billing_calculations.sql",
+      "20260904000004_billing_calculation_close.sql",
+      "20260904000005_billing_provider_reads.sql",
+      "20260904000006_billing_agreement_history_read.sql",
+      "20260904000007_billing_adjustment_support_read.sql",
+    ]
+      .map((filename) => readSource(`supabase/migrations/${filename}`))
+      .join("\n");
+
+    expect(providerTypes).toContain("billingCloseProviderMethodKeys");
+    expect(liveProvider).not.toMatch(
+      /\.from\(["']billing_(?:agreements|revenue|calculations|adjustments)/,
+    );
+    expect(migrations).not.toMatch(
+      /GRANT (?:INSERT|UPDATE|DELETE|TRUNCATE).* TO authenticated/i,
+    );
+    expect(migrations).toContain("REVOKE ALL ON TABLE");
+    expect(migrations).toContain("FORCE ROW LEVEL SECURITY");
+    expect(migrations).toContain("private.billing_has_capability");
+  });
+});

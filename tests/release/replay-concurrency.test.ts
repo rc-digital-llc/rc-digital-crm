@@ -444,3 +444,38 @@ describe.runIf(Boolean(process.env.SUPABASE_DB_URL))(
     }, 30000);
   },
 );
+
+describe("Phase 4 replay and concurrency source contracts", () => {
+  const readMigration = (filename: string) =>
+    fs.readFileSync(
+      path.join(repositoryRoot, "supabase/migrations", filename),
+      "utf8",
+    );
+
+  it("binds agreement, revenue, calculation, and adjustment replay to immutable keys", () => {
+    const agreement = readMigration("20260904000001_billing_agreements.sql");
+    const revenue = readMigration("20260904000002_billing_revenue_periods.sql");
+    const calculation = readMigration(
+      "20260904000003_billing_calculations.sql",
+    );
+    const adjustment = readMigration(
+      "20260904000004_billing_calculation_close.sql",
+    );
+
+    expect(agreement).toContain("billing_agreement_replay");
+    expect(agreement).toContain("pg_advisory_xact_lock");
+    expect(agreement).toContain("command_key");
+    expect(agreement).toContain("request_fingerprint");
+    expect(revenue).toContain("billing_revenue_replay");
+    expect(revenue).toContain("pg_advisory_xact_lock");
+    expect(revenue).toContain("input_fingerprint");
+    expect(revenue).toContain("evidence_fingerprint");
+    expect(calculation).toContain("CALCULATION_IDEMPOTENCY_CONFLICT");
+    expect(calculation).toContain("existing_event.request_fingerprint");
+    expect(calculation).toContain("pg_advisory_xact_lock");
+    expect(calculation).toContain("preview_fingerprint");
+    expect(adjustment).toContain("business_key");
+    expect(adjustment).toContain("late_input_fingerprint");
+    expect(adjustment).toContain("relationship_hash");
+  });
+});

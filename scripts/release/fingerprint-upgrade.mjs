@@ -64,9 +64,41 @@ export const PHASE3_EXACT_INVARIANTS = Object.freeze([
   "tax_rate_compatibility_exact",
   "unrelated_crm_payloads_preserved",
 ]);
+export const PHASE4_CATEGORY_NAMES = Object.freeze([
+  "constraint_definitions",
+  "grant_matrix",
+  "agreement_close_schema",
+  "agreement_close_rpcs",
+  "agreement_close_security",
+  "agreement_close_capabilities",
+]);
+export const PHASE4_REQUIRED_TRANSFORMATIONS = Object.freeze([
+  ...PHASE4_CATEGORY_NAMES,
+]);
+export const PHASE4_AGREEMENT_CLOSE_INVARIANTS = Object.freeze([
+  "agreement_close_schema_complete",
+  "agreement_close_rpcs_locked",
+  "agreement_close_acl_least_privilege",
+  "agreement_close_capabilities_exact",
+  "agreement_close_policy_exact",
+  "agreement_close_business_facts_append_only",
+]);
+export const PHASE4_MIGRATIONS = Object.freeze([
+  "20260904000001",
+  "20260904000002",
+  "20260904000003",
+  "20260904000004",
+  "20260904000005",
+  "20260904000006",
+  "20260904000007",
+]);
 const phase3RepeatedCoreCategories = new Set([
   "invoice_numeric_text",
   "row_payload_hashes",
+  "constraint_definitions",
+  "grant_matrix",
+]);
+const phase4RepeatedCoreCategories = new Set([
   "constraint_definitions",
   "grant_matrix",
 ]);
@@ -91,6 +123,20 @@ export const PHASE3_BASELINE_CATEGORY_HASHES = Object.freeze({
   unrelated_crm_payloads:
     "8fa44e2d8d7dd37160a8680e7be0f167662802a1740cfe8b12d4473f3040e65d",
 });
+export const PHASE4_BASELINE_CATEGORY_HASHES = Object.freeze({
+  constraint_definitions:
+    "76355bdf051f18f53a3cb66b66eb10e3a7f5fec6a374edc24697c6428b7f2a37",
+  grant_matrix:
+    "6efd12a06e66d5a3b266700cd86c7be535f9ca45ad55bc7aaf0ec3319150a8c4",
+  agreement_close_schema:
+    "4e1d75893abc7a52490325c585ddd9b6522f498abc076502bf11ec5fcb8b6c09",
+  agreement_close_rpcs:
+    "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  agreement_close_security:
+    "214a524735d72acfdfde0a82c188751f08f9d560cf3a8a96e77aec9cce4f8c23",
+  agreement_close_capabilities:
+    "2cf2a5e2f1abea32565e885543e63a391c12771bbdd828aa5ff397a39c8dfa78",
+});
 const fixtureUserIds = [
   "10000000-0000-0000-0000-000000000001",
   "10000000-0000-0000-0000-000000000002",
@@ -106,6 +152,7 @@ const allowedSemanticInvariants = new Set([
   "invoice_tenant_foreign_keys_valid",
   "invoice_tenant_keys_complete",
   ...PHASE3_EXACT_INVARIANTS,
+  ...PHASE4_AGREEMENT_CLOSE_INVARIANTS,
 ]);
 const registryFields = [
   "baseline_id",
@@ -116,6 +163,7 @@ const registryFields = [
   "transformations",
   "version",
 ];
+const phase4RegistryFields = [...registryFields, "migration_sha256"];
 const transformationFields = ["after_sha256", "before_sha256", "migration"];
 const immutableUpgradeInputHashes = Object.freeze({
   "supabase/tests/baselines/001-pre-financial/manifest.json":
@@ -136,6 +184,20 @@ const immutableUpgradeInputHashes = Object.freeze({
     "588cee98b2eb5d2c447f413f88fac8eec4930be61f451c2e285033379890df76",
   "supabase/migrations/20260903000001_exact_invoice_save_error_contract.sql":
     "ee40140a610785daa053f1be7480cd371b52c6230a97b4e8630eb7e728fe7f94",
+  "supabase/migrations/20260904000001_billing_agreements.sql":
+    "922c3cdd9ae66e88e334bfe6ceccf5e77b1dad07ba86697ffbaceba75638b097",
+  "supabase/migrations/20260904000002_billing_revenue_periods.sql":
+    "314a9cfab2bcf3631fb9779e511eaddb4013ea9e9edb1306440ca1e824b99fc4",
+  "supabase/migrations/20260904000003_billing_calculations.sql":
+    "5d3b580991bc0fd0af87d07aa844c35764051db9deccc07372275846ba9e5111",
+  "supabase/migrations/20260904000004_billing_calculation_close.sql":
+    "1c96271b48a6df0600a4c01ffafce2d3cc919275fddccd4ce725b0602e35c9a1",
+  "supabase/migrations/20260904000005_billing_provider_reads.sql":
+    "b66b5efe45b090fb76fd130ff9f39c770c9b88fb5d4b124f45c175be909a8039",
+  "supabase/migrations/20260904000006_billing_agreement_history_read.sql":
+    "4a16537fcdd5a6900d8774dd02fdee8a11745687eb5c7d45aea2ed4038483831",
+  "supabase/migrations/20260904000007_billing_adjustment_support_read.sql":
+    "9a99d365db3f82061110cb9cd2491189b7f1164eb16fa3a514e344b27cbb852b",
 });
 
 const fingerprintQueries = {
@@ -554,6 +616,167 @@ const fingerprintQueries = {
       SELECT 'projects', id, pg_catalog.to_jsonb(row_value)::text
       FROM public.projects AS row_value
     ) AS unrelated_rows`,
+  agreement_close_schema: `
+    WITH phase_tables(table_name) AS (
+      VALUES
+        ('billing_agreements'), ('billing_agreement_versions'),
+        ('billing_agreement_revenue_rules'), ('billing_agreement_events'),
+        ('billing_revenue_periods'), ('billing_revenue_submissions'),
+        ('billing_revenue_submission_evidence'), ('billing_revenue_command_events'),
+        ('billing_revenue_review_events'), ('billing_close_exceptions'),
+        ('billing_close_exception_events'), ('billing_revenue_close_snapshots'),
+        ('billing_close_policies'), ('billing_calculations'),
+        ('billing_calculation_snapshots'), ('billing_calculation_events'),
+        ('billing_adjustment_calculations'), ('billing_calculation_links'),
+        ('billing_adjustment_exceptions')
+    )
+    SELECT pg_catalog.jsonb_build_object(
+      'columns', (
+        SELECT COALESCE(pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'table', column_record.table_name,
+            'name', column_record.column_name,
+            'type', column_record.udt_name,
+            'nullable', column_record.is_nullable,
+            'default', column_record.column_default
+          ) ORDER BY column_record.table_name, column_record.ordinal_position
+        ), '[]'::jsonb)
+        FROM information_schema.columns AS column_record
+        JOIN phase_tables USING (table_name)
+        WHERE column_record.table_schema = 'public'
+      ),
+      'constraints', (
+        SELECT COALESCE(pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'table', relation.relname,
+            'name', constraint_record.conname,
+            'type', constraint_record.contype::text,
+            'definition', pg_catalog.pg_get_constraintdef(constraint_record.oid, true)
+          ) ORDER BY relation.relname, constraint_record.conname
+        ), '[]'::jsonb)
+        FROM pg_catalog.pg_constraint AS constraint_record
+        JOIN pg_catalog.pg_class AS relation ON relation.oid = constraint_record.conrelid
+        JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        JOIN phase_tables ON phase_tables.table_name = relation.relname
+        WHERE namespace.nspname = 'public'
+      )
+    )`,
+  agreement_close_rpcs: `
+    WITH public_methods(name) AS (
+      VALUES
+        ('save_billing_agreement_draft'), ('submit_billing_agreement_version'),
+        ('activate_billing_agreement_version'), ('pause_billing_agreement_version'),
+        ('terminate_billing_agreement_version'), ('read_billing_agreements'),
+        ('ensure_billing_revenue_period'), ('submit_billing_revenue_revision'),
+        ('review_billing_revenue_revision'), ('close_billing_revenue_period'),
+        ('preview_billing_calculation'), ('create_billing_calculation'),
+        ('approve_billing_calculation'), ('read_billing_calculation_lineage'),
+        ('create_billing_adjustment_calculation'), ('read_billing_revenue_periods'),
+        ('read_billing_calculations')
+    )
+    SELECT COALESCE(pg_catalog.jsonb_agg(
+      pg_catalog.jsonb_build_object(
+        'schema', namespace.nspname,
+        'name', procedure_record.proname,
+        'arguments', pg_catalog.pg_get_function_identity_arguments(procedure_record.oid),
+        'security_definer', procedure_record.prosecdef,
+        'config', procedure_record.proconfig,
+        'owner', owner_role.rolname,
+        'definition', pg_catalog.pg_get_functiondef(procedure_record.oid)
+      ) ORDER BY namespace.nspname, procedure_record.proname,
+        pg_catalog.pg_get_function_identity_arguments(procedure_record.oid)
+    ), '[]'::jsonb)
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure_record.pronamespace
+    JOIN pg_catalog.pg_roles AS owner_role ON owner_role.oid = procedure_record.proowner
+    LEFT JOIN public_methods ON public_methods.name = procedure_record.proname
+    WHERE (namespace.nspname = 'public' AND public_methods.name IS NOT NULL)
+       OR (namespace.nspname = 'private' AND (
+         procedure_record.proname LIKE 'billing_agreement_%'
+         OR procedure_record.proname LIKE 'billing_revenue_%'
+         OR procedure_record.proname LIKE 'billing_close_exception_%'
+         OR procedure_record.proname LIKE 'billing_calculation_%'
+         OR procedure_record.proname LIKE 'billing_adjustment_%'
+       ))`,
+  agreement_close_security: `
+    WITH phase_tables(table_name) AS (
+      VALUES
+        ('billing_agreements'), ('billing_agreement_versions'),
+        ('billing_agreement_revenue_rules'), ('billing_agreement_events'),
+        ('billing_revenue_periods'), ('billing_revenue_submissions'),
+        ('billing_revenue_submission_evidence'), ('billing_revenue_command_events'),
+        ('billing_revenue_review_events'), ('billing_close_exceptions'),
+        ('billing_close_exception_events'), ('billing_revenue_close_snapshots'),
+        ('billing_close_policies'), ('billing_calculations'),
+        ('billing_calculation_snapshots'), ('billing_calculation_events'),
+        ('billing_adjustment_calculations'), ('billing_calculation_links'),
+        ('billing_adjustment_exceptions')
+    )
+    SELECT pg_catalog.jsonb_build_object(
+      'relations', (
+        SELECT COALESCE(pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'table', relation.relname,
+            'rls', relation.relrowsecurity,
+            'force_rls', relation.relforcerowsecurity,
+            'owner', owner_role.rolname
+          ) ORDER BY relation.relname
+        ), '[]'::jsonb)
+        FROM pg_catalog.pg_class AS relation
+        JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        JOIN pg_catalog.pg_roles AS owner_role ON owner_role.oid = relation.relowner
+        JOIN phase_tables ON phase_tables.table_name = relation.relname
+        WHERE namespace.nspname = 'public' AND relation.relkind = 'r'
+      ),
+      'policies', (
+        SELECT COALESCE(pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'table', policy.tablename,
+            'name', policy.policyname,
+            'roles', policy.roles,
+            'command', policy.cmd,
+            'using', policy.qual,
+            'check', policy.with_check
+          ) ORDER BY policy.tablename, policy.policyname
+        ), '[]'::jsonb)
+        FROM pg_catalog.pg_policies AS policy
+        JOIN phase_tables ON phase_tables.table_name = policy.tablename
+        WHERE policy.schemaname = 'public'
+      ),
+      'table_grants', (
+        SELECT COALESCE(pg_catalog.jsonb_agg(
+          pg_catalog.jsonb_build_object(
+            'table', grant_record.table_name,
+            'grantee', grant_record.grantee,
+            'privilege', grant_record.privilege_type
+          ) ORDER BY grant_record.table_name, grant_record.grantee, grant_record.privilege_type
+        ), '[]'::jsonb)
+        FROM information_schema.table_privileges AS grant_record
+        JOIN phase_tables USING (table_name)
+        WHERE grant_record.table_schema = 'public'
+          AND grant_record.grantee IN ('anon','authenticated','service_role','PUBLIC')
+      )
+    )`,
+  agreement_close_capabilities: `
+    SELECT pg_catalog.to_jsonb(
+      CASE
+        WHEN pg_catalog.to_regclass('public.billing_role_capabilities') IS NULL
+        THEN '<table xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" />'
+        ELSE pg_catalog.query_to_xml(
+          $query$
+            SELECT role::text AS role, capability::text AS capability
+            FROM public.billing_role_capabilities
+            WHERE capability::text LIKE 'agreement.%'
+               OR capability::text LIKE 'revenue.%'
+               OR capability::text LIKE 'calculation.%'
+            ORDER BY role::text, capability::text
+          $query$,
+          true,
+          false,
+          ''
+        )::text
+      END
+    )`,
 };
 
 const invoiceSemanticQuery = `
@@ -881,6 +1104,139 @@ const exactPostUpgradeSemanticQuery = `
     )
   )`;
 
+const phase4PostUpgradeSemanticQuery = `
+  WITH phase_tables(table_name) AS (
+    VALUES
+      ('billing_agreements'), ('billing_agreement_versions'),
+      ('billing_agreement_revenue_rules'), ('billing_agreement_events'),
+      ('billing_revenue_periods'), ('billing_revenue_submissions'),
+      ('billing_revenue_submission_evidence'), ('billing_revenue_command_events'),
+      ('billing_revenue_review_events'), ('billing_close_exceptions'),
+      ('billing_close_exception_events'), ('billing_revenue_close_snapshots'),
+      ('billing_close_policies'), ('billing_calculations'),
+      ('billing_calculation_snapshots'), ('billing_calculation_events'),
+      ('billing_adjustment_calculations'), ('billing_calculation_links'),
+      ('billing_adjustment_exceptions')
+  ),
+  public_methods(name) AS (
+    VALUES
+      ('save_billing_agreement_draft'), ('submit_billing_agreement_version'),
+      ('activate_billing_agreement_version'), ('pause_billing_agreement_version'),
+      ('terminate_billing_agreement_version'), ('read_billing_agreements'),
+      ('ensure_billing_revenue_period'), ('submit_billing_revenue_revision'),
+      ('review_billing_revenue_revision'), ('close_billing_revenue_period'),
+      ('preview_billing_calculation'), ('create_billing_calculation'),
+      ('approve_billing_calculation'), ('read_billing_calculation_lineage'),
+      ('create_billing_adjustment_calculation'), ('read_billing_revenue_periods'),
+      ('read_billing_calculations')
+  ),
+  phase_functions AS (
+    SELECT procedure_record.*, owner_role.rolname AS owner_name
+    FROM pg_catalog.pg_proc AS procedure_record
+    JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = procedure_record.pronamespace
+    JOIN pg_catalog.pg_roles AS owner_role ON owner_role.oid = procedure_record.proowner
+    JOIN public_methods ON public_methods.name = procedure_record.proname
+    WHERE namespace.nspname = 'public'
+  )
+  SELECT pg_catalog.jsonb_build_object(
+    'schema', pg_catalog.jsonb_build_object(
+      'required_table_count', (SELECT count(*)::text FROM phase_tables),
+      'present_table_count', (
+        SELECT count(*)::text
+        FROM phase_tables
+        JOIN information_schema.tables AS table_record
+          ON table_record.table_schema = 'public'
+          AND table_record.table_name = phase_tables.table_name
+      ),
+      'forced_rls_count', (
+        SELECT count(*)::text
+        FROM phase_tables
+        JOIN pg_catalog.pg_class AS relation ON relation.relname = phase_tables.table_name
+        JOIN pg_catalog.pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+        WHERE namespace.nspname = 'public'
+          AND relation.relrowsecurity
+          AND relation.relforcerowsecurity
+      )
+    ),
+    'rpcs', pg_catalog.jsonb_build_object(
+      'required_count', (SELECT count(*)::text FROM public_methods),
+      'present_count', (SELECT count(*)::text FROM phase_functions),
+      'locked_count', (
+        SELECT count(*)::text FROM phase_functions
+        WHERE prosecdef
+          AND owner_name = 'postgres'
+          AND COALESCE(pg_catalog.array_to_string(proconfig, ','), '')
+            IN ('search_path=', 'search_path=""')
+      ),
+      'dynamic_sql_count', (
+        SELECT count(*)::text FROM phase_functions
+        WHERE pg_catalog.pg_get_functiondef(oid) ~* '\\mEXECUTE\\M'
+      )
+    ),
+    'acl', pg_catalog.jsonb_build_object(
+      'authenticated_mutation_privilege_count', (
+        SELECT count(*)::text
+        FROM information_schema.table_privileges AS grant_record
+        JOIN phase_tables ON phase_tables.table_name = grant_record.table_name
+        WHERE grant_record.table_schema = 'public'
+          AND grant_record.grantee = 'authenticated'
+          AND grant_record.privilege_type IN ('INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER')
+      ),
+      'anonymous_table_privilege_count', (
+        SELECT count(*)::text
+        FROM information_schema.table_privileges AS grant_record
+        JOIN phase_tables ON phase_tables.table_name = grant_record.table_name
+        WHERE grant_record.table_schema = 'public'
+          AND grant_record.grantee = 'anon'
+      ),
+      'anonymous_execute_count', (
+        SELECT count(*)::text
+        FROM information_schema.routine_privileges AS grant_record
+        JOIN public_methods ON public_methods.name = grant_record.routine_name
+        WHERE grant_record.routine_schema = 'public'
+          AND grant_record.grantee = 'anon'
+          AND grant_record.privilege_type = 'EXECUTE'
+      )
+    ),
+    'capabilities', pg_catalog.jsonb_build_object(
+      'row_count', (
+        SELECT count(*)::text FROM public.billing_role_capabilities
+        WHERE capability LIKE 'agreement.%'
+           OR capability LIKE 'revenue.%'
+           OR capability LIKE 'calculation.%'
+      ),
+      'distinct_capability_count', (
+        SELECT count(DISTINCT capability)::text FROM public.billing_role_capabilities
+        WHERE capability LIKE 'agreement.%'
+           OR capability LIKE 'revenue.%'
+           OR capability LIKE 'calculation.%'
+      )
+    ),
+    'policy', (
+      SELECT pg_catalog.jsonb_build_object(
+        'policy_version', policy_version,
+        'policy_mode', policy_mode,
+        'active', active,
+        'allowed_account_statuses', allowed_account_statuses,
+        'allowed_formula_kinds', allowed_formula_kinds,
+        'allowed_close_modes', allowed_close_modes,
+        'allowed_provenance_kinds', allowed_provenance_kinds,
+        'require_zero_anomalies', require_zero_anomalies,
+        'minimum_result_minor', minimum_result_minor::text,
+        'maximum_result_minor', maximum_result_minor::text,
+        'effective_from', effective_from::text
+      )
+      FROM public.billing_close_policies
+      WHERE policy_version = 'billing-manual-v1'
+    ),
+    'business_facts', pg_catalog.jsonb_build_object(
+      'agreement_count', (SELECT count(*)::text FROM public.billing_agreements),
+      'revenue_period_count', (SELECT count(*)::text FROM public.billing_revenue_periods),
+      'calculation_count', (SELECT count(*)::text FROM public.billing_calculations),
+      'adjustment_count', (SELECT count(*)::text FROM public.billing_adjustment_calculations)
+    )
+  )`;
+
 function executeProcess(command, args, options = {}) {
   return new Promise((resolve) => {
     const child = spawn(command, args, {
@@ -1149,6 +1505,70 @@ export function validateExactUpgradeSnapshot(snapshot) {
   return true;
 }
 
+export function validatePhase4UpgradeSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new Error("Phase 4 upgrade snapshot must be an object");
+  }
+  if (
+    snapshot.schema?.required_table_count !== "19" ||
+    snapshot.schema?.present_table_count !== "19" ||
+    snapshot.schema?.forced_rls_count !== "19"
+  ) {
+    throw new Error("Phase 4 schema or forced-RLS inventory is incomplete");
+  }
+  if (
+    snapshot.rpcs?.required_count !== "17" ||
+    snapshot.rpcs?.present_count !== "17" ||
+    snapshot.rpcs?.locked_count !== "17" ||
+    snapshot.rpcs?.dynamic_sql_count !== "0"
+  ) {
+    throw new Error("Phase 4 RPC inventory is incomplete or unlocked");
+  }
+  if (
+    snapshot.acl?.authenticated_mutation_privilege_count !== "0" ||
+    snapshot.acl?.anonymous_table_privilege_count !== "0" ||
+    snapshot.acl?.anonymous_execute_count !== "0"
+  ) {
+    throw new Error("Phase 4 ACL is not least privilege");
+  }
+  if (
+    snapshot.capabilities?.row_count !== "23" ||
+    snapshot.capabilities?.distinct_capability_count !== "9"
+  ) {
+    throw new Error("Phase 4 capability fixture inventory differs");
+  }
+
+  const policy = snapshot.policy;
+  if (
+    policy?.policy_version !== "billing-manual-v1" ||
+    policy?.policy_mode !== "manual" ||
+    policy?.active !== true ||
+    JSON.stringify(policy?.allowed_account_statuses) !==
+      JSON.stringify(["active", "on_hold", "closed"]) ||
+    JSON.stringify(policy?.allowed_formula_kinds) !==
+      JSON.stringify(["fixed", "percentage", "minimum_support", "hybrid"]) ||
+    JSON.stringify(policy?.allowed_close_modes) !==
+      JSON.stringify(["accepted_evidence", "minimum_only"]) ||
+    JSON.stringify(policy?.allowed_provenance_kinds) !==
+      JSON.stringify(["api", "statement", "portal", "minimum_only"]) ||
+    policy?.require_zero_anomalies !== true ||
+    policy?.minimum_result_minor !== "0" ||
+    policy?.maximum_result_minor !== null ||
+    policy?.effective_from !== "2026-01-01 00:00:00+00"
+  ) {
+    throw new Error("Phase 4 close policy fixture differs");
+  }
+  for (const [name, count] of Object.entries(snapshot.business_facts ?? {})) {
+    if (count !== "0") {
+      throw new Error(`Phase 4 baseline business fact changed: ${name}`);
+    }
+  }
+  if (Object.keys(snapshot.business_facts ?? {}).length !== 4) {
+    throw new Error("Phase 4 business fact inventory is incomplete");
+  }
+  return true;
+}
+
 function assertFingerprintShape(
   fingerprints,
   label,
@@ -1283,7 +1703,11 @@ export function validateTransformationRegistries({
   const semanticInvariants = [];
   const seenInvariants = new Set();
   for (const [index, registry] of registries.entries()) {
-    assertExactFields(registry, registryFields, `registry ${index + 2}`);
+    assertExactFields(
+      registry,
+      registry?.sequence === 4 ? phase4RegistryFields : registryFields,
+      `registry ${index + 2}`,
+    );
     const expectedSequence = index + 2;
     if (registry.sequence !== expectedSequence) {
       throw new Error("transformation registries are not ordered");
@@ -1298,6 +1722,9 @@ export function validateTransformationRegistries({
     }
     if (registry.version !== "1.0.0") {
       throw new Error(`${registry.registry_id} version is unsupported`);
+    }
+    if (registry.sequence > 4) {
+      throw new Error(`registry sequence is unsupported: ${registry.sequence}`);
     }
     if (registry.baseline_id !== baselineExpected.baseline_id) {
       throw new Error(`${registry.registry_id} baseline identity is stale`);
@@ -1335,6 +1762,56 @@ export function validateTransformationRegistries({
       Object.assign(baselineCategories, PHASE3_BASELINE_CATEGORY_HASHES);
       Object.assign(current, PHASE3_BASELINE_CATEGORY_HASHES);
     }
+    if (registry.sequence === 4) {
+      if (registry.registry_id !== "004-agreement-close") {
+        throw new Error(
+          "sequence 004 agreement-close registry identity is invalid",
+        );
+      }
+      if (
+        JSON.stringify(registry.migrations) !==
+        JSON.stringify(PHASE4_MIGRATIONS)
+      ) {
+        throw new Error(
+          "sequence 004 agreement-close migration set is invalid",
+        );
+      }
+      assertExactFields(
+        registry.migration_sha256,
+        PHASE4_MIGRATIONS,
+        "004-agreement-close migration_sha256",
+      );
+      for (const version of PHASE4_MIGRATIONS) {
+        assertDigest(
+          registry.migration_sha256[version],
+          `004-agreement-close ${version} sha256`,
+        );
+        const matches = fs
+          .readdirSync(path.join(repositoryRoot, "supabase/migrations"))
+          .filter((filename) => filename.startsWith(`${version}_`));
+        if (matches.length !== 1) {
+          throw new Error(
+            `Phase 4 migration file resolution failed: ${version}`,
+          );
+        }
+        const actual = sha256(
+          fs.readFileSync(
+            path.join(repositoryRoot, "supabase/migrations", matches[0]),
+          ),
+        );
+        if (registry.migration_sha256[version] !== actual) {
+          throw new Error(`Phase 4 migration hash differs: ${version}`);
+        }
+      }
+      for (const [category, digest] of Object.entries(
+        PHASE4_BASELINE_CATEGORY_HASHES,
+      )) {
+        if (!Object.hasOwn(baselineCategories, category)) {
+          baselineCategories[category] = digest;
+        }
+      }
+      Object.assign(current, PHASE4_BASELINE_CATEGORY_HASHES);
+    }
     if (
       !registry.transformations ||
       typeof registry.transformations !== "object" ||
@@ -1356,7 +1833,16 @@ export function validateTransformationRegistries({
         registry.registry_id === "003-exact-money" &&
         previousSequence === 2 &&
         phase3RepeatedCoreCategories.has(category);
-      if (previousSequence !== undefined && !isAllowedPhase3Repeat) {
+      const isAllowedPhase4Repeat =
+        registry.sequence === 4 &&
+        registry.registry_id === "004-agreement-close" &&
+        previousSequence === 3 &&
+        phase4RepeatedCoreCategories.has(category);
+      if (
+        previousSequence !== undefined &&
+        !isAllowedPhase3Repeat &&
+        !isAllowedPhase4Repeat
+      ) {
         throw new Error(`overlapping transformation category: ${category}`);
       }
       assertExactFields(
@@ -1444,6 +1930,41 @@ export function validateTransformationRegistries({
       if (unexpectedInvariant) {
         throw new Error(
           `unexpected exact semantic invariant: ${unexpectedInvariant}`,
+        );
+      }
+    }
+    if (registry.sequence === 4) {
+      const receivedTransformations = Object.keys(registry.transformations);
+      const missingTransformation = PHASE4_REQUIRED_TRANSFORMATIONS.find(
+        (category) => !receivedTransformations.includes(category),
+      );
+      if (missingTransformation) {
+        throw new Error(
+          `missing agreement-close transformation: ${missingTransformation}`,
+        );
+      }
+      const unexpectedTransformation = receivedTransformations.find(
+        (category) => !PHASE4_REQUIRED_TRANSFORMATIONS.includes(category),
+      );
+      if (unexpectedTransformation) {
+        throw new Error(
+          `unexpected agreement-close transformation: ${unexpectedTransformation}`,
+        );
+      }
+      const missingInvariant = PHASE4_AGREEMENT_CLOSE_INVARIANTS.find(
+        (invariant) => !registry.semantic_invariants.includes(invariant),
+      );
+      if (missingInvariant) {
+        throw new Error(
+          `missing agreement-close semantic invariant: ${missingInvariant}`,
+        );
+      }
+      const unexpectedInvariant = registry.semantic_invariants.find(
+        (invariant) => !PHASE4_AGREEMENT_CLOSE_INVARIANTS.includes(invariant),
+      );
+      if (unexpectedInvariant) {
+        throw new Error(
+          `unexpected agreement-close semantic invariant: ${unexpectedInvariant}`,
         );
       }
     }
@@ -1655,7 +2176,11 @@ export async function prepareBaseline(container, execute = executeProcess) {
   }
 }
 
-async function applyRegisteredMigrations(container, migrations, execute) {
+export async function applyRegisteredMigrations(
+  container,
+  migrations,
+  execute = executeProcess,
+) {
   const migrationFiles = fs
     .readdirSync(path.join(repositoryRoot, "supabase/migrations"))
     .filter((filename) => filename.endsWith(".sql"));
@@ -1772,6 +2297,7 @@ function assertSemanticInvariants({
   after,
   postUpgrade,
   exactSnapshot,
+  phase4Snapshot,
   invariants,
 }) {
   const results = {};
@@ -1781,6 +2307,13 @@ function assertSemanticInvariants({
       exactSnapshotValidated = validateExactUpgradeSnapshot(exactSnapshot);
     }
     return exactSnapshotValidated;
+  };
+  let phase4SnapshotValidated;
+  const phase4SnapshotIsValid = () => {
+    if (phase4SnapshotValidated === undefined) {
+      phase4SnapshotValidated = validatePhase4UpgradeSnapshot(phase4Snapshot);
+    }
+    return phase4SnapshotValidated;
   };
   const assertions = {
     invoice_count_preserved: () => before.invoice_count === after.invoice_count,
@@ -1810,6 +2343,12 @@ function assertSemanticInvariants({
     exact_invoice_acl_least_privilege: exactSnapshotIsValid,
     tax_rate_compatibility_exact: exactSnapshotIsValid,
     unrelated_crm_payloads_preserved: exactSnapshotIsValid,
+    agreement_close_schema_complete: phase4SnapshotIsValid,
+    agreement_close_rpcs_locked: phase4SnapshotIsValid,
+    agreement_close_acl_least_privilege: phase4SnapshotIsValid,
+    agreement_close_capabilities_exact: phase4SnapshotIsValid,
+    agreement_close_policy_exact: phase4SnapshotIsValid,
+    agreement_close_business_facts_append_only: phase4SnapshotIsValid,
   };
   for (const invariant of invariants) {
     const assertion = assertions[invariant];
@@ -1896,6 +2435,19 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
       after_sha256: after.unrelated_crm_payloads,
     };
   }
+  let phase4Snapshot;
+  if (
+    expectedUpgrade.semantic_invariants.some((invariant) =>
+      PHASE4_AGREEMENT_CLOSE_INVARIANTS.includes(invariant),
+    )
+  ) {
+    phase4Snapshot = await queryJson(
+      container,
+      phase4PostUpgradeSemanticQuery,
+      "phase4_post_upgrade_semantics",
+      execute,
+    );
+  }
   const mismatches = fingerprintMismatches({
     before,
     after,
@@ -1916,6 +2468,7 @@ async function runUpgradeProof({ execute = executeProcess } = {}) {
     after: afterSemantics,
     postUpgrade: postUpgradeSemantics,
     exactSnapshot,
+    phase4Snapshot,
     invariants: expectedUpgrade.semantic_invariants,
   });
   return {

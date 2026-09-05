@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "registry_id": "004-agreement-close",
+  "sequence": 4,
+  "baseline_id": "002-pre-financial-pg17",
+  "migrations": [
+    "20260904000001",
+    "20260904000002",
+    "20260904000003",
+    "20260904000004",
+    "20260904000005",
+    "20260904000006",
+    "20260904000007"
+  ],
+  "migration_sha256": {
+    "20260904000001": "922c3cdd9ae66e88e334bfe6ceccf5e77b1dad07ba86697ffbaceba75638b097",
+    "20260904000002": "314a9cfab2bcf3631fb9779e511eaddb4013ea9e9edb1306440ca1e824b99fc4",
+    "20260904000003": "5d3b580991bc0fd0af87d07aa844c35764051db9deccc07372275846ba9e5111",
+    "20260904000004": "1c96271b48a6df0600a4c01ffafce2d3cc919275fddccd4ce725b0602e35c9a1",
+    "20260904000005": "b66b5efe45b090fb76fd130ff9f39c770c9b88fb5d4b124f45c175be909a8039",
+    "20260904000006": "4a16537fcdd5a6900d8774dd02fdee8a11745687eb5c7d45aea2ed4038483831",
+    "20260904000007": "9a99d365db3f82061110cb9cd2491189b7f1164eb16fa3a514e344b27cbb852b"
+  },
+  "transformations": {
+    "constraint_definitions": {
+      "migration": "20260904000004",
+      "before_sha256": "76355bdf051f18f53a3cb66b66eb10e3a7f5fec6a374edc24697c6428b7f2a37",
+      "after_sha256": "5f53f1edf709777e11c911f1441396ec4055f439fe7ccdb435af734244550e3f"
+    },
+    "grant_matrix": {
+      "migration": "20260904000007",
+      "before_sha256": "6efd12a06e66d5a3b266700cd86c7be535f9ca45ad55bc7aaf0ec3319150a8c4",
+      "after_sha256": "0b40ecabe57c07131a39d25bc4d28593327027b94118d1e69734cbdbf6491807"
+    },
+    "agreement_close_schema": {
+      "migration": "20260904000004",
+      "before_sha256": "4e1d75893abc7a52490325c585ddd9b6522f498abc076502bf11ec5fcb8b6c09",
+      "after_sha256": "f9d4dc5df5055c130e31e88edc7e7647a169fd970e801bd5d3d052bab6696dbb"
+    },
+    "agreement_close_rpcs": {
+      "migration": "20260904000007",
+      "before_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "after_sha256": "243b8e4028e3fef60551c824e94d4b27c8313c09c53592501bc8989904266451"
+    },
+    "agreement_close_security": {
+      "migration": "20260904000007",
+      "before_sha256": "214a524735d72acfdfde0a82c188751f08f9d560cf3a8a96e77aec9cce4f8c23",
+      "after_sha256": "10d3029fa333b039b90a633fe63740411533b47b835ffa53f227b5fd1e1d122c"
+    },
+    "agreement_close_capabilities": {
+      "migration": "20260904000003",
+      "before_sha256": "2cf2a5e2f1abea32565e885543e63a391c12771bbdd828aa5ff397a39c8dfa78",
+      "after_sha256": "b83c54419102ba1f49b18d6311d6042da89e8f4dbf70f359d0f0c5519dfe2fd5"
+    }
+  },
+  "semantic_invariants": [
+    "agreement_close_schema_complete",
+    "agreement_close_rpcs_locked",
+    "agreement_close_acl_least_privilege",
+    "agreement_close_capabilities_exact",
+    "agreement_close_policy_exact",
+    "agreement_close_business_facts_append_only"
+  ]
+}

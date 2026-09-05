@@ -9,7 +9,14 @@ FINANCIAL_DATABASE_SQL_TESTS := \
 	supabase/tests/database/50_billing_access_commands.sql \
 	supabase/tests/database/55_billing_evidence_presentation.sql \
 	supabase/tests/database/60_exact_financial_primitives.sql \
-	supabase/tests/database/65_exact_billing_conversion.sql
+	supabase/tests/database/65_exact_billing_conversion.sql \
+	supabase/tests/database/70_billing_agreements.sql \
+	supabase/tests/database/75_billing_revenue_periods.sql \
+	supabase/tests/database/80_billing_calculations.sql \
+	supabase/tests/database/85_billing_calculation_close.sql \
+	supabase/tests/database/90_billing_provider_reads.sql \
+	supabase/tests/database/92_billing_agreement_history_read.sql \
+	supabase/tests/database/94_billing_adjustment_support_read.sql
 
 FINANCIAL_DATABASE_HTTP_TESTS := \
 	tests/release/auth-rls-rpc-trigger.test.ts \
@@ -25,12 +32,16 @@ FINANCIAL_FAST_TESTS := \
 	tests/release/billing-redaction.test.ts \
 	src/components/atomic-crm/billing-accounts/billingDataProvider.test.ts \
 	src/components/atomic-crm/billing-accounts/billingAccounts.test.ts \
+	src/components/atomic-crm/billing-accounts/BillingAgreementPanel.test.tsx \
+	src/components/atomic-crm/billing-accounts/BillingMonthlyClosePanel.test.tsx \
+	src/components/atomic-crm/financial/billingCloseProviderContract.test.ts \
 	src/components/atomic-crm/financial/exactMoney.test.ts \
 	src/components/atomic-crm/invoices/invoiceCalculations.test.ts \
 	tests/release/migration-clean.test.ts \
 	tests/release/security-gate.test.ts \
 	tests/release/exact-money-release-static.test.ts \
-	tests/release/billing-security-static.test.ts
+	tests/release/billing-security-static.test.ts \
+	tests/release/phase-04-release-static.test.ts
 
 .PHONY: build help financial-gate-help test-financial-migration-clean test-financial-schema-push test-financial-migration-upgrade test-financial-database-sql test-financial-database-http test-financial-database-contracts test-financial-functions test-financial-fast test-financial-concurrency-fixture test-financial-concurrency test-financial-replay-concurrency test-release-secrets test-release-bundle test-release-security financial-gate
 

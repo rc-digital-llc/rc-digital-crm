@@ -6,11 +6,15 @@ import {
   PHASE3_BASELINE_CATEGORY_HASHES,
   PHASE3_EXACT_INVARIANTS,
   PHASE3_REQUIRED_TRANSFORMATIONS,
+  PHASE4_AGREEMENT_CLOSE_INVARIANTS,
+  PHASE4_MIGRATIONS,
+  PHASE4_REQUIRED_TRANSFORMATIONS,
   canonicalFingerprint,
   compareFingerprintSets,
   loadTransformationRegistries,
   loadUpgradeExpectation,
   validateExactUpgradeSnapshot,
+  validatePhase4UpgradeSnapshot,
   validateTransformationRegistries,
   verifyImmutableUpgradeInputs,
 } from "../../scripts/release/fingerprint-upgrade.mjs";
@@ -167,6 +171,67 @@ function exactUpgradeSnapshot() {
       after_sha256: HASH_A,
     },
   };
+}
+
+function phase4UpgradeSnapshot() {
+  return {
+    schema: {
+      required_table_count: "19",
+      present_table_count: "19",
+      forced_rls_count: "19",
+    },
+    rpcs: {
+      required_count: "17",
+      present_count: "17",
+      locked_count: "17",
+      dynamic_sql_count: "0",
+    },
+    acl: {
+      authenticated_mutation_privilege_count: "0",
+      anonymous_table_privilege_count: "0",
+      anonymous_execute_count: "0",
+    },
+    capabilities: {
+      row_count: "23",
+      distinct_capability_count: "9",
+    },
+    policy: {
+      policy_version: "billing-manual-v1",
+      policy_mode: "manual",
+      active: true,
+      allowed_account_statuses: ["active", "on_hold", "closed"],
+      allowed_formula_kinds: [
+        "fixed",
+        "percentage",
+        "minimum_support",
+        "hybrid",
+      ],
+      allowed_close_modes: ["accepted_evidence", "minimum_only"],
+      allowed_provenance_kinds: ["api", "statement", "portal", "minimum_only"],
+      require_zero_anomalies: true,
+      minimum_result_minor: "0",
+      maximum_result_minor: null,
+      effective_from: "2026-01-01 00:00:00+00",
+    },
+    business_facts: {
+      agreement_count: "0",
+      revenue_period_count: "0",
+      calculation_count: "0",
+      adjustment_count: "0",
+    },
+  };
+}
+
+function readRegistry(name: string): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(
+      path.resolve(
+        __dirname,
+        `../../supabase/tests/upgrades/${name}/expected-transformations.json`,
+      ),
+      "utf8",
+    ),
+  ) as Record<string, unknown>;
 }
 
 describe("representative upgrade fingerprints", () => {
@@ -571,6 +636,13 @@ describe("representative upgrade fingerprints", () => {
       "20260902000001_exact_financial_primitives.sql",
       "20260902000002_exact_billing_expand.sql",
       "20260903000001_exact_invoice_save_error_contract.sql",
+      "20260904000001_billing_agreements.sql",
+      "20260904000002_billing_revenue_periods.sql",
+      "20260904000003_billing_calculations.sql",
+      "20260904000004_billing_calculation_close.sql",
+      "20260904000005_billing_provider_reads.sql",
+      "20260904000006_billing_agreement_history_read.sql",
+      "20260904000007_billing_adjustment_support_read.sql",
     ]) {
       expect(
         () =>
@@ -583,6 +655,110 @@ describe("representative upgrade fingerprints", () => {
         filename,
       ).toThrow(/immutable upgrade input differs/i);
     }
+  });
+
+  it("loads only the closed Phase 4 registry vocabulary", () => {
+    const result = loadTransformationRegistries({
+      baselineExpected: loadUpgradeExpectation(),
+    });
+    expect(result.migrations.slice(-PHASE4_MIGRATIONS.length)).toEqual(
+      PHASE4_MIGRATIONS,
+    );
+    expect(Object.keys(result.transformations)).toEqual(
+      expect.arrayContaining([...PHASE4_REQUIRED_TRANSFORMATIONS]),
+    );
+    expect(result.semantic_invariants).toEqual(
+      expect.arrayContaining([...PHASE4_AGREEMENT_CLOSE_INVARIANTS]),
+    );
+  });
+
+  it("rejects stale, missing, reordered, or broadened Phase 4 authority", () => {
+    const baselineExpected = loadUpgradeExpectation();
+    const prior = [
+      readRegistry("002-billing-tenancy"),
+      readRegistry("003-exact-money"),
+    ];
+    const registry = readRegistry("004-agreement-close");
+
+    const reordered = structuredClone(registry);
+    (reordered.migrations as string[]).reverse();
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected,
+        registries: [...prior, reordered],
+      }),
+    ).toThrow(/migrations are not ordered/i);
+
+    const missingHash = structuredClone(registry);
+    delete (missingHash.migration_sha256 as Record<string, string>)[
+      PHASE4_MIGRATIONS[0]
+    ];
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected,
+        registries: [...prior, missingHash],
+      }),
+    ).toThrow(/missing 20260904000001/i);
+
+    const staleHash = structuredClone(registry);
+    (staleHash.migration_sha256 as Record<string, string>)[
+      PHASE4_MIGRATIONS[0]
+    ] = HASH_A;
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected,
+        registries: [...prior, staleHash],
+      }),
+    ).toThrow(/migration hash differs/i);
+
+    const missingTransform = structuredClone(registry);
+    delete (missingTransform.transformations as Record<string, unknown>)[
+      PHASE4_REQUIRED_TRANSFORMATIONS[0]
+    ];
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected,
+        registries: [...prior, missingTransform],
+      }),
+    ).toThrow(/missing agreement-close transformation/i);
+
+    const missingInvariant = structuredClone(registry);
+    missingInvariant.semantic_invariants =
+      PHASE4_AGREEMENT_CLOSE_INVARIANTS.slice(1);
+    expect(() =>
+      validateTransformationRegistries({
+        baselineExpected,
+        registries: [...prior, missingInvariant],
+      }),
+    ).toThrow(/missing agreement-close semantic invariant/i);
+  });
+
+  it("validates exact Phase 4 schema, RPC, ACL, policy, and fact snapshots", () => {
+    expect(validatePhase4UpgradeSnapshot(phase4UpgradeSnapshot())).toBe(true);
+
+    const numericAuthority = phase4UpgradeSnapshot();
+    numericAuthority.policy.minimum_result_minor = 0 as unknown as string;
+    expect(() => validatePhase4UpgradeSnapshot(numericAuthority)).toThrow(
+      /close policy fixture differs/i,
+    );
+
+    const genericCrud = phase4UpgradeSnapshot();
+    genericCrud.acl.authenticated_mutation_privilege_count = "1";
+    expect(() => validatePhase4UpgradeSnapshot(genericCrud)).toThrow(
+      /least privilege/i,
+    );
+
+    const missingDecisionRpc = phase4UpgradeSnapshot();
+    missingDecisionRpc.rpcs.present_count = "16";
+    expect(() => validatePhase4UpgradeSnapshot(missingDecisionRpc)).toThrow(
+      /RPC inventory/i,
+    );
+
+    const rewrittenFact = phase4UpgradeSnapshot();
+    rewrittenFact.business_facts.calculation_count = "1";
+    expect(() => validatePhase4UpgradeSnapshot(rewrittenFact)).toThrow(
+      /business fact changed/i,
+    );
   });
 
   it("keeps exact fingerprints free of JavaScript numeric coercion", () => {
