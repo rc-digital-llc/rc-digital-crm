@@ -15,6 +15,7 @@ const allowedRuntimeDirtyPaths = new Set([".planning/config.json"]);
 const isAllowedRuntimePath = (relativePath) =>
   allowedRuntimeDirtyPaths.has(relativePath) ||
   relativePath === "artifacts/surface/phase-04-source.json" ||
+  relativePath === "artifacts/surface/.phase-04-source.json.lock" ||
   relativePath.startsWith("artifacts/surface/phase-04-source-screenshots/");
 
 export const redactOutput = (value) =>
