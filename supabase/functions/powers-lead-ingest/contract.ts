@@ -89,16 +89,31 @@ export function normalizeLead(raw: RawLead): NormalizeResult {
   };
 }
 
-export function classifyChannel(lead: NormalizedLead): string {
-  const medium = lead.utmMedium.toLowerCase();
-  const referrer = lead.referrer.toLowerCase();
-  if (lead.gclid || ["cpc", "ppc", "paid_search"].includes(medium))
-    return "paid_search";
-  if (lead.fbclid || medium.includes("paid_social")) return "social_paid";
-  if (/google\.|bing\.|yahoo\.|duckduckgo\./u.test(referrer))
-    return "organic_search";
-  if (lead.utmSource.toLowerCase().includes("facebook") || medium === "social")
-    return "social_organic";
-  if (referrer) return "referral";
-  return "direct";
+
+export function toRpcPayload(lead: NormalizedLead) {
+  return {
+    full_name: lead.fullName,
+    first_name: lead.firstName,
+    last_name: lead.lastName,
+    email: lead.email,
+    phone: lead.phone,
+    service: lead.service,
+    project_city: lead.projectCity,
+    dimensions: lead.dimensions,
+    project_type: lead.projectType,
+    timing: lead.timing,
+    message: lead.message,
+    browser_attribution: {
+      verification_status: "unverified_browser",
+      landing_path: lead.landingPath,
+      referrer: lead.referrer,
+      utm_source: lead.utmSource,
+      utm_medium: lead.utmMedium,
+      utm_campaign: lead.utmCampaign,
+      utm_term: lead.utmTerm,
+      utm_content: lead.utmContent,
+      gclid: lead.gclid,
+      fbclid: lead.fbclid,
+    },
+  };
 }

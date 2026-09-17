@@ -1,7 +1,7 @@
 import {
-  classifyChannel,
   normalizeLead,
   POWERS_ACCOUNT_KEY,
+  toRpcPayload,
 } from "./contract.ts";
 
 function assert(condition: unknown, message: string): asserts condition {
@@ -21,99 +21,47 @@ function baseLead() {
     timing: "30-60 days",
     message: "Back fence replacement",
     landing_path: "/services/wood-fencing",
-    referrer: "",
-    utm_source: "",
-    utm_medium: "",
-    utm_campaign: "",
-    utm_term: "",
-    utm_content: "",
-    gclid: "",
+    referrer: "https://www.google.com/search?q=fence",
+    utm_source: "google",
+    utm_medium: "organic",
+    utm_campaign: "spring",
+    utm_term: "fence",
+    utm_content: "cta-a",
+    gclid: "browser-click-id",
     fbclid: "",
   };
 }
-Deno.test(
-  "normalizes a valid Powers lead without accepting billing authority",
-  () => {
-    const result = normalizeLead({
-      ...baseLead(),
-      commissionable: true,
-      account_key: "other-client",
-    });
-    assert(result.kind === "valid", "expected a valid lead");
-    assert(
-      result.lead.email === "jane@example.com",
-      "email must normalize to lowercase",
-    );
-    assert(
-      result.lead.firstName === "Jane" && result.lead.lastName === "Homeowner",
-      "name must split deterministically",
-    );
-    assert(
-      !("commissionable" in result.lead),
-      "browser commissionability must be ignored",
-    );
-    assert(
-      !("accountKey" in result.lead),
-      "browser account identity must be ignored",
-    );
-    assert(
-      POWERS_ACCOUNT_KEY === "powers-gc",
-      "server account key changed unexpectedly",
-    );
-  },
-);
 
-Deno.test(
-  "honeypot submissions are accepted as spam without lead creation",
-  () => {
-    const result = normalizeLead({
-      ...baseLead(),
-      website: "https://spam.example",
-    });
-    assert(result.kind === "spam", "honeypot must classify as spam");
-  },
-);
+Deno.test("normalizes without accepting browser billing or tenant authority", () => {
+  const result = normalizeLead({
+    ...baseLead(),
+    commissionable: true,
+    account_key: "other-client",
+  });
+  assert(result.kind === "valid", "expected a valid lead");
+  assert(result.lead.email === "jane@example.com", "email must normalize");
+  assert(result.lead.firstName === "Jane" && result.lead.lastName === "Homeowner", "name must split");
+  assert(!("commissionable" in result.lead), "browser commissionability must be ignored");
+  assert(!("accountKey" in result.lead), "browser account identity must be ignored");
+  assert(POWERS_ACCOUNT_KEY === "powers-gc", "server account key changed");
+});
+
+Deno.test("browser attribution remains explicitly unverified evidence", () => {
+  const result = normalizeLead(baseLead());
+  assert(result.kind === "valid", "fixture must be valid");
+  const payload = toRpcPayload(result.lead);
+  assert(payload.browser_attribution.verification_status === "unverified_browser", "browser evidence must be labeled unverified");
+  assert(payload.browser_attribution.gclid === "browser-click-id", "click evidence must be preserved");
+  assert(!("channel" in payload), "browser data must not become an authoritative channel");
+  assert(!("commissionable" in payload), "RPC payload must not carry commission authority");
+});
+
+Deno.test("honeypot submissions are accepted as spam without lead creation", () => {
+  const result = normalizeLead({ ...baseLead(), website: "https://spam.example" });
+  assert(result.kind === "spam", "honeypot must classify as spam");
+});
 
 Deno.test("requires stable intake id and a contact method", () => {
-  assert(
-    normalizeLead({ ...baseLead(), intake_id: "short" }).kind === "invalid",
-    "short intake id must fail",
-  );
-  assert(
-    normalizeLead({ ...baseLead(), phone: "", email: "" }).kind === "invalid",
-    "missing contact method must fail",
-  );
-});
-Deno.test("classifies attribution channels conservatively", () => {
-  const valid = normalizeLead(baseLead());
-  assert(valid.kind === "valid", "fixture must be valid");
-  assert(
-    classifyChannel(valid.lead) === "direct",
-    "blank attribution should be direct",
-  );
-
-  const paid = normalizeLead({ ...baseLead(), gclid: "test-click" });
-  assert(
-    paid.kind === "valid" && classifyChannel(paid.lead) === "paid_search",
-    "gclid should map to paid search",
-  );
-
-  const organic = normalizeLead({
-    ...baseLead(),
-    referrer: "https://www.google.com/search?q=fence",
-  });
-  assert(
-    organic.kind === "valid" &&
-      classifyChannel(organic.lead) === "organic_search",
-    "Google referrer should map organic",
-  );
-
-  const referral = normalizeLead({
-    ...baseLead(),
-    referrer: "https://example-neighbor.com/recommendations",
-  });
-  assert(
-    referral.kind === "valid" && classifyChannel(referral.lead) === "referral",
-    "other referrer should map referral",
-  );
+  assert(normalizeLead({ ...baseLead(), intake_id: "short" }).kind === "invalid", "short intake id must fail");
+  assert(normalizeLead({ ...baseLead(), phone: "", email: "" }).kind === "invalid", "missing contact method must fail");
 });
