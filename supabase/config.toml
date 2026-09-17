@@ -167,3 +167,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.billing_evidence]
 verify_jwt = false
+
+# Dedicated server-to-server Powers website lead intake. Authentication is a
+# separate bearer secret; browser callers never receive Supabase credentials.
+[functions.powers-lead-ingest]
+verify_jwt = false
