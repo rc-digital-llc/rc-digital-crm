@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE public.external_lead_sources (
+CREATE TABLE IF NOT EXISTS public.external_lead_sources (
   account_key text PRIMARY KEY,
   sales_id bigint NOT NULL REFERENCES public.sales(id) ON DELETE RESTRICT,
   active boolean NOT NULL DEFAULT true,
@@ -11,7 +11,7 @@ CREATE TABLE public.external_lead_sources (
   CHECK (account_key ~ '^[a-z0-9][a-z0-9-]{2,63}$')
 );
 
-CREATE TABLE public.external_lead_ingest_receipts (
+CREATE TABLE IF NOT EXISTS public.external_lead_ingest_receipts (
   account_key text NOT NULL REFERENCES public.external_lead_sources(account_key) ON DELETE RESTRICT,
   intake_id text NOT NULL,
   lead_id bigint NOT NULL REFERENCES public.leads(id) ON DELETE RESTRICT,
@@ -20,10 +20,10 @@ CREATE TABLE public.external_lead_ingest_receipts (
   PRIMARY KEY (account_key, intake_id),
   UNIQUE (lead_id),
   CHECK (intake_id ~ '^[A-Za-z0-9][A-Za-z0-9_-]{15,95}$'),
-  CHECK (payload_hash ~ '^[a-f0-9]{32}$')
+  CHECK (payload_hash ~ '^[a-f0-9]{64}$')
 );
 
-CREATE INDEX external_lead_ingest_receipts_account_created_idx
+CREATE INDEX IF NOT EXISTS external_lead_ingest_receipts_account_created_idx
   ON public.external_lead_ingest_receipts (account_key, created_at DESC);
 
 ALTER TABLE public.external_lead_sources ENABLE ROW LEVEL SECURITY;
@@ -80,7 +80,10 @@ BEGIN
     RAISE EXCEPTION 'INGEST_SOURCE_NOT_CONFIGURED' USING ERRCODE = 'P0001';
   END IF;
 
-  v_payload_hash := md5(p_payload::text);
+  v_payload_hash := pg_catalog.encode(
+    extensions.digest(pg_catalog.convert_to(p_payload::text, 'UTF8'), 'sha256'),
+    'hex'
+  );
   SELECT * INTO v_receipt
   FROM public.external_lead_ingest_receipts
   WHERE account_key = p_account_key AND intake_id = p_intake_id;
